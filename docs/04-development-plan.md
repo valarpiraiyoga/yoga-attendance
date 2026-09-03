@@ -39,9 +39,9 @@ that is not in `01-product.md`, that is a defect in this document.
 | 2 | Documentation / reference organization | ✅ Complete |
 | 3 | Application Shell | ✅ Complete |
 | 4 | App Shell visual-density refinement | ✅ Complete |
-| 5 | Documentation / source-of-truth cleanup | ⏳ Current |
-| 6 | App Shell structural validation | 🔍 Under review — see §7 |
-| 7 | Reusable layout primitives | ⬜ Not started |
+| 5 | Documentation / source-of-truth cleanup | ✅ Complete |
+| 6 | App Shell structural validation | ✅ Complete |
+| 7 | Reusable layout primitives | ⬜ Not started — next |
 | 8 | Login | ⬜ Not started |
 | 9 | Settings → Instructors | ⬜ Not started |
 | 10 | Students | ⬜ Not started |
@@ -128,16 +128,42 @@ its real content is deferred.
 
 ## 5. Phase Definitions
 
-### Phase 5 — Documentation / source-of-truth cleanup *(current)*
+### Phase 5 — Documentation / source-of-truth cleanup
 Establish consistent, non-contradictory documentation before feature work.
 No application code changes.
 
 ### Phase 6 — App Shell structural validation
-The structural relationship between Sidebar and Header is **under review** —
-see §7. This must be resolved before feature screens are built inside the
-shell, because every subsequent screen renders within it.
 
-### Phase 7 — Reusable layout primitives
+**Structural decision — RESOLVED.**
+
+Approved shell structure:
+
+```text
+AppShell
+├── Sidebar
+└── MainColumn
+    ├── Header
+    └── MainContent
+```
+
+- The Sidebar is the full-height left column and begins at the top of the
+  viewport, remaining vertically continuous.
+- The Header is scoped to the main content column and does **not** span across
+  the Sidebar.
+- Main content begins below the Header.
+- Desktop: Sidebar 256px wide, Header 48px high, main content starting at
+  x=256 / y=48.
+- Mobile: the desktop Sidebar is hidden and the existing drawer navigation
+  behaviour is used.
+
+Validation basis: independently confirmed against the approved visual
+references, then verified in a real browser using computed layout measurements
+across desktop and mobile viewports, with lint and build passing.
+
+The shell is now a stable foundation for feature screens, and phase 7 may
+proceed.
+
+### Phase 7 — Reusable layout primitives *(next)*
 `Container`, `Section`, `PageHeader`.
 
 Built **after** the shell structure is settled and **before** the first feature
@@ -202,8 +228,10 @@ The schema therefore grows feature by feature, in the dependency order in §4.
 
 | Item | Status |
 |---|---|
-| **AppShell structural relationship between Sidebar and Header** | **UNDER REVIEW — NOT RESOLVED.** The current implementation renders the Header as a full-width row above both Sidebar and main content. A structural comparison against the approved references suggests the intended pattern may instead be a full-height Sidebar with the Header scoped to the main-content width. This must be decided in phase 6 before feature screens are built inside the shell. |
 | **Brand logo asset** | No approved logo/lotus asset exists in the repository. Branding is currently text-only. Requires a supplied asset or an explicit decision to remain text-only. |
+
+The AppShell structural relationship between Sidebar and Header previously
+listed here is **resolved** — see Phase 6 in §5.
 
 ---
 
