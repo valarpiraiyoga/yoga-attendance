@@ -60,7 +60,7 @@ Defines:
 
 ## UX Requirements
 
-`docs/02-ux.md`
+`docs/02-ux-final.md`
 
 Defines:
 
@@ -94,11 +94,32 @@ Defines the planned implementation phases and development architecture.
 
 ## Wireframes
 
-`wireframe/`
+`docs/wireframe/`
 
 Approved wireframes are the UX layout reference for individual screens.
 
 Do not redesign or reinterpret approved wireframes unless explicitly instructed.
+
+## UI Reference
+
+`docs/ui-reference/`
+
+Approved visual reference images for composition, layout feel, spacing feel,
+hierarchy, component appearance, visual density, color usage, and the
+general visual character of cards, tables, forms, and navigation.
+
+These images are references only, not application assets. Do not copy them
+into `public/` or import them into application code.
+
+A UI reference image does not override the approved wireframe or visual
+tokens. If a reference image visually suggests a different layout, follow
+the wireframe. If a reference image visually suggests a different color,
+follow `docs/03-visual-tokens.md`. Do not invent or silently change
+requirements based on a reference image.
+
+`visual-tokens.png` is a visual companion to `docs/03-visual-tokens.md`.
+`docs/03-visual-tokens.md` remains the authoritative visual-token source of
+truth; the image is a reference only.
 
 ---
 
@@ -108,12 +129,14 @@ When making implementation decisions, use this hierarchy:
 
 1. Explicit user instruction
 2. `docs/01-product.md`
-3. `docs/02-ux.md`
+3. `docs/02-ux-final.md`
 4. Approved wireframe
 5. `docs/03-visual-tokens.md`
-6. `docs/04-development-plan.md`
-7. Existing project architecture
-8. General framework conventions
+6. `docs/ui-reference/` (visual appearance reference only — does not override
+   the wireframe's structure or the visual tokens' colors)
+7. `docs/04-development-plan.md`
+8. Existing project architecture
+9. General framework conventions
 
 If sources conflict, do not silently choose a solution.
 
