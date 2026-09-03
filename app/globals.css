@@ -1,4 +1,15 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+  Class-scoped (not media-query) dark variant. Keeping this — even with no
+  .dark values defined — stops Tailwind v4 from falling back to its built-in
+  prefers-color-scheme dark variant, which would auto-activate the `dark:`
+  classes already present in generated shadcn components. No .dark palette
+  is defined: V1 is light-only and no dark theme is implemented.
+*/
+@custom-variant dark (&:is(.dark *));
 
 /*
   Raw token values. Kept separate from the @theme mapping below so a future
@@ -21,6 +32,31 @@
   --neutral: #98a2b3;
 
   color-scheme: light;
+
+  /*
+    shadcn/ui compatibility aliases. These are NOT a second design system —
+    every value below resolves to one of the approved tokens above. Added
+    only because generated components (e.g. components/ui/button.jsx)
+    reference these exact variable names via Tailwind utilities such as
+    bg-primary, text-muted-foreground, border-input.
+  */
+  --foreground: var(--text-primary);
+  --card: var(--surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--brand);
+  --primary-foreground: var(--surface);
+  --secondary: var(--background);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--background);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--background);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--surface);
+  --input: var(--border);
+  --ring: var(--brand);
 }
 
 @theme inline {
@@ -39,7 +75,31 @@
   --color-info: var(--info);
   --color-neutral: var(--neutral);
 
-  /* Radius */
+  /* shadcn/ui compatibility tokens — aliased to the approved tokens above */
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /*
+    Radius: no overrides here. Tailwind v4's built-in --radius-md/lg/xl
+    (6px/8px/12px) already equal our approved Input/Button/Card radii, so
+    shadcn components (rounded-md / rounded-lg / rounded-xl) get the right
+    values with no extra mapping. Our own explicit tokens stay below.
+  */
   --radius-input: 6px;
   --radius-button: 8px;
   --radius-card: 12px;
