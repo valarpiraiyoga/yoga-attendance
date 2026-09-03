@@ -24,18 +24,18 @@ export default function UserMenu({ role, name = "Admin User" }) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-background">
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-background">
         <span
           aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background text-xs font-medium text-brand"
+          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background text-xs font-medium text-brand"
         >
           {getInitials(name)}
         </span>
         <span className="hidden flex-col items-start leading-tight sm:flex">
           <span className="text-sm font-medium text-text-primary">{name}</span>
-          <span className="text-xs text-text-secondary">{roleLabel}</span>
+          <span className="text-xs tracking-wide text-text-secondary uppercase">{roleLabel}</span>
         </span>
-        <ChevronDown className="size-4 text-text-secondary" aria-hidden="true" />
+        <ChevronDown className="size-3.5 text-text-secondary" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem>

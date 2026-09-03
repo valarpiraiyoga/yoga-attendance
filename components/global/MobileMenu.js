@@ -43,7 +43,7 @@ export default function MobileMenu({ role }) {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-text-secondary hover:bg-background hover:text-text-primary"
+            className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary hover:bg-background hover:text-text-primary"
           >
             <LogOut className="size-4 shrink-0" aria-hidden="true" />
             Logout
