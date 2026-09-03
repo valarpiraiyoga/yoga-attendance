@@ -1,10 +1,13 @@
 import AppShell from "@/components/layout/AppShell";
+import Container from "@/components/layout/Container";
+import PageHeader from "@/components/layout/PageHeader";
 
 export default function Home() {
   return (
     <AppShell>
-      <h1 className="text-page-title font-semibold text-text-primary">Dashboard</h1>
-      <p className="text-body mt-1 text-text-secondary">Application shell preview.</p>
+      <Container>
+        <PageHeader title="Dashboard" description="Application shell preview." />
+      </Container>
     </AppShell>
   );
 }
