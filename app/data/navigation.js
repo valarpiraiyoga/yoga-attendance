@@ -13,7 +13,7 @@ import {
 
 /**
  * Single source of truth for primary navigation. Order matches the approved
- * IA in docs/02-ux-final.md for both roles — filtering by role preserves
+ * IA in docs/02-ux.md for both roles — filtering by role preserves
  * each role's exact approved order without needing separate lists.
  */
 export const NAV_ITEMS = [

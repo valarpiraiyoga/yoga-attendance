@@ -568,11 +568,29 @@ This document is the living written source of truth for product decisions, requi
 - Reports — APPROVED
 - Settings — APPROVED
 
-### Current Phase
-**Product Definition / Requirements — Complete**
+### Completed
+- **Product Definition / Requirements** — Complete
+- **UX** — Information Architecture, user flows and UX foundation complete (`02-ux.md`)
+- **Wireframes** — Approved (`wireframe/Yoga Attendance.pdf`)
+- **Visual Tokens** — Approved (`03-visual-tokens.md`)
+- **Frontend Foundation** — Project foundation, shadcn/ui foundation and the
+  Application Shell are implemented and checkpointed in Git
 
-### Next Phase
-**UX — Information Architecture → User Flows → Figma Wireframes → Figma UI → Prototype**
+### Current Phase
+**Frontend Implementation** — proceeding feature-by-feature.
+
+The implementation sequence, phase status, dependencies and validation
+checkpoints are maintained in `04-development-plan.md`. This document does not
+track implementation sequencing.
+
+### Where to look
+
+| Need | Document |
+|---|---|
+| Product requirements, business rules, V1 scope | `01-product.md` (this document) |
+| Information architecture, UX flows, screen requirements | `02-ux.md` |
+| Colors, typography, spacing, radius, shadows | `03-visual-tokens.md` |
+| Implementation sequence and phase status | `04-development-plan.md` |
 
 ---
 
@@ -582,12 +600,17 @@ This project intentionally uses a small documentation structure:
 
 ```text
 docs/
-├── 01-product.md
-├── 02-ux.md
-├── 03-development.md
-└── 04-case-study.md
+├── 01-product.md              ← product requirements and business rules
+├── 02-ux.md                   ← information architecture, UX flows
+├── 03-visual-tokens.md        ← visual token system
+├── 04-development-plan.md     ← implementation sequence and phase status
+├── wireframe/                 ← approved structural/layout reference
+└── ui-reference/              ← approved visual appearance reference
 ```
 
 Only create or split additional documentation when it provides a clear benefit.
+
+A case-study document may be added at the end of the project if the portfolio
+goal requires it. Do not create one before then.
 
 `01-product.md` remains the living product reference throughout the project.

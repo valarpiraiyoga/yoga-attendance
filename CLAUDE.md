@@ -60,7 +60,7 @@ Defines:
 
 ## UX Requirements
 
-`docs/02-ux-final.md`
+`docs/02-ux.md`
 
 Defines:
 
@@ -121,6 +121,25 @@ requirements based on a reference image.
 `docs/03-visual-tokens.md` remains the authoritative visual-token source of
 truth; the image is a reference only.
 
+### Known reference conflict: `login.png`
+
+`docs/ui-reference/login.png` is a visual/composition reference only.
+
+The following elements appear in that image but are **NOT approved V1
+functionality** and must **NOT** be implemented unless separately approved:
+
+- Remember me
+- Google Sign-In
+- Light/Dark theme toggle
+
+None of these are supported by `docs/01-product.md` or `docs/02-ux.md`, and the
+first two are already listed under "Do Not Invent Requirements" below. The
+approved product and UX requirements take precedence over these
+visual-reference details.
+
+Use `login.png` for layout, composition and visual character only. Do not
+implement functionality from it.
+
 ---
 
 # Source-of-Truth Priority
@@ -129,7 +148,7 @@ When making implementation decisions, use this hierarchy:
 
 1. Explicit user instruction
 2. `docs/01-product.md`
-3. `docs/02-ux-final.md`
+3. `docs/02-ux.md`
 4. Approved wireframe
 5. `docs/03-visual-tokens.md`
 6. `docs/ui-reference/` (visual appearance reference only — does not override
