@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import NavList from "@/components/global/NavList";
+import { signOut } from "@/lib/auth/actions";
 
 export default function Sidebar({ role }) {
   return (
@@ -14,13 +15,15 @@ export default function Sidebar({ role }) {
       <div className="flex flex-1 flex-col justify-between overflow-y-auto px-3 py-3">
         <NavList role={role} />
 
-        <button
-          type="button"
-          className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary hover:bg-surface hover:text-text-primary"
-        >
-          <LogOut className="size-4 shrink-0" aria-hidden="true" />
-          Logout
-        </button>
+        <form action={signOut}>
+          <button
+            type="submit"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary hover:bg-surface hover:text-text-primary"
+          >
+            <LogOut className="size-4 shrink-0" aria-hidden="true" />
+            Logout
+          </button>
+        </form>
       </div>
     </aside>
   );

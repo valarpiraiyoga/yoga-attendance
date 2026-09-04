@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import MobileMenu from "@/components/global/MobileMenu";
 import UserMenu from "@/components/global/UserMenu";
 
-export default function Header({ role }) {
+export default function Header({ role, user }) {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-4 md:px-6">
       <div className="flex items-center gap-3">
@@ -20,7 +20,7 @@ export default function Header({ role }) {
 
         <div className="mx-2 h-5 w-px bg-border" aria-hidden="true" />
 
-        <UserMenu role={role} />
+        <UserMenu role={role} name={user?.name} />
       </div>
     </header>
   );

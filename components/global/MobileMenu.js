@@ -12,6 +12,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import NavList from "@/components/global/NavList";
+import { signOut } from "@/lib/auth/actions";
 
 export default function MobileMenu({ role }) {
   const [open, setOpen] = useState(false);
@@ -40,14 +41,15 @@ export default function MobileMenu({ role }) {
         <div className="flex flex-1 flex-col justify-between overflow-y-auto px-3 py-4">
           <NavList role={role} onNavigate={() => setOpen(false)} />
 
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary hover:bg-background hover:text-text-primary"
-          >
-            <LogOut className="size-4 shrink-0" aria-hidden="true" />
-            Logout
-          </button>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary hover:bg-background hover:text-text-primary"
+            >
+              <LogOut className="size-4 shrink-0" aria-hidden="true" />
+              Logout
+            </button>
+          </form>
         </div>
       </SheetContent>
     </Sheet>

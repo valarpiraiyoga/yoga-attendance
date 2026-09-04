@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ROLE_LABELS } from "@/app/data/navigation";
+import { signOut } from "@/lib/auth/actions";
 
 function getInitials(name) {
   return name
@@ -19,8 +20,9 @@ function getInitials(name) {
     .toUpperCase();
 }
 
-export default function UserMenu({ role, name = "Admin User" }) {
+export default function UserMenu({ role, name }) {
   const roleLabel = ROLE_LABELS[role] ?? role;
+  const displayName = name || "Account";
 
   return (
     <DropdownMenu>
@@ -29,19 +31,26 @@ export default function UserMenu({ role, name = "Admin User" }) {
           aria-hidden="true"
           className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background text-xs font-medium text-brand"
         >
-          {getInitials(name)}
+          {getInitials(displayName)}
         </span>
         <span className="hidden flex-col items-start leading-tight sm:flex">
-          <span className="text-sm font-medium text-text-primary">{name}</span>
+          <span className="text-sm font-medium text-text-primary">
+            {displayName}
+          </span>
           <span className="text-xs tracking-wide text-text-secondary uppercase">{roleLabel}</span>
         </span>
         <ChevronDown className="size-3.5 text-text-secondary" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem>
-          <LogOut className="size-4" aria-hidden="true" />
-          Log out
-        </DropdownMenuItem>
+        <form action={signOut}>
+          <DropdownMenuItem
+            nativeButton
+            render={<button type="submit" className="w-full" />}
+          >
+            <LogOut className="size-4" aria-hidden="true" />
+            Log out
+          </DropdownMenuItem>
+        </form>
       </DropdownMenuContent>
     </DropdownMenu>
   );
