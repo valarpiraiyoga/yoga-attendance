@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function LoginForm() {
-  const [state, formAction, isPending] = useActionState(signIn, {});
+export default function LoginForm({ initialError }) {
+  const [state, formAction, isPending] = useActionState(
+    signIn,
+    initialError ? { error: initialError } : {}
+  );
 
   return (
     <form action={formAction} className="flex flex-col gap-5" noValidate>
