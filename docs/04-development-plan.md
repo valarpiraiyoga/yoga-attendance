@@ -41,21 +41,22 @@ that is not in `01-product.md`, that is a defect in this document.
 | 4 | App Shell visual-density refinement | ✅ Complete |
 | 5 | Documentation / source-of-truth cleanup | ✅ Complete |
 | 6 | App Shell structural validation | ✅ Complete |
-| 7 | Reusable layout primitives | ⬜ Not started — next |
-| 8 | Login | ⬜ Not started |
-| 9 | Settings → Instructors | ⬜ Not started |
-| 10 | Students | ⬜ Not started |
-| 11 | Memberships | ⬜ Not started |
-| 12 | Batches | ⬜ Not started |
+| 7 | Reusable layout primitives | ✅ Complete |
+| 8 | Login + Supabase authentication foundation | ✅ Complete |
+| 9 | Settings → Instructors | ⬜ Not started — next |
+| 10 | Batches | ⬜ Not started |
+| 11 | Students + Batch Enrollment | ⬜ Not started |
+| 12 | Memberships | ⬜ Not started |
 | 13 | Schedule | ⬜ Not started |
-| 14 | Attendance | ⬜ Not started |
-| 15 | Attendance History | ⬜ Not started |
-| 16 | Dashboard (real data) | ⬜ Not started |
+| 14 | Class Sessions | ⬜ Not started |
+| 15 | Attendance | ⬜ Not started |
+| 16 | Attendance History | ⬜ Not started |
 | 17 | Reports | ⬜ Not started |
-| 18 | Settings → remaining areas | ⬜ Not started |
-| 19 | Integration & business-rule validation | ⬜ Not started |
-| 20 | Responsive and UX/UI audit | ⬜ Not started |
-| 21 | Production / case-study readiness | ⬜ Not started |
+| 18 | Dashboard (real data) | ⬜ Not started |
+| 19 | Settings → remaining areas | ⬜ Not started |
+| 20 | Integration & business-rule validation | ⬜ Not started |
+| 21 | Responsive and UX/UI audit | ⬜ Not started |
+| 22 | Production / case-study readiness | ⬜ Not started |
 
 ---
 
@@ -68,6 +69,11 @@ that is not in `01-product.md`, that is a defect in this document.
 | Documentation organization | `556504c` | `docs/wireframe/` and `docs/ui-reference/` established |
 | Application Shell | `c12664b` | AppShell, Header, Sidebar, MobileMenu, UserMenu, NavList, navigation data |
 | Shell visual refinement | `2c1a44c` | Header/Sidebar density aligned to approved references |
+| Documentation / source-of-truth cleanup | `76fdcf7` | UX document reference reconciled; this development plan established |
+| App Shell structural validation | `5efce33` | Sidebar became the full-height column; Header scoped to the main column |
+| App Shell validation record | `711bc81` | Structural decision recorded in this document |
+| Reusable layout primitives | `cef5811` | `Container`, `Section`, `PageHeader` |
+| Login + Supabase authentication foundation | `ea1d519` | Real Supabase Auth (email + password), cookie session handling, route protection via `proxy.js` backed by the DAL, Admin/Instructor roles in `public.profiles` with RLS |
 
 Stack, architecture rules and validation requirements are defined in
 `CLAUDE.md` and are not restated here.
@@ -107,22 +113,40 @@ Stated explicitly:
 - **Dashboard** depends on **Students**, **Batches**, **Schedule / Class
   Sessions** and **Attendance**, because it summarises all of them.
 
-### Two sequencing consequences
+### Three sequencing consequences
 
 **1. Instructors must precede Schedule.**
 Instructors live under Settings in the IA, but Schedule cannot be completed
 without instructor records to assign. Settings is therefore split: the
-**Instructors** area is built before Schedule (phase 9); the remaining Settings
-areas (Center Profile, Roles & Permissions) come later (phase 18). This is an
-implementation ordering decision only — it does not change the approved IA,
-where Instructors remains under Settings.
+**Instructors** area is built before Schedule (phase 9); **Center Profile** is
+introduced with or before Reports, because exported reports may carry center
+information (`01-product.md` §11); **Roles & Permissions** comes last as the
+V1 permission matrix (phase 19). This is an implementation ordering decision
+only — it does not change the approved IA, where Instructors remains under
+Settings.
 
-**2. Dashboard is sequenced late, not early.**
+**2. Batches must precede Students + Batch Enrollment.**
+`02-ux.md` Flow 02 (Admin: Add Student) is a guided flow that ends in
+*Add Batch Enrollment → Select Batch*, and states that creating a student alone
+does not make them attendance-eligible. A batch must already exist before an
+enrollment can select one. Batches is therefore built at phase 10, before
+Students + Batch Enrollment at phase 11.
+
+Combined with consequence 1, the prerequisite chain is:
+
+```text
+Instructors → Batches → Students + Batch Enrollment → Memberships → Schedule
+```
+
+**3. Dashboard is sequenced late, not early.**
 The Dashboard is an aggregation surface. Building it before its underlying
 feature areas exist would mean building it against placeholder data and then
 rebuilding it. It is therefore implemented once its data sources exist
-(phase 16). The Dashboard *route* already exists as a shell placeholder; only
-its real content is deferred.
+(phase 18), and it additionally needs instructor-specific filtering for
+assigned classes and sessions (`01-product.md` §3).
+
+The Dashboard *route* already exists, but the current `app/page.js` is only a
+layout-primitives validation scaffold — **it is not the final Dashboard.**
 
 ---
 
@@ -163,7 +187,7 @@ across desktop and mobile viewports, with lint and build passing.
 The shell is now a stable foundation for feature screens, and phase 7 may
 proceed.
 
-### Phase 7 — Reusable layout primitives *(next)*
+### Phase 7 — Reusable layout primitives
 `Container`, `Section`, `PageHeader`.
 
 Built **after** the shell structure is settled and **before** the first feature
@@ -174,18 +198,60 @@ already-built screens.
 
 These are presentation primitives only — no feature logic.
 
-### Phase 8 — Login
-Admin and Instructor authentication, role-based access.
+### Phase 8 — Login + Supabase authentication foundation
+Admin and Instructor authentication, role-based access, and the Supabase
+foundation that carries it. This is the first data-driven feature, so it is
+where Supabase enters (see §6).
+
+**In scope:**
+
+- Supabase project and client foundation
+- Environment configuration
+- Admin authentication
+- Instructor authentication
+- Email + password login
+- Forgot password / password reset
+- Role storage (Admin | Instructor only)
+- Session handling
+- Route protection
+- Authenticated role passed to `AppShell`, replacing its placeholder default
+- Login UI based on wireframe p1
+- `Input`, `Label`
+
+**Explicitly out of scope:** Students, Memberships, Batches, Instructors entity
+management, Schedules, Class Sessions, Attendance, Reports, the final
+Dashboard, and the complete product database schema.
+
+#### Login decisions
+
+**Decision 1 — Login identifier: Email + password.**
+Wireframe p1 shows "EMAIL OR PHONE", but `01-product.md` does not establish
+phone authentication. V1 uses the simpler supported path — email + password —
+and is not expanded into phone authentication.
+
+**Decision 2 — Forgot password: included.**
+Wireframe p1 explicitly includes "Forgot password?", and the product
+requirements do not exclude password reset. The V1 exclusion of general
+WhatsApp/SMS/email integrations does not extend to the authentication
+provider's own password-reset email mechanism. Implemented through that
+provider mechanism.
 
 ⚠️ `ui-reference/login.png` shows Remember me, Google Sign-In and a theme
 toggle. **None are approved V1 functionality.** See `CLAUDE.md` →
 "Known reference conflict: `login.png`".
 
-### Phases 9–18 — Feature areas
+**Status — Complete.** Implemented and committed in `ea1d519`. Verified
+against a real Supabase project: Admin login, session persistence across
+refresh, role resolution from `public.profiles`, Admin navigation, logout, and
+route protection for unauthenticated access. The authentication foundation is
+now in place, and phase 9 may proceed.
+
+### Phases 9–19 — Feature areas
 Implemented in dependency order:
 
-Instructors → Students → Memberships → Batches → Schedule → Attendance →
-Attendance History → Dashboard → Reports → remaining Settings
+Instructors → Batches → Students + Batch Enrollment → Memberships → Schedule →
+Class Sessions → Attendance → Attendance History → Reports → Dashboard →
+remaining Settings
 
 Each feature area follows the progression defined in `CLAUDE.md`:
 
@@ -193,16 +259,16 @@ Each feature area follows the progression defined in `CLAUDE.md`:
 Feature UI → business logic → validation → data access → Supabase integration
 ```
 
-### Phase 19 — Integration & business-rule validation
+### Phase 20 — Integration & business-rule validation
 End-to-end verification of the historical-integrity rules in `01-product.md`
 §12 — particularly that membership expiry/renewal, batch changes, student or
 batch deactivation, and schedule changes never alter past attendance.
 
-### Phase 20 — Responsive and UX/UI audit
+### Phase 21 — Responsive and UX/UI audit
 Desktop / tablet / mobile review against the approved wireframes and visual
 references, plus an accessibility pass.
 
-### Phase 21 — Production / case-study readiness
+### Phase 22 — Production / case-study readiness
 Final polish. A case-study document may be created at this point if the
 portfolio goal requires it.
 
@@ -221,6 +287,17 @@ Per `CLAUDE.md`:
   through to completion before the next feature begins.
 
 The schema therefore grows feature by feature, in the dependency order in §4.
+
+**Supabase enters at phase 8**, with Login — the first data-driven feature.
+Phase 8 introduces only the Supabase foundation plus the minimum auth and role
+data required at that point. It does **not** introduce the product schema.
+
+Product entities are added later, each with its own feature:
+
+```text
+instructors · students · memberships · batches · batch_enrollments
+schedules · class_sessions · attendance · center_profile
+```
 
 ---
 
