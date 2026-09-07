@@ -428,7 +428,12 @@ Instructor does not manage global Students, Memberships, Batches, Schedules, Rep
 - A batch can have multiple recurring schedules.
 - A batch does not have a fixed time.
 - Batch capacity is not required in V1.
+- Short code is required.
+- Short code must be unique, compared case-insensitively.
+- Short codes are normalized to uppercase.
 - Inactive batches remain available for historical records.
+
+Short code uniqueness protects identification. The Weekly Schedule identifies a batch by its short code alone, without the batch name, so two batches sharing a code would make a calendar entry ambiguous.
 
 ### Schedule
 - Schedules recur weekly.
