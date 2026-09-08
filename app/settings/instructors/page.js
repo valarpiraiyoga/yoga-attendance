@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { listInstructors } from "@/lib/instructors/data";
+import { buildListHref } from "@/lib/url-params";
 import InstructorFilters from "@/app/settings/instructors/instructor-filters";
 import InstructorList from "@/app/settings/instructors/instructor-list";
 
@@ -15,18 +16,7 @@ const SUCCESS_MESSAGES = {
 };
 
 function instructorsHref(searchParams, overrides) {
-  const params = new URLSearchParams(searchParams);
-
-  for (const [key, value] of Object.entries(overrides)) {
-    if (value === null || value === undefined || value === "") {
-      params.delete(key);
-    } else {
-      params.set(key, String(value));
-    }
-  }
-
-  const qs = params.toString();
-  return qs ? `/settings/instructors?${qs}` : "/settings/instructors";
+  return buildListHref("/settings/instructors", searchParams, overrides);
 }
 
 export default async function InstructorsPage({ searchParams }) {
