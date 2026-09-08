@@ -106,7 +106,7 @@ Maintain students and manage their batch enrollments and attendance history.
 - Phone
 - Email — optional
 - Date of birth — optional
-- Gender — optional
+- Gender — optional: Male / Female / Other
 - Join date
 - Profile photo — optional
 - Status: Active / Inactive
@@ -411,11 +411,17 @@ Instructor does not manage global Students, Memberships, Batches, Schedules, Rep
 ## 12. Core Business Rules
 
 ### Student
+- Student ID is system-generated, unique, and immutable.
+- Student ID uses the sequential format YC-000001.
 - A student can belong to multiple batches simultaneously.
 - A student can change batches.
 - Batch enrollment has an effective period.
+- A student has at most one active enrollment in the same batch at a time.
+- Inactive enrollments for the same batch are retained, so a student can re-enroll after leaving.
 - Inactive students are retained.
 - Historical student data is not removed simply because the student becomes inactive.
+
+One active enrollment per batch keeps attendance eligibility unambiguous: a duplicate active enrollment would list the same student twice for a single class session.
 
 ### Membership
 - Membership is independent of batch enrollment.
