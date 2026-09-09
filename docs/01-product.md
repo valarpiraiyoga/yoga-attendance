@@ -151,7 +151,7 @@ Manage the student's valid membership period and use it as part of attendance el
 - Paid
 - Pending
 
-No online payment gateway is required for V1.
+No online payment gateway is required for V1. Payment Status defaults to Pending.
 
 ### Membership Status
 - Upcoming
@@ -159,10 +159,24 @@ No online payment gateway is required for V1.
 - Expired
 - Cancelled
 
-Expiry is determined by the membership end date.
+Upcoming, Active, and Expired are determined by comparing the current date to
+the membership's start and end dates. Cancelled is a separate, explicit state
+that overrides any date-derived status.
+
+### End Date
+End date is calculated from the selected plan and start date, but remains
+editable:
+- Monthly: start date + 1 month − 1 day
+- Quarterly: start date + 3 months − 1 day
+- Custom duration: entered manually
+
+End date cannot precede start date. A same-day start and end date is allowed.
 
 ### Renewal
-Every renewal creates a new membership record. Previous membership records remain available for historical purposes.
+Every renewal creates a new membership record. Previous membership records remain available for historical purposes. The new membership's start date defaults to the previous membership's end date plus one day, editable if needed.
+
+### Cancellation
+Cancelling a membership retains the record; it is not deleted. An already-cancelled membership cannot be cancelled again. Cancellation does not affect batch enrollment.
 
 ### Eligibility
 A student is eligible to appear in attendance only when:
@@ -424,11 +438,24 @@ Instructor does not manage global Students, Memberships, Batches, Schedules, Rep
 One active enrollment per batch keeps attendance eligibility unambiguous: a duplicate active enrollment would list the same student twice for a single class session.
 
 ### Membership
+- Membership ID is system-generated, unique, and immutable.
+- Membership ID uses the sequential format MEM-000001.
 - Membership is independent of batch enrollment.
 - One membership can cover multiple batch enrollments.
+- Covered batch enrollments are derived from enrollment effective dates that overlap the membership period, not stored directly.
+- Membership status (Upcoming/Active/Expired) is derived from the current date, not stored; cancellation overrides any date-derived status.
+- A student cannot have overlapping non-cancelled membership periods.
+- Cancelled memberships are excluded from the overlap rule.
+- End date is calculated from plan and start date but remains editable.
+- End date cannot precede start date; a same-day start and end date is allowed.
+- Renewal's default start date is the previous membership's end date plus one day.
+- Payment status does not determine membership status.
 - Attendance eligibility requires active membership on the session date.
 - Renewals create new membership records.
 - Expired memberships remain in history.
+- Cancelled memberships remain in history; cancellation does not delete the record.
+
+Deriving status from dates, rather than storing it, prevents a membership from silently remaining Active after its end date passes. Overlap prevention keeps a student's eligibility unambiguous on any date — the same reasoning as one active enrollment per batch.
 
 ### Batch
 - A batch can have multiple recurring schedules.
