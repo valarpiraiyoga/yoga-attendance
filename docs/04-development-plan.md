@@ -45,7 +45,7 @@ that is not in `01-product.md`, that is a defect in this document.
 | 8 | Login + Supabase authentication foundation | ✅ Complete |
 | 9 | Settings → Instructors | ⬜ Not started — next |
 | 10 | Batches | ⬜ Not started |
-| 11 | Students + Batch Enrollment | ⬜ Not started |
+| 11 | Students + Batch Enrollment | ✅ Complete |
 | 12 | Memberships | ⬜ Not started |
 | 13 | Schedule | ⬜ Not started |
 | 14 | Class Sessions | ⬜ Not started |
