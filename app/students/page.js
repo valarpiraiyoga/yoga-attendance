@@ -11,6 +11,7 @@ import StudentList from "@/app/students/student-list";
 
 const PAGE_SIZE = 10;
 const STATUSES = ["active", "inactive"];
+const MEMBERSHIP_FILTERS = ["active", "expired", "none"];
 
 function studentsHref(searchParams, overrides) {
   return buildListHref("/students", searchParams, overrides);
@@ -26,14 +27,15 @@ export default async function StudentsPage({ searchParams }) {
   const q = typeof rawParams.q === "string" ? rawParams.q : "";
   const status = STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const batchId = typeof rawParams.batch === "string" ? rawParams.batch : "";
+  const membershipFilter = MEMBERSHIP_FILTERS.includes(rawParams.membership) ? rawParams.membership : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
 
   const [{ students, total }, batchOptions] = await Promise.all([
-    listStudents({ q, status, batchId, page, pageSize: PAGE_SIZE }),
+    listStudents({ q, status, batchId, membershipFilter, page, pageSize: PAGE_SIZE }),
     listBatchOptions(),
   ]);
 
-  const isFiltered = Boolean(q) || status !== "all" || Boolean(batchId);
+  const isFiltered = Boolean(q) || status !== "all" || Boolean(batchId) || membershipFilter !== "all";
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(total, page * PAGE_SIZE);
@@ -52,10 +54,11 @@ export default async function StudentsPage({ searchParams }) {
       />
 
       <StudentFilters
-        key={`${q}:${status}:${batchId}`}
+        key={`${q}:${status}:${batchId}:${membershipFilter}`}
         defaultQuery={q}
         defaultStatus={status}
         defaultBatchId={batchId || "all"}
+        defaultMembershipFilter={membershipFilter}
         batchOptions={batchOptions}
       />
 

@@ -9,6 +9,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+const MEMBERSHIP_SUMMARY_VARIANTS = { active: "success", expired: "neutral", none: "outline" };
+const MEMBERSHIP_SUMMARY_LABELS = { active: "Active", expired: "Expired", none: "None" };
+
 function getInitials(name) {
   return name
     .split(" ")
@@ -27,8 +30,10 @@ function getInitials(name) {
  * Select Student → Deactivate Student → Review → Confirm → Save"), not the
  * list. The list's only action is "View".
  *
- * MEMBERSHIP is shown as an honest "Not available yet" column rather than
- * fabricated Active/Expired data — Membership is Phase 12.
+ * MEMBERSHIP shows the coarse three-state summary (Active/Expired/None)
+ * described in 02-ux.md's "Memberships list filters" note — a simpler
+ * partition than Membership's own four-state status, matching
+ * lib/students/data.js's `deriveStudentMembershipSummary`.
  */
 export default function StudentList({ students }) {
   return (
@@ -75,7 +80,11 @@ export default function StudentList({ students }) {
                   <span className="text-text-secondary">—</span>
                 )}
               </TableCell>
-              <TableCell className="text-text-secondary">Not available yet</TableCell>
+              <TableCell>
+                <Badge variant={MEMBERSHIP_SUMMARY_VARIANTS[student.membershipSummary]}>
+                  {MEMBERSHIP_SUMMARY_LABELS[student.membershipSummary]}
+                </Badge>
+              </TableCell>
               <TableCell>
                 <Badge variant={student.status === "active" ? "success" : "danger"}>
                   {student.status === "active" ? "Active" : "Inactive"}

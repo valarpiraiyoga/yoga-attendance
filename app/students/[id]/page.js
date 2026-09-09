@@ -6,13 +6,23 @@ import { Button } from "@/components/ui/button";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { listEnrollmentsForStudent } from "@/lib/enrollments/data";
+import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
 import DeactivateStudent from "@/app/students/[id]/deactivate-student";
 
 const SUCCESS_MESSAGES = {
   updated: "Student updated successfully.",
   enrollment_added: "Batch enrollment added successfully.",
   enrollment_updated: "Batch enrollment updated successfully.",
+  membership_added: "Membership added successfully.",
 };
+
+const PLAN_LABELS = { monthly: "Monthly", quarterly: "Quarterly", custom: "Custom duration" };
+const MEMBERSHIP_STATUS_LABELS = { upcoming: "Upcoming", active: "Active", expired: "Expired", cancelled: "Cancelled" };
+const MEMBERSHIP_STATUS_VARIANTS = { upcoming: "default", active: "success", expired: "neutral", cancelled: "danger" };
+
+function formatAmount(value) {
+  return `₹${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 function getInitials(name) {
   return name
@@ -40,9 +50,9 @@ function formatDate(value) {
  * resolve the earlier IA/wireframe conflict). Four panels: Profile/Contact,
  * Membership, Batch Enrollments, Recent Attendance.
  *
- * Membership and Recent Attendance show an honest "not available yet" state
- * rather than fabricated data — both are later phases (12 and 15). Batch
- * Enrollments is real, live data — enrollment is in scope for Phase 11.
+ * Membership and Batch Enrollments are real, live data (Phase 12 and Phase
+ * 11 respectively). Recent Attendance still shows an honest "not available
+ * yet" state — that panel is Phase 15.
  */
 export default async function StudentDetailsPage({ params, searchParams }) {
   // Authorization boundary — see app/students/layout.js for why this must be
@@ -56,7 +66,10 @@ export default async function StudentDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const enrollments = await listEnrollmentsForStudent(id);
+  const [enrollments, currentMembership] = await Promise.all([
+    listEnrollmentsForStudent(id),
+    getCurrentMembershipForStudent(id),
+  ]);
   const rawParams = await searchParams;
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
 
@@ -153,18 +166,49 @@ export default async function StudentDetailsPage({ params, searchParams }) {
             </div>
           </div>
 
-          {/* Membership — Phase 12 */}
+          {/* Membership — Phase 12, real data */}
           <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
             <div className="flex items-center justify-between">
               <h2 className="text-section-title font-semibold text-text-primary">Membership</h2>
-              <Button variant="outline" size="sm" disabled aria-disabled="true">
+              <Button
+                variant="outline"
+                size="sm"
+                render={<Link href={`/students/${student.id}/memberships/new`} />}
+                nativeButton={false}
+              >
                 <Plus className="size-4" aria-hidden="true" />
                 Add Membership
               </Button>
             </div>
-            <p className="text-body mt-2 text-text-secondary">
-              Not available yet — memberships are part of a later phase.
-            </p>
+
+            {currentMembership ? (
+              <div className="mt-4">
+                <div className="flex items-center gap-2">
+                  <p className="text-body font-medium text-text-primary">
+                    {PLAN_LABELS[currentMembership.plan] ?? currentMembership.plan} Membership
+                  </p>
+                  <Badge variant={MEMBERSHIP_STATUS_VARIANTS[currentMembership.status]}>
+                    {MEMBERSHIP_STATUS_LABELS[currentMembership.status]}
+                  </Badge>
+                </div>
+                <p className="text-small mt-1 text-text-secondary">ID: {currentMembership.membership_code}</p>
+                <p className="text-small mt-2 text-text-secondary">
+                  Validity: {formatDate(currentMembership.start_date)} – {formatDate(currentMembership.end_date)}
+                </p>
+                <p className="text-small text-text-secondary">
+                  Amount: {formatAmount(currentMembership.amount)} · Payment:{" "}
+                  {currentMembership.payment_status === "paid" ? "Paid" : "Pending"}
+                </p>
+                <Link
+                  href={`/memberships/${currentMembership.id}`}
+                  className="text-body mt-2 inline-block font-medium text-brand hover:underline"
+                >
+                  View Membership
+                </Link>
+              </div>
+            ) : (
+              <p className="text-body mt-2 text-text-secondary">No membership yet for this student.</p>
+            )}
           </div>
         </div>
 

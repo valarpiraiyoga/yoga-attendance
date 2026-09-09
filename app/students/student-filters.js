@@ -19,23 +19,36 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "Inactive" },
 ];
 
+// "Expired" is not equivalent to "None" (02-ux.md "Memberships list
+// filters") — kept as three distinct options rather than collapsing
+// "Expired"/"None" into one, per that explicit rule.
+const MEMBERSHIP_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "expired", label: "Expired" },
+  { value: "none", label: "None" },
+];
+
 /**
- * Search + Student Status + Batch filter bar for the Students list
- * (wireframe p9). Mirrors app/batches/batch-filters.js's apply-on-submit /
- * keyed-remount pattern exactly — see that file's comment for why.
- *
- * The approved Membership filter is shown but disabled: Membership data
- * belongs to Phase 12. Showing it disabled with an honest label — rather
- * than omitting it — follows the precedent set for the Batch Details
- * Students/Schedules panels in the Phase 10 review.
+ * Search + Student Status + Batch + Membership filter bar for the Students
+ * list (wireframe p9). Mirrors app/batches/batch-filters.js's
+ * apply-on-submit / keyed-remount pattern exactly — see that file's comment
+ * for why.
  */
-export default function StudentFilters({ defaultQuery, defaultStatus, defaultBatchId, batchOptions }) {
+export default function StudentFilters({
+  defaultQuery,
+  defaultStatus,
+  defaultBatchId,
+  defaultMembershipFilter,
+  batchOptions,
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(defaultQuery);
   const [status, setStatus] = useState(defaultStatus);
   const [batchId, setBatchId] = useState(defaultBatchId);
+  const [membershipFilter, setMembershipFilter] = useState(defaultMembershipFilter);
 
   const batchSelectOptions = [
     { value: "all", label: "All Batches" },
@@ -61,6 +74,11 @@ export default function StudentFilters({ defaultQuery, defaultStatus, defaultBat
     } else {
       params.delete("batch");
     }
+    if (membershipFilter !== "all") {
+      params.set("membership", membershipFilter);
+    } else {
+      params.delete("membership");
+    }
     params.delete("page");
 
     const qs = params.toString();
@@ -71,6 +89,7 @@ export default function StudentFilters({ defaultQuery, defaultStatus, defaultBat
     setQuery("");
     setStatus("all");
     setBatchId("all");
+    setMembershipFilter("all");
     router.push(pathname);
   }
 
@@ -150,14 +169,18 @@ export default function StudentFilters({ defaultQuery, defaultStatus, defaultBat
         >
           Membership
         </span>
-        <div
-          aria-labelledby="student-membership-label"
-          aria-disabled="true"
-          title="Not available yet — memberships are part of a later phase."
-          className="flex h-8 w-full items-center rounded-lg border border-input bg-input/30 px-2.5 text-small text-text-secondary/70 sm:w-40"
-        >
-          Not available yet
-        </div>
+        <Select items={MEMBERSHIP_OPTIONS} value={membershipFilter} onValueChange={setMembershipFilter}>
+          <SelectTrigger aria-labelledby="student-membership-label" className="w-full sm:w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MEMBERSHIP_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex gap-3">
