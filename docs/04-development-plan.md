@@ -432,6 +432,48 @@ model:
   existing form layout plus Review → Confirm → Save
   (`components/ui/confirm-dialog.jsx`), not a new screen design.
 
+**Flow 07 — Cancel / Mark Holiday — approved implementation decisions**
+
+- **One action, one dialog, no new route.** "Mark Cancelled / Holiday" on
+  Session Details opens a dialog with a status choice (Cancelled or
+  Holiday) and an optional note, not two separate buttons and not a
+  dedicated page — the status choice is one step inside the flow's own
+  diagram ("Mark Session → Cancelled / Holiday"), not a fork in the entry
+  point. Two `ConfirmDialog` instances in sequence implement the flow's
+  Compose → Review Change → Confirm steps: the first captures the status
+  and note (still read-only), the second shows them back for review and is
+  the only step that can write anything.
+- **Eligibility is checked against the *persisted* status, not the
+  displayed one** — deliberately different from Flow 06's Upcoming-only
+  rule. A session whose stored status is still `scheduled` can be marked
+  regardless of whether it currently displays as Upcoming, In Progress, or
+  a clock-derived Completed reading; a session already `completed`,
+  `cancelled` or `holiday` is rejected. Once Phase 15 exists, stored
+  `completed` is only ever written when attendance is saved (§7A, §8), so
+  this one rule also becomes "cannot cancel a session with attendance
+  already recorded" automatically, without `markSessionException`
+  referencing attendance at all.
+- **Cancelled uses destructive confirmation styling; Holiday uses
+  standard styling** — a holiday is a planned closure, not a loss.
+- **Not reversible in V1.** There is no un-cancel or reactivate action,
+  matching every other one-directional status change in this product
+  (membership cancellation, schedule deactivation). The Review step states
+  this plainly.
+- **Only `status` and `note` are written**, and only on Confirm, after
+  `materializeClassSession` (unchanged) guarantees a row exists. Instructor,
+  time, date and batch are never touched by this flow — that is Flow 06's
+  disjoint column set. The recurring schedule is never modified, and no
+  other occurrence of it is affected.
+- **The note is shown in Session Information only when present** — most
+  sessions never have one, and a projected occurrence's `note` is always
+  null.
+- **Inline success/error feedback**, not a redirect with a `?success=`
+  query flag — `markSessionException` is called directly via
+  `useTransition` (matching `deactivateSchedule`/`cancelMembership`), not
+  as a form action, so there is no page navigation to attach a query flag
+  to; the status badge changing is the primary visible confirmation.
+- **No dedicated wireframe.** Composed the same way as Flow 06.
+
 **In scope**
 
 - `class_sessions` table and its migration: schedule, batch and instructor

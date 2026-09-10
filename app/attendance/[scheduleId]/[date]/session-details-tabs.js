@@ -37,6 +37,12 @@ function formatDate(value) {
  * Works identically for a materialized or a projected `session` — both
  * carry the same `batches`/`instructors`/`session_date`/`start_time`/
  * `end_time` shape (lib/class-sessions/data.js).
+ *
+ * The Note row (Flow 07 — Cancel/Holiday) only renders when `session.note`
+ * is set — a projected occurrence's `note` is always null
+ * (`buildProjectedOccurrence`), and a materialized `scheduled`/`completed`
+ * session usually has none either, so this stays hidden far more often
+ * than not, by design.
  */
 export default function SessionDetailsTabs({ session, displayStatus }) {
   return (
@@ -95,6 +101,12 @@ export default function SessionDetailsTabs({ session, displayStatus }) {
                 </Badge>
               </dd>
             </div>
+            {session.note ? (
+              <div className="col-span-2">
+                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Note</dt>
+                <dd className="text-body text-text-primary">{session.note}</dd>
+              </div>
+            ) : null}
           </dl>
         </div>
 

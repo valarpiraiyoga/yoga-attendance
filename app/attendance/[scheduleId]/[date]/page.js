@@ -8,6 +8,7 @@ import { getSessionOccurrence } from "@/lib/class-sessions/data";
 import { isValidDateString } from "@/lib/schedules/validation";
 import { deriveDisplayStatus, DISPLAY_STATUS_LABELS, DISPLAY_STATUS_BADGE_VARIANTS } from "@/lib/class-sessions/validation";
 import SessionDetailsTabs from "@/app/attendance/[scheduleId]/[date]/session-details-tabs";
+import MarkSession from "@/app/attendance/[scheduleId]/[date]/mark-session";
 
 const SUCCESS_MESSAGES = {
   updated: "Session updated successfully.",
@@ -46,6 +47,15 @@ function formatDate(value, options) {
  * (`[scheduleId]/[date]/edit`) rather than opening the form here; that
  * route re-checks the same status rule server-side, so hiding the button
  * is a UX convenience, not the enforcement.
+ *
+ * "Mark Cancelled / Holiday" (02-ux.md Flow 07) is gated on the
+ * **persisted** status instead — `session.status === "scheduled"` — not
+ * `displayStatus`. That is deliberately different from Edit This Session:
+ * a session may be marked Cancelled/Holiday whether it currently displays
+ * as Upcoming, In Progress, or a clock-derived Completed reading, since
+ * none of those are a real stored `completed`. `markSessionException`
+ * (lib/class-sessions/actions.js) re-checks the same persisted-status rule
+ * server-side.
  */
 export default async function SessionDetailsPage({ params, searchParams }) {
   // Authorization boundary — see app/attendance/layout.js for why this must
@@ -93,11 +103,14 @@ export default async function SessionDetailsPage({ params, searchParams }) {
           </p>
         </div>
 
-        {displayStatus === "upcoming" ? (
-          <Button render={<Link href={`/attendance/${scheduleId}/${date}/edit`} />} nativeButton={false}>
-            Edit This Session
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-start gap-3">
+          {displayStatus === "upcoming" ? (
+            <Button render={<Link href={`/attendance/${scheduleId}/${date}/edit`} />} nativeButton={false}>
+              Edit This Session
+            </Button>
+          ) : null}
+          {session.status === "scheduled" ? <MarkSession scheduleId={scheduleId} date={date} /> : null}
+        </div>
       </div>
 
       {message ? (

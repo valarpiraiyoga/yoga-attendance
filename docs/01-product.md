@@ -373,7 +373,11 @@ Only a session currently displayed as Upcoming can be edited. Editing an In Prog
 Editing materializes the session, same as Cancellation and Holiday below, and only when the edit actually changes something — opening the edit screen, or confirming it unchanged, writes nothing.
 
 ### Cancellation and Holiday
-A specific session can be marked Cancelled or Holiday, with an optional note. Doing so materializes the session. The recurring schedule is unchanged, and the session requires no attendance (§8).
+A specific session can be marked Cancelled or Holiday, with an optional note. Doing so materializes the session. The recurring schedule is unchanged, other occurrences of it are unaffected, and the session requires no attendance (§8).
+
+Only a session whose stored status is still `scheduled` can be marked — not one already `completed`, `cancelled` or `holiday`. This is checked against the stored status, not the displayed one: a `scheduled` session may be marked whether it currently displays as Upcoming, In Progress, or a clock-derived Completed reading, since none of those are a real stored `completed`. Once attendance exists (§8), a session only ever becomes stored `completed` when its attendance is saved — so this same rule then also means a session with attendance already recorded cannot be cancelled or marked holiday, without needing a separate check for that.
+
+Marking a session Cancelled or Holiday cannot be reversed in V1. There is no un-cancel action, matching how an already-cancelled membership cannot be cancelled again (§5).
 
 ### Data Requirements
 - At most one session per schedule per date.
@@ -619,6 +623,9 @@ Versioning schedule edits is what makes "future changes only" true: a schedule t
 - A session's instructor and/or time can be edited without changing the recurring schedule; its date and batch cannot.
 - Only an Upcoming session can be edited.
 - Editing a session materializes it, and only when the edit actually changes something.
+- A session can be marked Cancelled or Holiday, with an optional note, only while its stored status is still scheduled.
+- Marking a session Cancelled or Holiday materializes it and does not change the recurring schedule or any other occurrence.
+- Marking a session Cancelled or Holiday cannot be reversed in V1.
 
 Materializing only on first touch is what keeps a schedule and its sessions from drifting apart: an untouched occurrence is always a live reading of the current schedule, and a touched one is a fixed historical fact. Storing every occurrence up front would require both a generation job and a reconciliation rule for what to do with rows generated from a schedule version that no longer exists.
 
