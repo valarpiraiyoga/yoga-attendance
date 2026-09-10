@@ -43,12 +43,12 @@ that is not in `01-product.md`, that is a defect in this document.
 | 6 | App Shell structural validation | ✅ Complete |
 | 7 | Reusable layout primitives | ✅ Complete |
 | 8 | Login + Supabase authentication foundation | ✅ Complete |
-| 9 | Settings → Instructors | ⬜ Not started — next |
-| 10 | Batches | ⬜ Not started |
+| 9 | Settings → Instructors | ✅ Complete |
+| 10 | Batches | ✅ Complete |
 | 11 | Students + Batch Enrollment | ✅ Complete |
-| 12 | Memberships | ⬜ Not started |
-| 13 | Schedule | ⬜ Not started |
-| 14 | Class Sessions | ⬜ Not started |
+| 12 | Memberships | ✅ Complete |
+| 13 | Schedule | ✅ Complete |
+| 14 | Class Sessions | ⬜ Not started — next |
 | 15 | Attendance | ⬜ Not started |
 | 16 | Attendance History | ⬜ Not started |
 | 17 | Reports | ⬜ Not started |
@@ -74,6 +74,11 @@ that is not in `01-product.md`, that is a defect in this document.
 | App Shell validation record | `711bc81` | Structural decision recorded in this document |
 | Reusable layout primitives | `cef5811` | `Container`, `Section`, `PageHeader` |
 | Login + Supabase authentication foundation | `ea1d519` | Real Supabase Auth (email + password), cookie session handling, route protection via `proxy.js` backed by the DAL, Admin/Instructor roles in `public.profiles` with RLS |
+| Settings → Instructors | `8ae52f0` | Instructor CRUD under Settings, plus login access and the invite flow |
+| Batches | `45f0b7c` | Batch CRUD, list filters, Batch Details with its Overview tab; short code unique case-insensitively |
+| Students + Batch Enrollment | `41f0335` | Student CRUD with `YC-000001` IDs, the Add Student guided flow, and batch enrollment with at most one active enrollment per batch |
+| Memberships | `798d904` | Membership CRUD with `MEM-000001` IDs, derived Upcoming/Active/Expired/Cancelled status, non-overlap enforcement, renewal and cancellation |
+| Schedule | `3471c11`, `2c20e1b` | Recurring weekly schedules with effective-date versioning; both approved views — List View and the Weekly Schedule week grid |
 
 Stack, architecture rules and validation requirements are defined in
 `CLAUDE.md` and are not restated here.
@@ -330,6 +335,68 @@ depends on the *session date*, which does not exist while a recurring schedule
 is being defined, so eligibility stays entirely within Attendance
 (`01-product.md` §8).
 
+### Phase 14 — Class Sessions
+
+Phase 14 turns the recurring patterns Phase 13 delivered into dated class
+sessions, and gives Attendance (Phase 15) a stable record to attach to. The
+product rules it implements are in `01-product.md` §7A and §12's Class
+Session rules; this section covers only what is built and what is not.
+
+The persistence model is the defining decision: occurrences stay **projected**
+from the recurring pattern, and a session is **materialized** into a stored
+row only on its first session-specific change, cancellation/holiday, or
+attendance. There is no generation job and no scheduled task. Phase 13's
+existing projection is reused rather than reimplemented.
+
+Phase 14 owns the `/attendance` route and establishes its two list views.
+Phase 15 then adds attendance data and actions to those same screens.
+
+**In scope**
+
+- `class_sessions` table and its migration: schedule, batch and instructor
+  foreign keys (all `on delete restrict`), session date, start/end time,
+  persisted status (`scheduled` / `completed` / `cancelled` / `holiday`),
+  optional note, one-session-per-schedule-per-date uniqueness, admin-only
+  RLS, and no delete grant or policy — matching every prior feature table.
+- Class session data access, validation and server actions, including the
+  materialize-on-first-touch helper and the status derivation that maps the
+  four persisted states onto the five displayed ones.
+- Session status derived against the fixed centre timezone.
+- `/attendance` — **Today's Sessions** (default) and **All Sessions**, the
+  latter with search, date range, Batch, Instructor and Session Status
+  filters plus pagination.
+- **Session Details** with its Overview tab's Session Information panel.
+- Flow 06 — Change One Specific Session (time and/or instructor), Review →
+  Confirm → Save, affecting that session only.
+- Flow 07 — Mark a session Cancelled or Holiday with an optional note,
+  Review → Confirm → Save.
+- Linking Schedule Details' Upcoming Sessions tab through to a session where
+  one exists.
+
+**Out of scope**
+
+- Attendance marking, editing, or saving in any form — including the
+  `scheduled` → `completed` transition, which Phase 15 performs when
+  attendance is saved.
+- Eligible-student calculation, and the Eligible Students column and tab.
+- The Attendance column, its Present/Absent counts, and the Attendance
+  Summary panel on Session Details' Overview.
+- Take Attendance / View Attendance actions.
+- Attendance history and reports.
+- Instructor-facing Assigned Classes, and any relaxation of admin-only RLS.
+  Instructors will need read access to their own sessions in Phase 15; the
+  migration notes it but does not grant it.
+- Ad-hoc sessions with no schedule behind them (`01-product.md` §7A).
+- Deleting sessions, in any form.
+- Bulk generation of future sessions, cron, or any scheduled task.
+- Any change to Phase 13's Schedule behaviour beyond the default-view
+  correction tracked in §7.
+
+Students, Batch Enrollments and Memberships are untouched by this phase.
+Attendance eligibility needs all three, but it is evaluated against a session
+date at attendance time, which is Phase 15's concern — Phase 14 must not
+import from those feature areas.
+
 ### Phase 20 — Integration & business-rule validation
 End-to-end verification of the historical-integrity rules in `01-product.md`
 §12 — particularly that membership expiry/renewal, batch changes, student or
@@ -378,6 +445,7 @@ schedules · class_sessions · attendance · center_profile
 |---|---|
 | **Brand logo asset** | No approved logo/lotus asset exists in the repository. Branding is currently text-only. Requires a supplied asset or an explicit decision to remain text-only. |
 | **Batch Details → Students tab** | Still shows the "not available yet" placeholder written before Phase 11, although Students and Batch Enrollment shipped in phase 11. Tracked as a Phase 11 follow-up; explicitly **not** part of Phase 13 (see §5). Needs scheduling into its own small phase or a follow-up commit. |
+| **Schedule default view** | `02-ux.md`'s Information Architecture states "Weekly Schedule ← Default", but Phase 13 shipped with List View as the default at `/schedule`. Approved as a Phase 13 correction: `/schedule` should open Weekly Schedule, with List View still reachable through the existing view toggle. Nothing else about either view changes. Not yet applied in code. |
 
 The AppShell structural relationship between Sidebar and Header previously
 listed here is **resolved** — see Phase 6 in §5.

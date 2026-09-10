@@ -291,6 +291,91 @@ Online/offline is not a required property of the recurring schedule. Students ma
 
 ---
 
+## 7A. Class Sessions
+
+Numbered 7A rather than 8 deliberately: this section was added after the
+rest of the document, and renumbering the sections below it would
+invalidate the section references already cited throughout the codebase.
+
+### Purpose
+A class session is one dated occurrence of a recurring schedule. It is the record attendance attaches to, and the point at which the product model stops describing a repeating pattern and starts describing a specific class that did or did not happen (§1: Batch → Recurring Schedule → Class Session → Attendance).
+
+### Relationship to Schedule
+Every class session belongs to exactly one recurring schedule. There are no ad-hoc sessions in V1 — a session cannot exist without a schedule to derive it from. Creating a one-off class therefore means creating a schedule for it, not creating a session directly.
+
+### Projection and Materialization
+Section 7 says a recurring schedule is used to "generate or identify" class sessions. That is resolved as follows.
+
+Occurrences are **projected** from the recurring pattern for display: the system calculates which dates a schedule falls on and shows them, without storing anything. A session is **materialized** — written as a real, persistent record — the first time something must attach to that specific occurrence:
+
+1. a session-specific change (Edit This Session),
+2. marking it Cancelled or Holiday,
+3. attendance being recorded against it.
+
+Until one of those happens, no session record exists and the occurrence is purely calculated.
+
+This avoids a generation job and avoids drift: an occurrence that nobody has touched always reflects the current schedule version, and an occurrence that someone *has* touched is fixed at the moment it was touched.
+
+### Session Information
+- Schedule — required
+- Batch — snapshot
+- Instructor — snapshot
+- Session date
+- Start time — snapshot
+- End time — snapshot
+- Status
+- Note — optional
+
+Duration is derived from start and end time and is never stored. A class session has no product-facing identifier: unlike Student ID and Membership ID, nothing in the product or the approved wireframes identifies a session by a code, so none is assigned.
+
+### Session Status
+Four states are persisted:
+
+- `scheduled`
+- `completed`
+- `cancelled`
+- `holiday`
+
+Five statuses are displayed, exactly as listed in §3:
+
+| Displayed | Derived from |
+|---|---|
+| Upcoming | persisted `scheduled`, and the session's start time has not yet arrived |
+| In Progress | persisted `scheduled`, and the current time falls between start and end |
+| Completed | persisted `completed` |
+| Cancelled | persisted `cancelled` |
+| Holiday | persisted `holiday` |
+
+Upcoming and In Progress are therefore never stored — they are two readings of the same `scheduled` state at different moments, and storing either would go stale the moment the clock passed it. A projected occurrence that has not been materialized behaves as `scheduled`.
+
+`completed` is set when attendance is saved for the session (§8).
+
+### Centre Timezone
+Upcoming and In Progress depend on what time it is *at the centre*, so both are derived against a single fixed yoga-centre timezone. There is no per-user, per-branch or per-schedule timezone — multi-branch management is explicitly outside V1 (§13).
+
+### Snapshot and Historical Integrity
+When a session is materialized it snapshots its batch, instructor, date, start time and end time. Those snapshot values are authoritative for that session from then on:
+
+- A later schedule edit, version or deactivation never rewrites an existing session.
+- Only future occurrences that have not been materialized follow the current schedule version.
+- A specific future session is changed through Edit This Session, which affects that session alone and leaves the recurring schedule untouched (§7).
+
+This is what makes §12's Historical Integrity rules hold in practice: a session that has already been cancelled, altered or attended keeps the details it had at the time, no matter what happens to the schedule afterwards.
+
+### Inactive or Ended Schedules
+An inactive schedule version, or one whose effective period has ended, produces no further unmaterialized occurrences. Sessions that were already materialized under it remain available and are never deleted.
+
+### Cancellation and Holiday
+A specific session can be marked Cancelled or Holiday, with an optional note. Doing so materializes the session. The recurring schedule is unchanged, and the session requires no attendance (§8).
+
+### Data Requirements
+- At most one session per schedule per date.
+- A session always references its schedule, batch and instructor; those references restrict deletion rather than cascading.
+- Sessions are never deleted — cancellation replaces deletion, matching every other entity in this product.
+- Admin-only in V1. Instructors will need read access to their own sessions when Attendance is introduced (§8).
+
+---
+
 ## 8. Attendance
 
 ### Purpose
@@ -506,6 +591,26 @@ Short code uniqueness protects identification. The Weekly Schedule identifies a 
 
 Versioning schedule edits is what makes "future changes only" true: a schedule that was rewritten in place would silently change what the past looked like, which §12's Historical Integrity rules forbid.
 
+### Class Session
+- Every class session belongs to exactly one recurring schedule.
+- There are no ad-hoc class sessions in V1.
+- At most one session exists per schedule per date.
+- Occurrences are projected from the recurring pattern until a session needs a persistent record.
+- A session is materialized on its first session-specific change, cancellation/holiday, or attendance.
+- A materialized session snapshots its batch, instructor, date, start time and end time.
+- Snapshot values win over later schedule changes.
+- Schedule edits, versioning and deactivation never rewrite an existing session.
+- Only future unmaterialized occurrences follow the current schedule version.
+- Inactive or ended schedule versions produce no further unmaterialized occurrences.
+- Materialized sessions are retained and never deleted.
+- Persisted session states are scheduled, completed, cancelled and holiday.
+- Upcoming and In Progress are derived from the session's date and time in the centre timezone, never stored.
+- A session becomes completed when its attendance is saved.
+- Duration is derived from start and end time.
+- A class session has no product-facing identifier.
+
+Materializing only on first touch is what keeps a schedule and its sessions from drifting apart: an untouched occurrence is always a live reading of the current schedule, and a touched one is a fixed historical fact. Storing every occurrence up front would require both a generation job and a reconciliation rule for what to do with rows generated from a schedule version that no longer exists.
+
 ### Attendance
 - Attendance belongs to a specific class session.
 - Only eligible students appear for attendance.
@@ -628,6 +733,7 @@ This document is the living written source of truth for product decisions, requi
 - Batches — APPROVED
 - Memberships — APPROVED
 - Schedule — APPROVED
+- Class Sessions — APPROVED
 - Attendance — APPROVED
 - Attendance History — APPROVED
 - Reports — APPROVED
