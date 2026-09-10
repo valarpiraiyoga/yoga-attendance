@@ -393,6 +393,45 @@ model:
   one exists for that pair; otherwise the occurrence is resolved from the
   schedule, read-only.
 
+**Flow 06 — Edit This Session — approved implementation decisions**
+
+- **Editable fields are instructor and start/end time only.** Date and
+  batch never change on a session edit — moving a class to a different day,
+  or a different batch, is a schedule change, not a session exception.
+  Start time changing recalculates end time using the same 60-minute
+  default the Schedule form uses (`calculateEndTime`); the admin can still
+  edit the result.
+- **Editable status is Upcoming only.** Editing an In Progress, Completed,
+  Cancelled or Holiday session is rejected — for Completed, editing would
+  rewrite history (§12 Historical Integrity); the others have already
+  happened, been cancelled, or are a non-class day. The "Edit This Session"
+  action is hidden on Session Details outside Upcoming, and
+  `updateClassSession` re-checks the same rule server-side regardless of
+  the UI, against the occurrence read fresh at submit time — not whatever
+  status the page showed when it first loaded.
+- **No note field.** Flow 06's approved steps have no note step; a note is
+  exclusive to Flow 07 (Cancel/Holiday), where `0010_class_sessions.sql`
+  already scopes the column.
+- **Materialization happens only after Confirm, and only when the
+  submitted values actually differ** from the occurrence's current
+  instructor/start/end. Opening Session Details or the Edit form is a
+  read — `getSessionOccurrence` — with no write of any kind. A no-op save
+  (the admin opens the form and confirms without changing anything) must
+  not create a `class_sessions` row either; `updateClassSession` compares
+  before calling `materializeClassSession`, and skips both the
+  materialization and the update entirely when nothing changed.
+- **The recurring schedule is never touched.** Only `class_sessions` is
+  written, and only its `instructor_id`/`start_time`/`end_time` columns —
+  `status` is never part of this action. Review must state that the change
+  applies only to this session and does not modify the recurring schedule,
+  and that the session will no longer follow future changes made to the
+  recurring schedule (the snapshot/detachment consequence of
+  materializing, §7A).
+- **No dedicated wireframe.** Like Flow 04 (Edit Schedule) and Flow 05
+  (Deactivate), this is composed from already-approved patterns — the
+  existing form layout plus Review → Confirm → Save
+  (`components/ui/confirm-dialog.jsx`), not a new screen design.
+
 **In scope**
 
 - `class_sessions` table and its migration: schedule, batch and instructor

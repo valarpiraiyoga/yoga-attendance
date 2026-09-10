@@ -365,6 +365,13 @@ This is what makes §12's Historical Integrity rules hold in practice: a session
 ### Inactive or Ended Schedules
 An inactive schedule version, or one whose effective period has ended, produces no further unmaterialized occurrences. Sessions that were already materialized under it remain available and are never deleted.
 
+### Editing a Specific Session
+A specific session's instructor and/or time can be changed without changing the recurring schedule (§7 "Specific Future Session Changes"). Its date and batch cannot change on a session edit — a session belongs to exactly one schedule and date; moving it to a different day or batch is a schedule change, not a session exception.
+
+Only a session currently displayed as Upcoming can be edited. Editing an In Progress session is not permitted, since the class is already underway; editing a Completed session would rewrite what happened, which §12's Historical Integrity rules forbid; a Cancelled or Holiday session has nothing to reschedule.
+
+Editing materializes the session, same as Cancellation and Holiday below, and only when the edit actually changes something — opening the edit screen, or confirming it unchanged, writes nothing.
+
 ### Cancellation and Holiday
 A specific session can be marked Cancelled or Holiday, with an optional note. Doing so materializes the session. The recurring schedule is unchanged, and the session requires no attendance (§8).
 
@@ -609,6 +616,9 @@ Versioning schedule edits is what makes "future changes only" true: a schedule t
 - A session's stored status becomes completed only when its attendance is saved.
 - Duration is derived from start and end time.
 - A class session has no product-facing identifier.
+- A session's instructor and/or time can be edited without changing the recurring schedule; its date and batch cannot.
+- Only an Upcoming session can be edited.
+- Editing a session materializes it, and only when the edit actually changes something.
 
 Materializing only on first touch is what keeps a schedule and its sessions from drifting apart: an untouched occurrence is always a live reading of the current schedule, and a touched one is a fixed historical fact. Storing every occurrence up front would require both a generation job and a reconciliation rule for what to do with rows generated from a schedule version that no longer exists.
 
