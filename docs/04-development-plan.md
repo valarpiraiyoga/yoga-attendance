@@ -351,6 +351,48 @@ existing projection is reused rather than reimplemented.
 Phase 14 owns the `/attendance` route and establishes its two list views.
 Phase 15 then adds attendance data and actions to those same screens.
 
+**Today's Sessions / All Sessions — approved implementation decisions**
+
+The first implementation pass materialized on view and treated All Sessions
+as a materialized-only history table. Neither matches `01-product.md` §7A or
+`02-ux.md`, and both were corrected before this phase shipped. The approved
+model:
+
+- **Viewing never materializes.** Materialization stays limited to its three
+  documented triggers — a session-specific change, cancellation/holiday,
+  attendance (§7A "Projection and Materialization"). Opening Today's
+  Sessions, All Sessions, or Session Details never writes to
+  `class_sessions`, for a projected occurrence or otherwise.
+- **All Sessions shows projected and materialized occurrences together**,
+  exactly like Today's Sessions — `02-ux.md`'s "Both lists ... show sessions
+  whether or not they have been materialized" applies to both list screens,
+  not only the default one. A materialized row is authoritative and keeps
+  its snapshot values when its schedule is later edited, deactivated, or its
+  effective period ends; every other occurrence in range follows the
+  schedule's current version. Each `(schedule, date)` pair appears at most
+  once — a materialized row suppresses the projected occurrence for the same
+  pair, never both.
+- **All Sessions defaults to today through the next 90 days** when no Date
+  Range filter is applied, so an open-ended active schedule is never
+  projected indefinitely. The Date Range filter can explicitly request a
+  different window, including one reaching into the past — there is no
+  generation job either way; a past date with no materialized row is simply
+  projected from the schedule the same as a future one.
+- **All Sessions sorts nearest-first** — `session_date` ascending, then
+  `start_time` ascending — since its primary use is seeing what is coming
+  up, not a most-recent-first history.
+- **The Session Status filter uses the five displayed values** (Upcoming /
+  In Progress / Completed / Cancelled / Holiday), matching the STATUS badge
+  shown on every row. The four persisted values are a storage detail, never
+  a user-facing filter option — "Scheduled" is not a status this product
+  exposes.
+- **Session Details is addressed by `(scheduleId, date)`**
+  (`/attendance/[scheduleId]/[date]`), not a `class_sessions` id — a class
+  session has no product-facing identifier (§7A), and a projected
+  occurrence has no id to address it by. The materialized row is used when
+  one exists for that pair; otherwise the occurrence is resolved from the
+  schedule, read-only.
+
 **In scope**
 
 - `class_sessions` table and its migration: schedule, batch and instructor
