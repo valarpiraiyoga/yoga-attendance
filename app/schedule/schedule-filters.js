@@ -86,7 +86,11 @@ export default function ScheduleFilters({
     setBatchId("all");
     setInstructorId("all");
     setStatus("all");
-    router.push(pathname);
+    // Weekly Schedule is now the default at a bare `/schedule` (Phase 13
+    // follow-up), so clearing filters must keep `view=list` explicit —
+    // otherwise this button would silently switch the admin to a different
+    // view instead of just resetting the list they're looking at.
+    router.push(`${pathname}?view=list`);
   }
 
   return (

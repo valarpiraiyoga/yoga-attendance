@@ -28,11 +28,11 @@ export default async function SchedulePage({ searchParams }) {
 
   const rawParams = await searchParams;
 
-  // The Weekly Schedule view (02-ux.md "Weekly Schedule view") — the
-  // approved Schedule area's other view alongside the List View below.
-  // `?view=weekly` switches to it; `?week=` names any date inside the
-  // displayed week (defaults to today), normalized to that week's Monday.
-  if (rawParams.view === "weekly") {
+  // Weekly Schedule is the approved default view (02-ux.md's Information
+  // Architecture: "Weekly Schedule ← Default") — shown unless `?view=list`
+  // explicitly asks for the List View below. `?week=` names any date inside
+  // the displayed week (defaults to today), normalized to that week's Monday.
+  if (rawParams.view !== "list") {
     const requestedDate =
       typeof rawParams.week === "string" && isValidDateString(rawParams.week)
         ? rawParams.week
@@ -111,7 +111,7 @@ export default async function SchedulePage({ searchParams }) {
               <p className="text-body max-w-sm text-text-secondary">
                 No schedules match your search or filters.
               </p>
-              <Button variant="outline" render={<Link href="/schedule" />} nativeButton={false}>
+              <Button variant="outline" render={<Link href="/schedule?view=list" />} nativeButton={false}>
                 Clear Filters
               </Button>
             </>

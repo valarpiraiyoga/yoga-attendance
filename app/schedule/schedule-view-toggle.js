@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const VIEWS = [
   { key: "weekly", label: "Weekly Schedule", href: "/schedule?view=weekly" },
-  { key: "list", label: "List View", href: "/schedule" },
+  { key: "list", label: "List View", href: "/schedule?view=list" },
 ];
 
 /**
