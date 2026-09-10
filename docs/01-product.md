@@ -263,6 +263,14 @@ Changes to recurring schedules apply to future sessions only. Past sessions and 
 
 Editing a schedule's day, time or instructor is therefore versioned rather than applied in place: the existing schedule is closed by setting its effective until date to the day before the change takes effect, and a new schedule version is created starting from that date. The earlier version remains available, so what was scheduled on any past date can always be reconstructed.
 
+Which of those two things happens depends on whether the schedule being edited has ever been in effect:
+
+1. **The schedule has already started** — the new effective from date falls after the current version's own effective from date. The current version is closed at the day before the new date, and a new version carries the edited values forward. This is the ordinary case.
+2. **The schedule has not started yet** — the new effective from date falls on or before the current version's own effective from date. There is no elapsed period to preserve, so the current version is updated in place. Versioning here would have to close the current version before it ever began, which is not a period that can be expressed.
+3. **The new effective from date is before today** — rejected. Back-dating a change would rewrite what was scheduled on a date that has already passed.
+
+Both of the first two outcomes leave every schedule version with an effective period that starts on or before it ends; the third is what keeps the past out of reach of an edit.
+
 ### Conflicts
 V1 does not prevent overlapping schedules. A batch may hold more than one schedule covering the same day and time, and an instructor may be assigned to more than one schedule at the same day and time. These situations are visible to the Admin in the Schedule list and are treated as an operational judgement, not a system-enforced constraint.
 
@@ -488,6 +496,8 @@ Short code uniqueness protects identification. The Weekly Schedule identifies a 
 - Effective until, when set, cannot be earlier than effective from.
 - Future schedule changes must not modify past sessions.
 - Editing a schedule's day, time or instructor closes the current version and creates a new one effective from the chosen date.
+- A schedule that has not started yet is edited in place instead, since it has no elapsed period to preserve.
+- An edit cannot take effect before today.
 - Overlapping schedules are not blocked in V1, for either a batch or an instructor.
 - An elapsed effective period does not change a schedule's stored status.
 - Individual future sessions can have exceptions.
