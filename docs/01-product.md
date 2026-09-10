@@ -272,7 +272,7 @@ Which of those two things happens depends on whether the schedule being edited h
 Both of the first two outcomes leave every schedule version with an effective period that starts on or before it ends; the third is what keeps the past out of reach of an edit.
 
 ### Conflicts
-V1 does not prevent overlapping schedules. A batch may hold more than one schedule covering the same day and time, and an instructor may be assigned to more than one schedule at the same day and time. These situations are visible to the Admin in the Schedule list and are treated as an operational judgement, not a system-enforced constraint.
+V1 does not prevent overlapping schedules. A batch may hold more than one schedule covering the same day and time, and an instructor may be assigned to more than one schedule at the same day and time. These situations are visible to the Admin in both Schedule views — listed in the List View, and shown side by side in the Weekly Schedule grid — and are treated as an operational judgement, not a system-enforced constraint.
 
 ### Elapsed Effective Period
 A schedule whose effective until date has passed remains stored as Active or Inactive exactly as the Admin left it. Status is never rewritten automatically. Where it is useful, the interface may additionally indicate that the schedule's effective period has ended, derived from the dates rather than stored.

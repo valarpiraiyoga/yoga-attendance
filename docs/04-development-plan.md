@@ -283,8 +283,18 @@ work.
 - Schedule data access, validation and server actions.
 - An instructor option list for the schedule form's instructor picker,
   alongside the existing batch option list.
-- Schedule list with Batch / Instructor / Status filters, search, and
-  pagination.
+- Both approved Schedule views, switched by the wireframe's toggle:
+  - **List View** — Batch / Instructor / Status filters, search, and
+    pagination.
+  - **Weekly Schedule** — a week grid with Today / Previous week / Next week
+    controls and the week's date range, Monday–Sunday columns, and a fixed
+    6:00 AM–10:00 PM hour-by-hour time axis that scrolls vertically when it
+    does not fit. Each recurring schedule is a card placed at its weekday and
+    start/end time showing batch short code, time range and instructor;
+    overlapping schedules render side by side and are never hidden. It reads
+    the same `schedules` records the List View reads and only visualises them;
+    it persists nothing. The time-axis range and the overlap treatment are
+    decisions resolving wireframe ambiguities — see `02-ux.md`.
 - Add Schedule, Edit Schedule (versioned per `01-product.md` §7), and
   Deactivate Schedule, each following Review → Confirm → Save where
   `02-ux.md` Flows 04 and 05 require it.
@@ -301,7 +311,15 @@ work.
 - Session Details, Today's Sessions, and the session list under Attendance.
 - Eligible-student calculation, attendance marking, attendance history and
   reports.
-- A calendar view of the schedule.
+- Any calendar view beyond the approved Weekly Schedule week grid — no month
+  view and no day view. Only the week grid the wireframe draws is in scope.
+- Editing a schedule from within the Weekly Schedule grid: no
+  drag-to-reschedule, no resizing a card to change its time, and no conflict
+  prevention or warning on overlaps. The grid is display-only; schedules are
+  changed through Edit Schedule.
+- Rendering anything other than recurring schedules in the Weekly Schedule
+  grid. In particular it must not show session status, attendance counts,
+  cancellations or holidays, since none of those exist until Phase 14.
 - Instructor-facing Assigned Classes, and any relaxation of admin-only RLS.
 - Batch Details' **Students** tab and its Overview panel. That placeholder
   dates from Phase 11 and is tracked as a Phase 11 follow-up in §7 — it is
