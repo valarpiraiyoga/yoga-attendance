@@ -361,7 +361,9 @@ Phase 15 then adds attendance data and actions to those same screens.
 - Class session data access, validation and server actions, including the
   materialize-on-first-touch helper and the status derivation that maps the
   four persisted states onto the five displayed ones.
-- Session status derived against the fixed centre timezone.
+- Session status derived against the fixed centre timezone, Asia/Kolkata —
+  a display-time calculation only; the persisted status never changes just
+  because the clock passed a session's end time.
 - `/attendance` — **Today's Sessions** (default) and **All Sessions**, the
   latter with search, date range, Batch, Instructor and Session Status
   filters plus pagination.

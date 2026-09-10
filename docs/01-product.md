@@ -340,18 +340,18 @@ Five statuses are displayed, exactly as listed in §3:
 
 | Displayed | Derived from |
 |---|---|
-| Upcoming | persisted `scheduled`, and the session's start time has not yet arrived |
-| In Progress | persisted `scheduled`, and the current time falls between start and end |
-| Completed | persisted `completed` |
+| Upcoming | persisted `scheduled`, and the current time is before the session's start time |
+| In Progress | persisted `scheduled`, and the current time falls from start time through end time, inclusive |
+| Completed | persisted `scheduled` with the current time after end time, **or** persisted `completed` |
 | Cancelled | persisted `cancelled` |
 | Holiday | persisted `holiday` |
 
-Upcoming and In Progress are therefore never stored — they are two readings of the same `scheduled` state at different moments, and storing either would go stale the moment the clock passed it. A projected occurrence that has not been materialized behaves as `scheduled`.
+Upcoming and In Progress are therefore never stored — they are readings of the same `scheduled` state at different moments, and storing either would go stale the moment the clock passed it. A projected occurrence that has not been materialized behaves as `scheduled`.
 
-`completed` is set when attendance is saved for the session (§8).
+Completed is different: it has both a stored form and a purely displayed one, and the two must not be confused. A `scheduled` session whose end time has passed is *shown* as Completed the moment anyone looks at it, but its stored status stays `scheduled` — nothing about looking at a session, or the clock simply moving past its end time, ever writes to the database. The stored value only becomes `completed` when attendance is saved for the session (§8), a separate, explicit, later event. Conflating "displays as Completed" with "is recorded as completed" would let the clock silently change a stored value, which is exactly what §12's Historical Integrity rules forbid elsewhere in this product.
 
 ### Centre Timezone
-Upcoming and In Progress depend on what time it is *at the centre*, so both are derived against a single fixed yoga-centre timezone. There is no per-user, per-branch or per-schedule timezone — multi-branch management is explicitly outside V1 (§13).
+Upcoming, In Progress and the displayed-Completed reading above all depend on what time it is *at the centre*, so all three are derived against a single fixed yoga-centre timezone: **Asia/Kolkata**. There is no per-user, per-branch or per-schedule timezone — multi-branch management is explicitly outside V1 (§13).
 
 ### Snapshot and Historical Integrity
 When a session is materialized it snapshots its batch, instructor, date, start time and end time. Those snapshot values are authoritative for that session from then on:
@@ -604,8 +604,9 @@ Versioning schedule edits is what makes "future changes only" true: a schedule t
 - Inactive or ended schedule versions produce no further unmaterialized occurrences.
 - Materialized sessions are retained and never deleted.
 - Persisted session states are scheduled, completed, cancelled and holiday.
-- Upcoming and In Progress are derived from the session's date and time in the centre timezone, never stored.
-- A session becomes completed when its attendance is saved.
+- Upcoming, In Progress, and a displayed Completed reading of a scheduled session past its end time are all derived from the session's date and time in the Asia/Kolkata centre timezone, never stored.
+- A scheduled session past its end time is never automatically persisted as completed — only displayed as Completed.
+- A session's stored status becomes completed only when its attendance is saved.
 - Duration is derived from start and end time.
 - A class session has no product-facing identifier.
 
