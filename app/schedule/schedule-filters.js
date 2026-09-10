@@ -20,8 +20,8 @@ const STATUS_OPTIONS = [
 ];
 
 /**
- * Search + Batch + Instructor + Status filter bar for the Schedule list
- * (wireframe: "Weekly Schedule List View"). Mirrors
+ * Search + Batch + Instructor + Status filter bar for the Schedule area's
+ * List View (one of its two approved views). Mirrors
  * app/memberships/membership-filters.js's apply-on-submit / keyed-remount
  * pattern exactly — see that file's comment for why.
  */

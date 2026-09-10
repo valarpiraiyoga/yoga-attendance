@@ -3,12 +3,15 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { listSchedules } from "@/lib/schedules/data";
+import { listSchedules, listSchedulesForWeek } from "@/lib/schedules/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { buildListHref } from "@/lib/url-params";
+import { isValidDateString, getMondayOfWeek, addDaysUTC, todayDateString } from "@/lib/schedules/validation";
 import ScheduleFilters from "@/app/schedule/schedule-filters";
 import ScheduleList from "@/app/schedule/schedule-list";
+import ScheduleViewToggle from "@/app/schedule/schedule-view-toggle";
+import WeeklySchedule from "@/app/schedule/weekly-schedule";
 
 const PAGE_SIZE = 10;
 const STATUSES = ["active", "inactive"];
@@ -24,6 +27,41 @@ export default async function SchedulePage({ searchParams }) {
   await requireRole(ROLES.ADMIN);
 
   const rawParams = await searchParams;
+
+  // The Weekly Schedule view (02-ux.md "Weekly Schedule view") — the
+  // approved Schedule area's other view alongside the List View below.
+  // `?view=weekly` switches to it; `?week=` names any date inside the
+  // displayed week (defaults to today), normalized to that week's Monday.
+  if (rawParams.view === "weekly") {
+    const requestedDate =
+      typeof rawParams.week === "string" && isValidDateString(rawParams.week)
+        ? rawParams.week
+        : todayDateString();
+    const weekStart = getMondayOfWeek(requestedDate);
+    const weekEnd = addDaysUTC(weekStart, 6);
+
+    const schedules = await listSchedulesForWeek(weekStart, weekEnd);
+
+    return (
+      <>
+        <PageHeader
+          title="Schedule"
+          description="View and manage recurring weekly schedules."
+          actions={
+            <Button render={<Link href="/schedule/new" />} nativeButton={false}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add Schedule
+            </Button>
+          }
+        />
+
+        <ScheduleViewToggle active="weekly" />
+
+        <WeeklySchedule weekStart={weekStart} schedules={schedules} />
+      </>
+    );
+  }
+
   const q = typeof rawParams.q === "string" ? rawParams.q : "";
   const batchId = typeof rawParams.batch === "string" ? rawParams.batch : "";
   const instructorId = typeof rawParams.instructor === "string" ? rawParams.instructor : "";
@@ -53,6 +91,8 @@ export default async function SchedulePage({ searchParams }) {
           </Button>
         }
       />
+
+      <ScheduleViewToggle active="list" />
 
       <ScheduleFilters
         key={`${q}:${batchId}:${instructorId}:${status}`}

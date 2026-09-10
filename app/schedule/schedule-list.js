@@ -29,8 +29,9 @@ function formatDate(value) {
 }
 
 /**
- * The Schedule table ("Weekly Schedule List View" wireframe). A plain
- * Server Component, mirroring app/batches/batch-list.js and
+ * The Schedule table for the List View (one of the Schedule area's two
+ * approved views — see app/schedule/weekly-schedule.js for the other). A
+ * plain Server Component, mirroring app/batches/batch-list.js and
  * app/memberships/membership-list.js: no quick actions here, only "View" —
  * Edit and Deactivate both live on Schedule Details.
  */
