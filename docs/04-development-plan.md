@@ -259,6 +259,59 @@ Each feature area follows the progression defined in `CLAUDE.md`:
 Feature UI → business logic → validation → data access → Supabase integration
 ```
 
+### Phase 13 — Schedule
+
+Phase 13 delivers **recurring weekly schedules only**. Class Sessions remain
+**Phase 14**, and Attendance remains **Phase 15**; the three are separate
+phases, in that order, as listed in §2.
+
+`01-product.md` §7 says a recurring schedule is used to "generate or identify"
+class sessions. Phase 13 resolves that deliberately open wording as follows:
+future occurrences are **computed from the recurring pattern for display
+only**. Nothing about a session is persisted in this phase, so there is no
+generation job, no stored session state, and no possibility of drift between
+a schedule and rows generated from an older version of it. Persisting class
+sessions — which Attendance needs a stable record to attach to — is Phase 14's
+work.
+
+**In scope**
+
+- `schedules` table and its migration: batch and instructor foreign keys, day
+  of week, start/end time, effective from/until, status, admin-only RLS, and
+  no delete grant or policy — matching the Students, Batch Enrollments and
+  Memberships migrations.
+- Schedule data access, validation and server actions.
+- An instructor option list for the schedule form's instructor picker,
+  alongside the existing batch option list.
+- Schedule list with Batch / Instructor / Status filters, search, and
+  pagination.
+- Add Schedule, Edit Schedule (versioned per `01-product.md` §7), and
+  Deactivate Schedule, each following Review → Confirm → Save where
+  `02-ux.md` Flows 04 and 05 require it.
+- Schedule Details with its Overview and Recurring Pattern tabs, plus the
+  Upcoming Sessions tab as a computed read-only projection.
+- Batch Details' Schedules tab and its Overview panel.
+
+**Out of scope**
+
+- The `class_sessions` table, in any form.
+- Session persistence, generation jobs, or scheduled tasks.
+- Session exceptions, and marking a session Cancelled or Holiday
+  (`02-ux.md` Flows 06 and 07) — these are Class Sessions work.
+- Session Details, Today's Sessions, and the session list under Attendance.
+- Eligible-student calculation, attendance marking, attendance history and
+  reports.
+- A calendar view of the schedule.
+- Instructor-facing Assigned Classes, and any relaxation of admin-only RLS.
+- Batch Details' **Students** tab and its Overview panel. That placeholder
+  dates from Phase 11 and is tracked as a Phase 11 follow-up in §7 — it is
+  deliberately excluded here rather than folded into Phase 13.
+
+Membership and enrollment are untouched by this phase. Attendance eligibility
+depends on the *session date*, which does not exist while a recurring schedule
+is being defined, so eligibility stays entirely within Attendance
+(`01-product.md` §8).
+
 ### Phase 20 — Integration & business-rule validation
 End-to-end verification of the historical-integrity rules in `01-product.md`
 §12 — particularly that membership expiry/renewal, batch changes, student or
@@ -306,6 +359,7 @@ schedules · class_sessions · attendance · center_profile
 | Item | Status |
 |---|---|
 | **Brand logo asset** | No approved logo/lotus asset exists in the repository. Branding is currently text-only. Requires a supplied asset or an explicit decision to remain text-only. |
+| **Batch Details → Students tab** | Still shows the "not available yet" placeholder written before Phase 11, although Students and Batch Enrollment shipped in phase 11. Tracked as a Phase 11 follow-up; explicitly **not** part of Phase 13 (see §5). Needs scheduling into its own small phase or a follow-up commit. |
 
 The AppShell structural relationship between Sidebar and Header previously
 listed here is **resolved** — see Phase 6 in §5.

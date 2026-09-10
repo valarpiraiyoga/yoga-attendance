@@ -261,6 +261,14 @@ Admin can add new schedules anytime, edit schedules, change future schedules, de
 ### Future Changes
 Changes to recurring schedules apply to future sessions only. Past sessions and historical attendance remain unchanged.
 
+Editing a schedule's day, time or instructor is therefore versioned rather than applied in place: the existing schedule is closed by setting its effective until date to the day before the change takes effect, and a new schedule version is created starting from that date. The earlier version remains available, so what was scheduled on any past date can always be reconstructed.
+
+### Conflicts
+V1 does not prevent overlapping schedules. A batch may hold more than one schedule covering the same day and time, and an instructor may be assigned to more than one schedule at the same day and time. These situations are visible to the Admin in the Schedule list and are treated as an operational judgement, not a system-enforced constraint.
+
+### Elapsed Effective Period
+A schedule whose effective until date has passed remains stored as Active or Inactive exactly as the Admin left it. Status is never rewritten automatically. Where it is useful, the interface may additionally indicate that the schedule's effective period has ended, derived from the dates rather than stored.
+
 ### Specific Future Session Changes
 Admin can change one specific future session without changing the recurring schedule.
 
@@ -472,12 +480,21 @@ Short code uniqueness protects identification. The Weekly Schedule identifies a 
 - Schedules recur weekly.
 - A batch can have different days/times.
 - A schedule can have its own instructor.
+- Every schedule requires both a batch and an instructor.
+- Day of week is stored as a lowercase value (monday–sunday).
 - Default class duration is 60 minutes.
 - End time is automatically calculated but editable.
+- End time must be later than start time.
+- Effective until, when set, cannot be earlier than effective from.
 - Future schedule changes must not modify past sessions.
+- Editing a schedule's day, time or instructor closes the current version and creates a new one effective from the chosen date.
+- Overlapping schedules are not blocked in V1, for either a batch or an instructor.
+- An elapsed effective period does not change a schedule's stored status.
 - Individual future sessions can have exceptions.
 - Cancelled/Holiday sessions do not require attendance.
 - Schedules are deactivated rather than permanently deleted.
+
+Versioning schedule edits is what makes "future changes only" true: a schedule that was rewritten in place would silently change what the past looked like, which §12's Historical Integrity rules forbid.
 
 ### Attendance
 - Attendance belongs to a specific class session.
