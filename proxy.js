@@ -19,6 +19,7 @@ const PUBLIC_ROUTES = [
   "/reset-password",
   "/auth/callback",
   "/auth/invite",
+  "/auth/recovery",
 ];
 
 function isPublicRoute(pathname) {
