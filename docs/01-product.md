@@ -17,6 +17,8 @@ Make daily attendance management fast and simple while providing the yoga center
 ### Core Product Model
 Student → Membership + Batch Enrollment → Batch → Recurring Schedule → Class Session → Attendance
 
+A batch enrollment additionally carries one or more **schedule assignments**, which decide *which* of the batch's recurring schedules that student actually attends. Enrolling a student in a batch is therefore not by itself enough to make them eligible for every one of that batch's classes — see §4 "Schedule Assignment" and §8 "Eligibility".
+
 ### Initial Users
 1. Admin
 2. Instructor
@@ -121,6 +123,20 @@ A student can belong to multiple batches at the same time, supporting combo offe
 ### Batch Changes
 A student can change batches. Enrollment must retain effective start/end dates so historical attendance remains correct.
 
+### Schedule Assignment
+A batch may run several recurring schedules, including more than one on the same weekday (§6, §7). A student enrolled in that batch does not automatically attend all of them: the enrollment records which schedules that student attends.
+
+- Schedule assignment belongs to the batch enrollment, not to the student directly. A student attending the same batch across two separate enrollment periods therefore has separate assignments for each.
+- One enrollment may carry several schedule assignments at once — a student attending both the 6:00 AM and the 7:00 PM class of the same batch holds two.
+- A batch enrollment should have at least one schedule assignment. An enrollment with none makes the student eligible for nothing, which is a configuration mistake rather than a meaningful state.
+- Assignments are assigned to a schedule's stable identity (§7 "Schedule Series"), not to one particular version of it, so an admin editing a schedule's time or instructor never detaches the students who attend it.
+- Overlapping times across a student's own assignments are not blocked, consistent with §7 "Conflicts".
+
+### Schedule Assignment Effective Dates
+Each schedule assignment carries an effective start date and an optional effective end date. There is no separate active/inactive flag: an assignment applies to exactly the dates its period covers.
+
+Changing which schedule a student attends closes the existing assignment on the day before the change takes effect and creates a new assignment from that date. The earlier assignment is retained, never rewritten, so what a student was scheduled to attend on any past date can always be reconstructed — the same principle §7 applies to schedule versions and §5 applies to memberships.
+
 ### Deactivation
 Inactive students remain in the system. Deactivation does not remove historical student, membership, enrollment, or attendance records.
 
@@ -179,11 +195,9 @@ Every renewal creates a new membership record. Previous membership records remai
 Cancelling a membership retains the record; it is not deleted. An already-cancelled membership cannot be cancelled again. Cancellation does not affect batch enrollment.
 
 ### Eligibility
-A student is eligible to appear in attendance only when:
-1. They have an active enrollment in the relevant batch.
-2. Their membership is active on the class session date.
+Membership is one of the conditions a student must meet to appear in attendance: their membership must be active on the class session date. The full set of conditions — active student, active batch enrollment, a schedule assignment for the session's schedule series, and an active membership — is defined in §8 "Eligibility".
 
-Membership and batch enrollment are independent. One membership can cover multiple batch enrollments.
+Membership and batch enrollment are independent. One membership can cover multiple batch enrollments, and one membership covers every schedule the student is assigned to.
 
 ### Expiry
 When membership expires, the student remains in the system and historical records remain available, but the student is not normally eligible for attendance until a valid membership is active again.
@@ -219,7 +233,9 @@ Batch capacity is not required in V1.
 Admin can create, edit, activate, and deactivate batches.
 
 ### Batch/Schedule Relationship
-A batch is not tied to one fixed time. The same batch can have multiple schedules across different days and times.
+A batch is not tied to one fixed time. The same batch can have multiple schedules across different days and times, **including several on the same weekday** — Hatha Yoga General running Monday at 6:00 AM, 7:00 AM, 5:00 PM and 7:00 PM is four schedules of one batch, not four batches.
+
+Each of those schedules produces its own class sessions, and students enrolled in the batch attend only the ones they are assigned to (§4 "Schedule Assignment").
 
 ### Instructor Relationship
 Instructors are assigned at the schedule level, allowing different instructors for different schedules of the same batch.
@@ -270,6 +286,16 @@ Which of those two things happens depends on whether the schedule being edited h
 3. **The new effective from date is before today** — rejected. Back-dating a change would rewrite what was scheduled on a date that has already passed.
 
 Both of the first two outcomes leave every schedule version with an effective period that starts on or before it ends; the third is what keeps the past out of reach of an edit.
+
+### Schedule Series
+Versioning means a single real-world class — "the Monday 6:00 AM Hatha Yoga class" — is represented over time by a succession of schedule versions, each with its own effective period. A **schedule series** is the stable identity those versions share: editing a schedule creates a new version within the same series, never a new series.
+
+The series is what everything outside the Schedule area refers to when it means "that class":
+
+- Student schedule assignments (§4) are held against the series, so an admin editing a schedule's time or instructor never orphans the students who attend it.
+- Attendance eligibility (§8) matches a class session's schedule to the series a student is assigned to, not to one particular version.
+
+A class session still records the specific version it was generated from (§7A), so what the class actually looked like on a given date remains exact. The series answers "which class is this?"; the version answers "what were its details then?".
 
 ### Conflicts
 V1 does not prevent overlapping schedules. A batch may hold more than one schedule covering the same day and time, and an instructor may be assigned to more than one schedule at the same day and time. These situations are visible to the Admin in both Schedule views — listed in the List View, and shown side by side in the Weekly Schedule grid — and are treated as an operational judgement, not a system-enforced constraint.
@@ -393,9 +419,15 @@ Marking a session Cancelled or Holiday cannot be reversed in V1. There is no un-
 Allow instructors and administrators to quickly record and maintain attendance for each class session.
 
 ### Eligibility
-Only students meeting both conditions are shown:
-1. Active enrollment in the relevant batch.
-2. Active membership covering the class session date.
+Only students meeting all four conditions are shown:
+1. The student is active.
+2. Active enrollment in the relevant batch, covering the class session's own date — the enrollment's status is active, its effective start date is on or before the session date, and its effective end date (if any) is on or after the session date.
+3. A schedule assignment on that enrollment covering the session date, for the same schedule series the class session belongs to (§4 "Schedule Assignment", §7 "Schedule Series"). Being enrolled in the batch is not sufficient: a student assigned only to the 6:00 AM class is not eligible for the same batch's 7:00 PM class.
+4. Active membership covering the class session date — the membership's start and end dates cover the session date, and the membership was not yet cancelled as of that date (see Membership below).
+
+Eligibility is always evaluated against the class session's own date, never against today — a past session's eligible list reflects who qualified on that date, not who qualifies now. The batch used is the class session's own batch (its snapshot once materialized, §7A), not the recurring schedule's current batch; the schedule series used is the one the session's own schedule belongs to, so a session generated before a schedule edit and one generated after it both resolve to the same series and the same assigned students.
+
+An inactive student is excluded from new eligibility from that point on; a session that already has an attendance record for a student who later became inactive keeps that record regardless (Historical Integrity, §12).
 
 ### Status
 V1 supports only:
@@ -410,8 +442,12 @@ V1 supports only:
 - Change individual statuses.
 - Save attendance.
 
+Unmarked is never itself stored — an eligible student with no attendance record for the session is unmarked; a status other than Present or Absent does not exist as a stored value. Attendance can be saved with some or all students still unmarked; saving still completes the session (see Completion).
+
+Attendance can only be taken for a session whose date is today or earlier, in the centre timezone (§7A). A future-dated session has nothing to record yet.
+
 ### Completion
-After attendance is saved, the class session is marked Completed.
+After attendance is saved, the class session is marked Completed — regardless of how many students were marked.
 
 ### Editing
 Instructors can edit attendance for their own assigned sessions. Admins can edit any attendance record.
@@ -428,12 +464,16 @@ Students appear according to their active batch enrollment for the session. Hist
 ### Membership
 Expired membership does not remove historical attendance. A student without active membership on the session date is not normally eligible.
 
+A membership's cancellation only affects eligibility for session dates on or after the cancellation date. Cancelling a membership today must not retroactively remove eligibility for a session that already happened while the membership was still active.
+
 ### Summary
 Show:
 - Total eligible students
 - Present count
 - Absent count
 - Attendance percentage
+
+Attendance percentage is Present ÷ Eligible × 100, not Present ÷ Marked — a session with unmarked students shows a correspondingly lower percentage rather than looking complete. A session with zero eligible students shows 0%, never an error.
 
 ### Online / Offline
 Not mandatory in V1. Both online and offline participation count simply as Present. Attendance mode may be considered later if the center needs it.
@@ -546,6 +586,14 @@ Instructor does not manage global Students, Memberships, Batches, Schedules, Rep
 - Inactive enrollments for the same batch are retained, so a student can re-enroll after leaving.
 - Inactive students are retained.
 - Historical student data is not removed simply because the student becomes inactive.
+- A batch enrollment records which of the batch's schedules the student attends.
+- Schedule assignment belongs to the batch enrollment, not to the student directly.
+- One enrollment can hold several schedule assignments at the same time.
+- A batch enrollment should have at least one schedule assignment.
+- Schedule assignments are held against a schedule series, not a single schedule version.
+- Schedule assignments have an effective period and no separate status; the dates alone determine validity.
+- Changing a student's schedule closes the existing assignment and creates a new one from the effective date; earlier assignments are retained, never rewritten.
+- Overlapping times across a student's own schedule assignments are not blocked.
 
 One active enrollment per batch keeps attendance eligibility unambiguous: a duplicate active enrollment would list the same student twice for a single class session.
 
@@ -571,7 +619,9 @@ Deriving status from dates, rather than storing it, prevents a membership from s
 
 ### Batch
 - A batch can have multiple recurring schedules.
+- A batch can have more than one schedule on the same weekday, at different times.
 - A batch does not have a fixed time.
+- Enrolling in a batch does not by itself mean attending every one of its schedules.
 - Batch capacity is not required in V1.
 - Short code is required.
 - Short code must be unique, compared case-insensitively.
@@ -582,7 +632,11 @@ Short code uniqueness protects identification. The Weekly Schedule identifies a 
 
 ### Schedule
 - Schedules recur weekly.
-- A batch can have different days/times.
+- A batch can have different days/times, including several schedules on the same weekday.
+- Every schedule belongs to a schedule series, the stable identity its versions share.
+- Editing a schedule creates a new version within the same series, never a new series.
+- Student schedule assignments and attendance eligibility refer to the series, so an edit never orphans them.
+- A class session records the specific schedule version it came from, while the series identifies which class it is.
 - A schedule can have its own instructor.
 - Every schedule requires both a batch and an instructor.
 - Day of week is stored as a lowercase value (monday–sunday).
@@ -631,11 +685,18 @@ Materializing only on first touch is what keeps a schedule and its sessions from
 
 ### Attendance
 - Attendance belongs to a specific class session.
+- At most one attendance record exists per student per session.
 - Only eligible students appear for attendance.
-- Eligibility requires active enrollment + active membership.
+- Eligibility requires an active student, active batch enrollment covering the session date, a schedule assignment covering the session date for the session's own schedule series, and active membership covering the session date — all evaluated as of the session's own date.
+- Being enrolled in a batch is not sufficient; the student must be assigned to the specific schedule the session belongs to.
+- A membership cancellation only affects eligibility for session dates on or after the cancellation date.
 - V1 statuses are Present and Absent.
+- Unmarked is never stored — it is the absence of an attendance record for an eligible student, not a value.
+- Attendance can only be taken for a session dated today or earlier, in the centre timezone.
+- Saving attendance is allowed with some or all students unmarked, and still completes the session.
 - Online/offline does not change attendance status.
 - Attendance remains historically available.
+- Attendance records are never deleted; a correction updates the record in place.
 - Admin can edit all attendance.
 - Instructor can edit attendance for their assigned sessions.
 
@@ -727,7 +788,7 @@ The center must be able to change batches and schedules without code changes.
 Past attendance and historical records must not be damaged by future changes.
 
 ### Separate concepts
-Keep Student, Membership, Batch, Enrollment, Recurring Schedule, Class Session, and Attendance distinct.
+Keep Student, Membership, Batch, Enrollment, Schedule Assignment, Recurring Schedule, Class Session, and Attendance distinct.
 
 ### Don't overbuild V1
 Only add features that solve a real product need.

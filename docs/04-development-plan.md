@@ -48,8 +48,9 @@ that is not in `01-product.md`, that is a defect in this document.
 | 11 | Students + Batch Enrollment | ✅ Complete |
 | 12 | Memberships | ✅ Complete |
 | 13 | Schedule | ✅ Complete |
-| 14 | Class Sessions | ⬜ Not started — next |
-| 15 | Attendance | ⬜ Not started |
+| 14 | Class Sessions | ✅ Complete |
+| 15 | Attendance | ✅ Complete — Slices 1–3 (foundation, Eligible Students, Take Attendance) plus Instructor Access: migration `0014`, A1–A11 database/RLS verification (25/25 PASS), two-instructor and Admin-regression browser QA all passed |
+| 15A | Schedule assignment architecture correction | ✅ Complete — migration `0013` applied; `lib/schedules`, `lib/enrollments` and `lib/attendance` updated to the schedule-scoped eligibility rule |
 | 16 | Attendance History | ⬜ Not started |
 | 17 | Reports | ⬜ Not started |
 | 18 | Dashboard (real data) | ⬜ Not started |
@@ -78,7 +79,8 @@ that is not in `01-product.md`, that is a defect in this document.
 | Batches | `45f0b7c` | Batch CRUD, list filters, Batch Details with its Overview tab; short code unique case-insensitively |
 | Students + Batch Enrollment | `41f0335` | Student CRUD with `YC-000001` IDs, the Add Student guided flow, and batch enrollment with at most one active enrollment per batch |
 | Memberships | `798d904` | Membership CRUD with `MEM-000001` IDs, derived Upcoming/Active/Expired/Cancelled status, non-overlap enforcement, renewal and cancellation |
-| Schedule | `3471c11`, `2c20e1b` | Recurring weekly schedules with effective-date versioning; both approved views — List View and the Weekly Schedule week grid |
+| Schedule | `3471c11`, `2c20e1b`, `b5cc4d4` | Recurring weekly schedules with effective-date versioning; both approved views — List View and the Weekly Schedule week grid; Weekly Schedule corrected to the default view |
+| Class Sessions | `801737b`, `2d54330`, `f94daea`, `6801bb0` | Projected + materialized session model, Today's Sessions, All Sessions, Session Details addressed by `(scheduleId, date)`; Flow 06 Edit This Session; Flow 07 Cancel/Mark Holiday |
 
 Stack, architecture rules and validation requirements are defined in
 `CLAUDE.md` and are not restated here.
@@ -515,12 +517,315 @@ model:
 - Deleting sessions, in any form.
 - Bulk generation of future sessions, cron, or any scheduled task.
 - Any change to Phase 13's Schedule behaviour beyond the default-view
-  correction tracked in §7.
+  correction (§3, `b5cc4d4`).
 
 Students, Batch Enrollments and Memberships are untouched by this phase.
 Attendance eligibility needs all three, but it is evaluated against a session
 date at attendance time, which is Phase 15's concern — Phase 14 must not
 import from those feature areas.
+
+### Phase 15 — Attendance
+
+Phase 15 implements the attendance records Phase 14 deliberately left out,
+and everything on the `/attendance` screens that depended on them:
+eligibility, Take Attendance, View/Edit Attendance, the Attendance Summary
+panel, the Eligible Students and Attendance tabs, the list columns, and the
+`scheduled` → `completed` transition (`01-product.md` §8, §12).
+
+Phase 15 is split into slices. This section covers the first; Slice 2
+(Eligible Students) followed it, and **Phase 15A below interrupts the
+sequence with a schedule-assignment architecture correction that must land
+before Slice 3 (Take Attendance)**. The eligibility rule recorded in this
+section is superseded on one point by Phase 15A: eligibility resolves by
+schedule, not by batch alone.
+
+**Foundation slice — approved implementation decisions**
+
+- **One attendance record per (class session, student).** Present or
+  Absent only — there is no third persisted status. Unmarked is never
+  stored: an eligible student with no row for a session is unmarked, by
+  absence rather than by value (`supabase/migrations/0011_attendance.sql`).
+- **Eligibility (D1–D3)** requires all three: an active student; an active
+  batch enrollment in the session's own `batch_id` (the snapshot, not the
+  schedule's current batch) covering the session date
+  (`effective_start_date <= session_date` and `effective_end_date is null
+  or >= session_date`); an active membership covering the session date. A
+  membership's `cancelled_at` only excludes dates on or after the
+  cancellation date — cancelling a membership today must not retroactively
+  invalidate eligibility for an earlier session. Evaluated against the
+  session's own date, never "today" — a past session's eligibility reflects
+  who qualified on that date.
+- **`resolve_eligible_students` is the single source of the eligibility
+  rule.** Both the read path (a later slice's Eligible Students tab) and
+  the write path (`save_session_attendance`'s own re-validation) call this
+  one `SECURITY DEFINER` function rather than each encoding the rule
+  separately.
+- **Attendance percentage (D4)** is Present ÷ Eligible × 100, not Present ÷
+  Marked — a session with unmarked students shows a correspondingly lower
+  percentage. Zero eligible students returns 0, never a division-by-zero.
+- **Attendance can only be taken for `session_date <= today`** in
+  Asia/Kolkata (D5). Rejected inside `save_session_attendance` itself, not
+  only in a later UI — the same "enforce independently of the UI" standard
+  Phase 14's materialization and status rules already hold to.
+- **Instructors get no access in this slice (D6).** `attendance` stays
+  admin-only RLS, matching every table Phase 15 touches. Both new
+  functions are `SECURITY DEFINER`, gated by an internal `is_admin()`
+  check rather than by their grant — the same pattern `is_admin()` and
+  `current_instructor_id()` themselves already establish
+  (`0002_instructors.sql`, `0004_instructor_identity.sql`) — so a later
+  instructor-access slice can broaden the internal check without changing
+  who may call the function at all.
+- **Saving attendance is atomic.** `save_session_attendance` validates the
+  session exists, rejects Cancelled/Holiday and future dates, re-resolves
+  eligibility, rejects any submitted student who is not eligible, upserts
+  exactly the submitted marks (never deleting an existing one), and sets
+  the session `completed` — all inside one database function, so a partial
+  failure can never leave a session completed with some marks silently
+  dropped.
+- **Saving with some or all students unmarked is allowed (D10)**, and still
+  completes the session — the workflow does not require full coverage
+  before Save is meaningful.
+- **No `marked_by` or other audit column (D11).** `updated_at` alone shows
+  a correction happened; nothing in the approved decisions asks for who
+  made it.
+- **The materialization boundary is deliberate, not a gap.**
+  `save_session_attendance` takes an existing `class_sessions.id` — it does
+  not materialize a projected occurrence itself, and does not reimplement
+  `materializeClassSession`'s insert-with-retry logic in SQL. A later
+  Take Attendance action calls the existing, unchanged
+  `materializeClassSession` (Phase 14) first, then this function — the same
+  two-call shape `updateClassSession` (Flow 06) and `markSessionException`
+  (Flow 07) already use, for the same reason: PostgREST gives no
+  multi-statement transaction spanning a plain insert and a separate RPC
+  call. The narrow window between the two calls is not a new risk —
+  `save_session_attendance`'s own checks (session state, date, eligibility)
+  are the authoritative gate at the moment of saving, so a session that
+  became ineligible in that window is rejected there, not silently
+  corrupted.
+
+**Foundation slice — in scope**
+
+- `attendance` table and its migration
+  (`0011_attendance.sql`): class session and student foreign keys (both
+  `on delete restrict`), Present/Absent status, one-record-per-student-
+  per-session uniqueness, admin-only RLS, no delete grant or policy —
+  matching every prior feature table.
+- `resolve_eligible_students(batch_id, session_date)` and
+  `save_session_attendance(class_session_id, marks)`, both `SECURITY
+  DEFINER`, admin-gated internally.
+- `lib/attendance/{data,validation,actions}.js`: date-parameterised
+  eligibility reads, attendance-summary derivation, and
+  `saveSessionAttendance` (the materialize-then-save action described
+  above). No caller exists yet — this slice is the foundation only.
+
+**Foundation slice — out of scope**
+
+Every UI element: the Eligible Students tab, the Attendance tab, Take
+Attendance, View Attendance, Edit Attendance, Mark All Present, the
+Attendance Summary panel, and the Today's/All Sessions list columns and
+actions. Also out of scope: instructor access of any kind (its own later
+slice, per D6); Attendance History; Reports; Dashboard; a dedicated
+Assigned Classes screen (D9); attendance deletion; un-completing a
+session; a third attendance status; bulk attendance across sessions;
+`marked_by`/audit columns (D11); any change to `0010_class_sessions.sql`.
+
+### Phase 15A — Schedule assignment architecture correction
+
+**This runs before any further Phase 15 work.** Slices 1 and 2 were built on
+an eligibility rule that resolves students by *batch*; the product actually
+requires resolving them by *schedule*, because a batch may run several
+schedules — including several on the same weekday — and a student attends
+only the ones they are assigned to (`01-product.md` §4 "Schedule
+Assignment", §6, §8). Continuing to Take Attendance before correcting this
+would build the marking UI on a rule known to be wrong, and would put
+attendance records against students who never attended that class.
+
+**Already applied — do not edit or recreate**
+
+`0011_attendance.sql` and `0012_attendance_eligibility_membership_details.sql`
+are both applied to the database. Every correction below is additive, in a
+new migration. `0010_class_sessions.sql` likewise stays untouched.
+
+**Why a junction table, not a column on `batch_enrollments`**
+
+One enrollment may hold several schedule assignments at once, so the
+relationship is many-to-many; a `schedule_id` column on `batch_enrollments`
+could only ever express one. Assignments also carry their own effective
+period, independent of the enrollment's — a student can switch from the
+6:00 AM to the 7:00 PM class without their enrollment changing at all.
+
+**Why assignments reference a series, not a schedule**
+
+Editing a schedule versions it: the current row is closed and a **new row
+with a new id** is inserted (`updateSchedule`, Phase 13). An assignment
+pointing at the closed version would silently stop matching every session
+generated from the new one, and the affected students would simply vanish
+from Take Attendance with no error anywhere. `schedule_series` is the stable
+identity the versions share, so assignments survive schedule edits by
+construction rather than by remembering to migrate them.
+
+**Migration 0013 responsibilities**
+
+1. `schedule_series` — the stable schedule identity: `id`, `batch_id`
+   (`on delete restrict`), `created_at`. Admin-only RLS,
+   `select/insert/update` grants, no delete, matching every prior table.
+2. `schedules.series_id` — added, backfilled one series per existing
+   schedule row, then set `not null`, `on delete restrict`, indexed.
+   Existing version chains cannot be reconstructed (no linking column has
+   ever existed), so each existing row becomes its own series. That is
+   harmless: no assignments exist yet, and every assignment created from
+   here on sits on a correctly-maintained series.
+3. `enrollment_schedules` — the junction:
+   `batch_enrollment_id` → `batch_enrollments(id)`,
+   `schedule_series_id` → `schedule_series(id)`, both `on delete restrict`;
+   `effective_start_date` required, `effective_end_date` nullable;
+   `created_at`/`updated_at`. **No status column** — the dates alone
+   determine validity, mirroring `memberships` rather than
+   `batch_enrollments`, so there is only one source of truth for whether an
+   assignment applies on a given date.
+4. Overlap prevention — an `EXCLUDE USING gist` constraint on
+   (`batch_enrollment_id`, `schedule_series_id`, the assignment's date
+   range), mirroring `memberships_no_overlap_per_student`
+   (`0008_memberships.sql`; `btree_gist` is already installed). This blocks
+   a duplicate or overlapping assignment to the same schedule for the same
+   enrollment, while still allowing re-assignment after a genuine gap.
+   Overlapping *times across different schedules* are deliberately not
+   blocked (`01-product.md` §7 "Conflicts").
+5. Replace `resolve_eligible_students` — signature becomes
+   `(p_batch_id uuid, p_schedule_id uuid, p_session_date date)`, adding the
+   assignment condition and resolving the session's schedule to its series.
+   The existing membership tie-break and D1–D3 rules are carried forward
+   unchanged.
+6. Replace `save_session_attendance` — its internal eligibility call passes
+   the session's `schedule_id`. Required because `0011` is applied and
+   cannot be edited; nothing else about the function changes.
+7. Backfill existing enrollments — see below.
+
+**Backfill strategy**
+
+The rule change makes every existing enrollment eligible for nothing until
+it has assignments, so `0013` backfills: each existing active enrollment is
+assigned to every currently-effective schedule series of its batch, dated
+from the enrollment's own effective start date. That reproduces today's
+behaviour exactly — a student enrolled in a batch currently attends all of
+its schedules — so the correction changes what the system *can* express
+without changing what it currently *says* about any existing student.
+
+**Schedule versioning behaviour after this change**
+
+- `createSchedule` creates a series and references it.
+- `updateSchedule`'s versioning branch copies `series_id` from the row it
+  supersedes, so a new version joins the existing series. Versioning is
+  otherwise unchanged — same close-and-insert, same rules about which
+  branch applies.
+- `deactivateSchedule` is unaffected: it closes the row in place, produces
+  no further occurrences, and assignments to it simply stop mattering.
+- Class sessions keep snapshotting the specific `schedule_id` they came
+  from (§7A). Nothing about existing materialized sessions or saved
+  attendance changes.
+
+**Implementation order**
+
+1. Documentation (this change).
+2. Migration `0013`, applied and verified before any code depends on it.
+3. `lib/schedules` — series on create, series inheritance on versioning.
+4. `lib/enrollments` + the enrollment UI — schedule selection, dated
+   assignment changes, Student Details display.
+5. `lib/attendance` + Session Details — pass the session's schedule through
+   to eligibility; Slice 2's Eligible Students becomes schedule-scoped.
+6. Only then, Phase 15 Slice 3 (Take Attendance).
+
+**QA and test-data reset order**
+
+Existing test data from earlier phases is **retained** through the
+documentation and migration steps, so the backfill can be verified against
+real rows. The controlled test-data reset happens only after the
+correction is implemented and verified — reset first and the backfill would
+have nothing to prove itself against. QA order: verify the backfill
+reproduced current eligibility, then verify the new rule discriminates
+between same-weekday schedules, then verify schedule versioning does not
+orphan assignments, then reset and re-seed for Slice 3.
+
+### Phase 15 — Instructor Access
+
+Completes Phase 15: Slice 3 (Take Attendance) followed Phase 15A's
+schedule-scoped eligibility correction, and Instructor Access is the final
+slice — an active instructor can use Attendance for their own sessions only,
+with every ownership boundary enforced at the database, not in application
+code.
+
+**Migration `0014_instructor_attendance_access.sql`**
+
+- `can_access_session(schedule_id, session_date)` — the single ownership
+  predicate: true for an admin; for an instructor, true only when the
+  materialized session's `instructor_id` (snapshot ownership wins) or,
+  absent a materialized row, the schedule's own `instructor_id` matches
+  `current_instructor_id()` — which is itself null for a signed-out,
+  unlinked, or deactivated instructor (`0004_instructor_identity.sql`).
+- Additive instructor `select` policies on `schedules`, `class_sessions`,
+  `attendance` (via a join to the owning session), and `batches` — every
+  existing admin policy is unchanged.
+- `students`, `batch_enrollments` and `memberships` remain admin-only with
+  no new policy: an instructor never reads them directly.
+- `resolve_eligible_students` broadened from `is_admin()` to
+  `is_admin() or can_access_session(...)`, and now returns each student's
+  `full_name`/`phone`/`student_code` directly alongside the membership
+  dates it already returned — the only path by which an instructor's
+  eligible students are ever visible to them. The eligibility rule itself
+  is unchanged.
+- `materialize_class_session(schedule_id, session_date)` — a new
+  `SECURITY DEFINER` function giving an instructor an authorized
+  materialize-on-first-touch path, since they hold no `class_sessions`
+  insert policy and never will. Snapshots batch/instructor/time from the
+  schedule, never from caller input.
+- `save_session_attendance` broadened to admin-or-owning-instructor,
+  checked against the locked session row's own snapshot `instructor_id`.
+  Remains the only writer of `attendance` rows; no instructor
+  insert/update policy exists on `attendance` or `class_sessions`.
+
+**Security verification** — `supabase/verification/verify_0014_instructor_access.sql`
+impersonates real users via `request.jwt.claims` + `set local role
+authenticated` (no service key), runs entirely inside a transaction that
+ends in `rollback`, and covers A1–A11: own-data visibility, zero visibility
+into `students`/`batch_enrollments`/`memberships`, cross-instructor denial
+on `resolve_eligible_students`/`save_session_attendance`/
+`materialize_class_session`, denial of direct `attendance`/`class_sessions`
+writes and role self-escalation, unchanged admin access, and access
+revocation on instructor deactivation. Result: **25/25 PASS**.
+
+**Application layer**
+
+- `lib/attendance/data.js` — `listEligibleStudents` reads the display
+  fields straight from `resolve_eligible_students`; the second
+  `.from("students")` query is removed, since it would have silently
+  returned nothing for an instructor.
+- `lib/class-sessions/actions.js` — `materializeClassSession` now branches
+  on role: unchanged direct-insert path for admin, the new RPC for an
+  instructor. `updateClassSession` (Flow 06) and `markSessionException`
+  (Flow 07) are untouched and remain admin-only.
+- Route/action guards widened to admin-or-instructor: `app/attendance/layout.js`,
+  `app/attendance/page.js`, `app/attendance/[scheduleId]/[date]/page.js`,
+  and `saveSessionAttendance`. `[scheduleId]/[date]/edit` and the two
+  session-management actions above stay admin-only; Session Details hides
+  "Edit This Session" and "Mark Cancelled / Holiday" for an instructor.
+- `app/data/navigation.js` — an instructor's nav is now Dashboard and
+  Attendance only. "Assigned Classes" and "Attendance History" are
+  narrowed out of the instructor role (Admin's own entries and order are
+  unchanged) rather than left pointing at a 404 — neither screen is built
+  yet (D9 defers Assigned Classes; Attendance History is Phase 16).
+
+**Browser QA** — two linked instructor accounts, each with their own
+session on the same day, confirmed: Attendance loads; each sees only their
+own sessions and eligible students; Take Attendance and Edit Attendance
+(through the Review/Confirm dialog) succeed for an owned session; a direct
+URL to the other instructor's session resolves not-found; session
+management controls are absent. Full Admin regression across Slices 1–3
+and Phases 9b–14 passed unchanged.
+
+**Known minor gap** — the All Sessions Instructor filter dropdown is still
+shown to the instructor role; it does nothing harmful (RLS already scopes
+every result to their own sessions regardless of the filter value) but is
+unnecessary chrome. Hiding it is a small follow-up, not a security item.
 
 ### Phase 20 — Integration & business-rule validation
 End-to-end verification of the historical-integrity rules in `01-product.md`
@@ -569,11 +874,17 @@ schedules · class_sessions · attendance · center_profile
 | Item | Status |
 |---|---|
 | **Brand logo asset** | No approved logo/lotus asset exists in the repository. Branding is currently text-only. Requires a supplied asset or an explicit decision to remain text-only. |
-| **Batch Details → Students tab** | Still shows the "not available yet" placeholder written before Phase 11, although Students and Batch Enrollment shipped in phase 11. Tracked as a Phase 11 follow-up; explicitly **not** part of Phase 13 (see §5). Needs scheduling into its own small phase or a follow-up commit. |
-| **Schedule default view** | `02-ux.md`'s Information Architecture states "Weekly Schedule ← Default", but Phase 13 shipped with List View as the default at `/schedule`. Approved as a Phase 13 correction: `/schedule` should open Weekly Schedule, with List View still reachable through the existing view toggle. Nothing else about either view changes. Not yet applied in code. |
+| **Batch Details → Students tab** | Still shows the "not available yet" placeholder written before Phase 11, although Students and Batch Enrollment shipped in phase 11. Tracked as a Phase 11 follow-up; explicitly **not** part of Phase 13 (see §5). Needs scheduling into its own small phase or a follow-up commit. Once Phase 15A lands, this tab should also show each student's assigned schedules. |
+| **Backfill scope (Phase 15A)** | The `0013` backfill is specified for existing **active** enrollments. Whether inactive/historical enrollments should also receive assignments — and if so, dated to what — is undecided. Recommended: active enrollments only, since historical eligibility for past sessions is only consulted through screens that would show the same students either way. |
+| **Backfill date vs. schedule age (Phase 15A)** | The backfill dates each assignment from the enrollment's own start date, which can predate a schedule that was created later. Harmless in practice (eligibility also requires the schedule to have produced a session on that date) but it does store an assignment period wider than the schedule ever existed for. Alternative: date each assignment from the later of the enrollment start and the schedule series' first effective date. |
+| **Enforcing "at least one schedule assignment"** | Recorded as a product rule (`01-product.md` §4). Not expressible as a simple database constraint — the enrollment must exist before its assignments can reference it — so it is planned as form-level validation. Confirm that application-level enforcement is acceptable rather than a deferred constraint or trigger. |
 
 The AppShell structural relationship between Sidebar and Header previously
 listed here is **resolved** — see Phase 6 in §5.
+
+The Schedule default view previously listed here is **resolved** —
+`b5cc4d4` (§3) corrected `/schedule` to open Weekly Schedule by default,
+with List View still reachable through the existing view toggle.
 
 ---
 

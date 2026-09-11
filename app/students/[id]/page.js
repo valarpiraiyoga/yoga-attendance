@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
-import { listEnrollmentsForStudent } from "@/lib/enrollments/data";
+import { listEnrollmentsForStudent, listScheduleAssignmentsForEnrollment, isScheduleAssignmentActive } from "@/lib/enrollments/data";
+import { DAY_LABELS } from "@/lib/schedules/validation";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
 import DeactivateStudent from "@/app/students/[id]/deactivate-student";
 
@@ -34,6 +35,14 @@ function getInitials(name) {
     .toUpperCase();
 }
 
+function formatTime(value) {
+  if (!value) return "—";
+  const [hours, minutes] = value.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
+}
+
 function formatDate(value) {
   if (!value) return "—";
   return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -52,7 +61,13 @@ function formatDate(value) {
  *
  * Membership and Batch Enrollments are real, live data (Phase 12 and Phase
  * 11 respectively). Recent Attendance still shows an honest "not available
- * yet" state — that panel is Phase 15.
+ * yet" state — that panel is a later Phase 15 slice.
+ *
+ * Phase 15A (01-product.md §4 "Schedule Assignment") added each
+ * enrollment's currently-active schedule assignments to its card. An
+ * enrollment with none is flagged plainly rather than hidden or silently
+ * repaired — it is a real, actionable data problem (the student is not
+ * eligible for attendance until it is fixed), not a cosmetic gap.
  */
 export default async function StudentDetailsPage({ params, searchParams }) {
   // Authorization boundary — see app/students/layout.js for why this must be
@@ -70,6 +85,11 @@ export default async function StudentDetailsPage({ params, searchParams }) {
     listEnrollmentsForStudent(id),
     getCurrentMembershipForStudent(id),
   ]);
+  const assignmentsByEnrollmentId = new Map(
+    await Promise.all(
+      enrollments.map(async (enrollment) => [enrollment.id, await listScheduleAssignmentsForEnrollment(enrollment.id)])
+    )
+  );
   const rawParams = await searchParams;
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
 
@@ -256,6 +276,35 @@ export default async function StudentDetailsPage({ params, searchParams }) {
                           Effective: {formatDate(enrollment.effective_start_date)} –{" "}
                           {enrollment.effective_end_date ? formatDate(enrollment.effective_end_date) : "Present"}
                         </p>
+                        {(() => {
+                          const activeAssignments = (assignmentsByEnrollmentId.get(enrollment.id) ?? []).filter(
+                            (assignment) => isScheduleAssignmentActive(assignment)
+                          );
+                          return activeAssignments.length === 0 ? (
+                            <p className="text-small mt-2 font-medium text-danger">
+                              No schedule assigned — this enrollment is not eligible for attendance.
+                            </p>
+                          ) : (
+                            <ul className="mt-2 flex flex-col gap-0.5">
+                              {activeAssignments.map((assignment) => (
+                                <li key={assignment.id} className="text-small text-text-secondary">
+                                  {assignment.schedule ? (
+                                    <>
+                                      {DAY_LABELS[assignment.schedule.day_of_week] ?? assignment.schedule.day_of_week}
+                                      {" · "}
+                                      {formatTime(assignment.schedule.start_time)} –{" "}
+                                      {formatTime(assignment.schedule.end_time)}
+                                      {" · "}
+                                      {assignment.schedule.instructors?.full_name ?? "—"}
+                                    </>
+                                  ) : (
+                                    <span className="text-danger">Assigned schedule could not be found</span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          );
+                        })()}
                       </div>
                       <Link
                         href={`/students/${student.id}/enrollments/${enrollment.id}/edit`}

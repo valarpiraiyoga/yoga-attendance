@@ -4,7 +4,9 @@ import { ArrowLeft } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { listBatchOptions } from "@/lib/batches/data";
-import { getEnrollment } from "@/lib/enrollments/data";
+import { listCurrentSchedules } from "@/lib/schedules/data";
+import { todayDateString } from "@/lib/schedules/validation";
+import { getEnrollment, listScheduleAssignmentsForEnrollment, isScheduleAssignmentActive } from "@/lib/enrollments/data";
 import { updateEnrollment } from "@/lib/enrollments/actions";
 import EnrollmentForm from "@/app/students/[id]/enrollments/enrollment-form";
 
@@ -15,10 +17,11 @@ export default async function EditEnrollmentPage({ params }) {
   await requireRole(ROLES.ADMIN);
 
   const { id, enrollmentId } = await params;
-  const [student, enrollment, batchOptions] = await Promise.all([
+  const [student, enrollment, batchOptions, currentSchedules] = await Promise.all([
     getStudent(id),
     getEnrollment(enrollmentId),
     listBatchOptions(),
+    listCurrentSchedules(),
   ]);
 
   // The enrollment must both exist and actually belong to this student —
@@ -27,6 +30,14 @@ export default async function EditEnrollmentPage({ params }) {
   if (!student || !enrollment || enrollment.student_id !== id) {
     notFound();
   }
+
+  const today = todayDateString();
+  const allAssignments = await listScheduleAssignmentsForEnrollment(enrollmentId);
+  // The form pre-checks and diffs against currently-active assignments
+  // only — a historical, already-ended one is not part of "what this
+  // enrollment currently attends" and must not be re-offered as if it
+  // still applied.
+  const activeAssignments = allAssignments.filter((assignment) => isScheduleAssignmentActive(assignment, today));
 
   const updateEnrollmentById = updateEnrollment.bind(null, enrollmentId, id);
 
@@ -50,6 +61,9 @@ export default async function EditEnrollmentPage({ params }) {
           action={updateEnrollmentById}
           enrollment={enrollment}
           batchOptions={batchOptions}
+          currentSchedules={currentSchedules}
+          assignedSchedules={activeAssignments}
+          todayDate={today}
           submitLabel="Save Changes"
           pendingLabel="Saving…"
           cancelHref={`/students/${id}`}

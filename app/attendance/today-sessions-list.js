@@ -8,7 +8,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { deriveDisplayStatus, DISPLAY_STATUS_LABELS, DISPLAY_STATUS_BADGE_VARIANTS } from "@/lib/class-sessions/validation";
+import {
+  deriveDisplayStatus,
+  todayInCentreTimezone,
+  DISPLAY_STATUS_LABELS,
+  DISPLAY_STATUS_BADGE_VARIANTS,
+} from "@/lib/class-sessions/validation";
 
 function formatTime(value) {
   if (!value) return "—";
@@ -18,29 +23,46 @@ function formatTime(value) {
   return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
 }
 
+// The Take Attendance / View Attendance / View Session split (Phase 15
+// Slice 3; approved wireframe: TIME, BATCH, INSTRUCTOR, ELIGIBLE STUDENTS,
+// STATUS, ACTION). Based on the session's own persisted `status` and
+// `session_date`, not `deriveDisplayStatus` — a cancelled/holiday session
+// never takes attendance regardless of how its clock-derived display status
+// would read, and "future" here means date-only (AttendancePanel's own
+// blocked-future rule), not time-of-day.
+function resolveAction(session, today) {
+  if (session.status === "cancelled" || session.status === "holiday") {
+    return "View Session";
+  }
+  if (session.status === "completed") {
+    return "View Attendance";
+  }
+  return session.session_date <= today ? "Take Attendance" : "View Session";
+}
+
 /**
  * Today's Sessions table (approved wireframe columns: TIME, BATCH,
- * INSTRUCTOR, ELIGIBLE STUDENTS, STATUS, ACTION). ELIGIBLE STUDENTS is an
- * honest Phase 15 placeholder, not a fabricated count (this task's explicit
- * requirement) — computing real eligibility depends on enrollment and
- * membership rules this slice must not touch.
+ * INSTRUCTOR, ELIGIBLE STUDENTS, STATUS, ACTION). ELIGIBLE STUDENTS reads
+ * `session.attendanceSummary.eligibleCount` — attached by
+ * app/attendance/page.js's `withAttendanceSummaries`, which calls the
+ * existing `getAttendanceSummary` (lib/attendance/data.js) per row; this
+ * component only displays it, it does not resolve eligibility itself.
  *
- * ACTION is uniformly "View Session" for every row regardless of status —
- * the wireframe's per-status actions (View Attendance / Take Attendance)
- * are Phase 15 features this slice does not implement, so rather than
- * showing an action that does nothing, every row gets the one action
- * Phase 14 actually supports (Session Details' Overview). Same reduction
- * app/schedule/[id]/schedule-details-tabs.js already applied to Upcoming
- * Sessions for the same reason.
- *
- * "View Session" is always a plain link, never an action that writes
- * anything: Session Details is addressed by `(schedule_id, session_date)`
- * (`/attendance/[scheduleId]/[date]`), which a projected occurrence already
- * has without needing a `class_sessions` row — see
+ * ACTION now varies by status (`resolveAction` above) and always links to
+ * Session Details' Attendance tab (`?tab=attendance`) — including the
+ * "View Session" cases (cancelled/holiday, future-dated), since that tab
+ * already renders the matching explanatory blocked state
+ * (attendance-panel.js) rather than requiring a separate Overview link.
+ * The link itself is always a plain navigation, never an action that
+ * writes anything: Session Details is addressed by `(schedule_id,
+ * session_date)` (`/attendance/[scheduleId]/[date]`), which a projected
+ * occurrence already has without needing a `class_sessions` row — see
  * lib/class-sessions/data.js's `getSessionOccurrence`. Viewing a session
  * never materializes it (01-product.md §7A).
  */
 export default function TodaySessionsList({ sessions }) {
+  const today = todayInCentreTimezone();
+
   return (
     <div className="overflow-hidden rounded-card border border-border bg-surface">
       <Table aria-label="Today's Sessions">
@@ -73,7 +95,7 @@ export default function TodaySessionsList({ sessions }) {
                   )}
                 </TableCell>
                 <TableCell className="text-text-secondary">{session.instructors?.full_name ?? "—"}</TableCell>
-                <TableCell className="text-text-secondary">Available in Phase 15</TableCell>
+                <TableCell className="text-text-secondary">{session.attendanceSummary?.eligibleCount ?? 0}</TableCell>
                 <TableCell>
                   <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS[displayStatus]}>
                     {DISPLAY_STATUS_LABELS[displayStatus]}
@@ -81,10 +103,10 @@ export default function TodaySessionsList({ sessions }) {
                 </TableCell>
                 <TableCell>
                   <Link
-                    href={`/attendance/${session.schedule_id}/${session.session_date}`}
+                    href={`/attendance/${session.schedule_id}/${session.session_date}?tab=attendance`}
                     className="text-body font-medium text-brand hover:underline"
                   >
-                    View Session
+                    {resolveAction(session, today)}
                   </Link>
                 </TableCell>
               </TableRow>

@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { listBatchOptions } from "@/lib/batches/data";
+import { listCurrentSchedules } from "@/lib/schedules/data";
+import { todayDateString } from "@/lib/schedules/validation";
 import { createEnrollment } from "@/lib/enrollments/actions";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
 import EnrollmentForm from "@/app/students/[id]/enrollments/enrollment-form";
@@ -59,8 +61,9 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
   const rawParams = await searchParams;
   const isGuided = rawParams?.guided === "1";
 
-  const [batchOptions, currentMembership] = await Promise.all([
+  const [batchOptions, currentSchedules, currentMembership] = await Promise.all([
     listBatchOptions(),
+    listCurrentSchedules(),
     isGuided ? getCurrentMembershipForStudent(id) : Promise.resolve(null),
   ]);
   const createEnrollmentForStudent = createEnrollment.bind(null, id);
@@ -126,6 +129,8 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
         <EnrollmentForm
           action={createEnrollmentForStudent}
           batchOptions={batchOptions}
+          currentSchedules={currentSchedules}
+          todayDate={todayDateString()}
           submitLabel="Save Enrollment"
           pendingLabel="Saving…"
           cancelHref={`/students/${id}`}

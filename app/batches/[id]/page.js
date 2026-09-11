@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getBatch } from "@/lib/batches/data";
 import { listSchedulesForBatch } from "@/lib/schedules/data";
+import { listEnrollmentsForBatch } from "@/lib/enrollments/data";
 import { DAY_LABELS } from "@/lib/schedules/validation";
 import BatchHeader from "@/app/batches/[id]/batch-header";
 
@@ -30,12 +31,10 @@ function formatTime(value) {
  * (04-development-plan.md §7 Open Items), exactly mirroring how
  * app/settings/layout.js treats its own inert tabs.
  *
- * The wireframe's Overview tab also shows a "Students" summary panel,
- * still populated with data from Phase 11 (Students), which does not exist
- * on this page. Rather than fabricate a count or omit the approved panel
- * outright, it keeps its approved position and heading and states plainly
- * that the data isn't available yet — the same treatment this page
- * previously gave both panels before Schedules had real data.
+ * The wireframe's Overview tab also shows a "Students" summary panel — real
+ * as of Phase 15A, now that the Students tab itself is (see
+ * app/batches/[id]/students/page.js), mirroring the Schedules panel's own
+ * established shape: a count plus a "View Students" link, not the full list.
  */
 export default async function BatchDetailsPage({ params, searchParams }) {
   // Authorization boundary — see app/batches/layout.js for why this must be
@@ -49,8 +48,9 @@ export default async function BatchDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const schedules = await listSchedulesForBatch(id);
+  const [schedules, enrollments] = await Promise.all([listSchedulesForBatch(id), listEnrollmentsForBatch(id)]);
   const activeSchedules = schedules.filter((schedule) => schedule.status === "active");
+  const activeEnrollments = enrollments.filter((enrollment) => enrollment.status === "active");
 
   const rawParams = await searchParams;
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
@@ -113,9 +113,21 @@ export default async function BatchDetailsPage({ params, searchParams }) {
 
           <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
             <h2 className="text-section-title font-semibold text-text-primary">Students</h2>
-            <p className="text-body mt-2 text-text-secondary">
-              Not available yet — student enrollment is part of a later phase.
-            </p>
+            {activeEnrollments.length === 0 ? (
+              <p className="text-body mt-2 text-text-secondary">
+                No students are enrolled in this batch yet.
+              </p>
+            ) : (
+              <p className="text-small mt-2 text-text-secondary">
+                {activeEnrollments.length} Active Enrollment{activeEnrollments.length === 1 ? "" : "s"}
+              </p>
+            )}
+            <Link
+              href={`/batches/${batch.id}/students`}
+              className="text-body mt-4 inline-block font-medium text-brand hover:underline"
+            >
+              View Students
+            </Link>
           </div>
         </div>
 

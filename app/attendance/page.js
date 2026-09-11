@@ -3,6 +3,7 @@ import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
 import { listSessionsForDate, listSessions } from "@/lib/class-sessions/data";
 import { todayInCentreTimezone, DISPLAY_STATUSES } from "@/lib/class-sessions/validation";
+import { getAttendanceSummary } from "@/lib/attendance/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { buildListHref } from "@/lib/url-params";
@@ -29,6 +30,54 @@ function attendanceHref(searchParams, overrides) {
 }
 
 /**
+ * Attaches each session's `getAttendanceSummary` result (lib/attendance/data.js
+ * — the same schedule-scoped summary Session Details' Overview and
+ * Attendance tab already use) as `attendanceSummary`, so Today's/All
+ * Sessions can show a real Eligible Students count (both lists) and
+ * Attendance percentage (All Sessions, completed sessions only) instead of
+ * the prior "Available in Phase 15" placeholder — reusing the existing
+ * summary function rather than resolving eligibility separately here.
+ * `session.id` is `null` for a projected occurrence; `getAttendanceSummary`
+ * already handles that safely.
+ *
+ * One call per row, run concurrently — an accepted N+1-shaped read at this
+ * product's scale (a single centre, a page of ≤10 rows), not a new
+ * eligibility implementation.
+ */
+async function withAttendanceSummaries(sessions) {
+  const summaries = await Promise.all(
+    sessions.map(async (session) => {
+      try {
+        return await getAttendanceSummary(
+          session.id,
+          session.batch_id,
+          session.schedule_id,
+          session.session_date
+        );
+      } catch (error) {
+        // One row's summary must never take down the whole list. This is
+        // reachable for an instructor in one specific, legitimate case: an
+        // admin used Flow 06 to reassign a single session to someone else.
+        // The materialized row then belongs to the other instructor and is
+        // invisible here, so this occurrence is re-projected from the
+        // schedule (still theirs) — but `can_access_session` correctly
+        // answers "no" for it, and resolve_eligible_students raises 42501.
+        // Showing the row with no counts is the honest outcome; inventing
+        // an ownership check here instead would duplicate, and weaken, the
+        // rule the database already owns.
+        console.error(
+          `[attendance] Could not summarise session ${session.schedule_id} on ${session.session_date}:`,
+          error.message
+        );
+        return null;
+      }
+    })
+  );
+
+  return sessions.map((session, index) => ({ ...session, attendanceSummary: summaries[index] }));
+}
+
+/**
  * Attendance (docs/02-ux.md's approved IA: Today's Sessions ← Default, All
  * Sessions, Session Details). Today's Sessions is the bare `/attendance`
  * route; `?view=all` switches to All Sessions — same URL-addressable
@@ -45,13 +94,17 @@ export default async function AttendancePage({ searchParams }) {
   // requireRole, but a layout does not re-run on client-side navigation
   // between sibling pages — see app/settings/layout.js for the full
   // explanation.
-  await requireRole(ROLES.ADMIN);
+  //
+  // Admin or instructor (Phase 15 Instructor Access). Role decides only
+  // whether the area opens; RLS decides what either list actually
+  // contains, so no row filtering is repeated here.
+  await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
 
   const rawParams = await searchParams;
   const today = todayInCentreTimezone();
 
   if (rawParams.view !== "all") {
-    const sessions = await listSessionsForDate(today);
+    const sessions = await withAttendanceSummaries(await listSessionsForDate(today));
 
     return (
       <>
@@ -84,11 +137,12 @@ export default async function AttendancePage({ searchParams }) {
   const status = DISPLAY_STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
 
-  const [{ sessions, total }, batchOptions, instructorOptions] = await Promise.all([
+  const [{ sessions: rawSessions, total }, batchOptions, instructorOptions] = await Promise.all([
     listSessions({ q, dateFrom, dateTo, batchId, instructorId, status, page, pageSize: PAGE_SIZE }),
     listBatchOptions(),
     listInstructorOptions(),
   ]);
+  const sessions = await withAttendanceSummaries(rawSessions);
 
   const isFiltered =
     Boolean(q) || Boolean(dateFrom) || Boolean(dateTo) || Boolean(batchId) || Boolean(instructorId) || status !== "all";
