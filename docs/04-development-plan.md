@@ -51,10 +51,11 @@ that is not in `01-product.md`, that is a defect in this document.
 | 14 | Class Sessions | ✅ Complete |
 | 15 | Attendance | ✅ Complete — Slices 1–3 (foundation, Eligible Students, Take Attendance) plus Instructor Access: migration `0014`, A1–A11 database/RLS verification (25/25 PASS), two-instructor and Admin-regression browser QA all passed |
 | 15A | Schedule assignment architecture correction | ✅ Complete — migration `0013` applied; `lib/schedules`, `lib/enrollments` and `lib/attendance` updated to the schedule-scoped eligibility rule |
-| 16 | Attendance History | ⬜ Not started |
-| 17 | Reports | ⬜ Not started |
-| 18 | Dashboard (real data) | ⬜ Not started |
-| 19 | Settings → remaining areas | ⬜ Not started |
+| 16 | Attendance History | 🟨 In progress — list, Details, Edit, Review and Confirm & Save built; **gated on Phase 16A's implementation sequence step 6 (below), not yet complete** |
+| 16A | Historical eligibility snapshot (historical-integrity correction) | 🟨 In progress — migration `0015` applied, verified, and backfilled (Aerial Yoga 2026-09-11 confirmed Eligible 2 / Present 1 / Absent 1, matching step 7's QA target); **implementation sequence step 6, the enrollment effective-date validation in `lib/enrollments/`, is not yet built** — `validateScheduleChangeDate` still only rejects a date before today, not a date with existing attendance |
+| 17 | Reports | 🟨 In progress — data layer and `report_session_facts`/`session_attendance_summaries` (migrations `0016`, `0017`) applied and verified; Student/Batch/Attendance Summary report UIs and CSV/XLSX export implemented; **not yet committed, browser QA not yet performed** |
+| 18 | Dashboard (real data) | 🟨 In progress — real Today's/Upcoming Classes and role-appropriate summary tiles implemented for both roles; **not yet committed, browser QA not yet performed** |
+| 19 | Settings → remaining areas | 🟨 In progress — Center Profile and Roles & Permissions implemented; migration `0018` written and its verification script fixed, but **not yet confirmed applied**; not yet committed, browser QA not yet performed |
 | 20 | Integration & business-rule validation | ⬜ Not started |
 | 21 | Responsive and UX/UI audit | ⬜ Not started |
 | 22 | Production / case-study readiness | ⬜ Not started |
@@ -827,6 +828,445 @@ shown to the instructor role; it does nothing harmful (RLS already scopes
 every result to their own sessions regardless of the filter value) but is
 unnecessary chrome. Hiding it is a small follow-up, not a security item.
 
+### Phase 16 — Attendance History
+
+Attendance History depends on Attendance (§4 Dependency Map) and reviews what
+Phase 15 already recorded — it introduces no new attendance data, no new
+eligibility rule, and no new persistence path. Its purpose is exactly
+`01-product.md` §9: *"Allow Admin and Instructors to review attendance while
+protecting historical information."* This section records approved decisions
+ahead of any code, the same way Phase 15's foundation slice and Phase 15A did
+before their own implementation began.
+
+**Approved wireframe references** (`docs/wireframe/Yoga Attendance.pdf`) —
+the authoritative layout source for every screen below, extracted and
+verified page-by-page before these decisions were finalized:
+
+- **p.6** — Attendance History (Instructor's own list view).
+- **p.30** — Attendance History (Admin's list view).
+- **p.31** — Attendance Details (read-only).
+- **p.32** — Edit Attendance.
+- **p.33** — Review Attendance Changes.
+- **p.34** — Attendance Details, post-save confirmation state.
+- **p.10** — Student Details' "Recent Attendance" panel and "View Full
+  Attendance History" link — the contextual entry point into Student
+  History.
+- **p.17–18** — Batch Details (Overview/Students tabs). Confirmed to carry
+  **no** attendance or history panel of any kind — the wireframe's own
+  absence of one here is what settles decision 4 below.
+
+**Approved implementation decisions**
+
+1. **Attendance History has role-specific list views, not one shared
+   screen with a hidden filter.** Admin's list (wireframe p.30) filters on
+   Date From, Date To, Batch, Instructor, Search (student name or batch),
+   and Attendance Status. Instructor's list (p.6) filters on Date Range,
+   Search, **Assigned Classes** (not Batch — an instructor has no reason to
+   filter by a batch they don't teach), and Attendance Status; it carries
+   no Instructor filter, since the list is already implicitly theirs.
+   **Admin sees all attendance history; an instructor sees only attendance
+   for sessions they are authorized to access** — the same ownership rule
+   Instructor Access already established (`can_access_session`,
+   `current_instructor_id()`, `0014_instructor_attendance_access.sql`),
+   reused here rather than reimplemented.
+2. **One history result row represents one class session**, showing that
+   session's own attendance summary (Eligible/Present/Absent/Attendance %,
+   per the wireframe's column set) — not a per-student row. A student's or
+   batch's aggregate view is produced by filtering this same row set
+   (decisions 3–4), not by a second, differently-shaped query.
+3. **Student History is not a separate page.** Student Details' existing
+   "Recent Attendance" panel and its "View Full Attendance History" link
+   (wireframe p.10) open Attendance History pre-filtered to that student —
+   the same list from decision 1, not a new screen. This matches
+   `02-ux.md`'s "Avoid Duplication" principle (*"Student attendance from
+   Student Details [...] Historical records from Attendance History"*) and
+   the wireframe's own structure: no page titled "Student History" exists
+   anywhere in the approved deck.
+4. **Batch History is not a separate page**, for the same reason: filtering
+   Attendance History by batch **is** the batch history view. Unlike
+   Student Details, Batch Details carries no contextual entry point for
+   it — confirmed by wireframe p.17–18 showing no attendance/history panel
+   at all on Batch Details' Overview tab. **No new Batch Details panel is
+   added.** A batch's history is reached only through Attendance History's
+   own Batch filter.
+5. **Attendance Details (wireframe p.31) is its own Phase 16
+   surface, distinct from the existing tabbed Session Details screen**
+   (`app/attendance/[scheduleId]/[date]/page.js`). The wireframe draws it
+   without Session Details' Overview/Eligible Students/Attendance tabs, and
+   reaches it with its own breadcrumb ("Back to Attendance History") rather
+   than Session Details' ("Back to Attendance") — two different entry
+   contexts into what is substantially the same underlying data. Attendance
+   Details reuses the existing attendance data functions
+   (`getAttendanceSummary`, `getAttendanceForSession`,
+   `listEligibleStudents` — `lib/attendance/data.js`) rather than
+   duplicating the eligibility rule or the summary computation a second
+   time; only the page/route is new, not the business logic behind it.
+6. **Attendance Details is read-only by default** and shows, per the
+   wireframe: the attendance summary, the student attendance roster
+   (Student/Phone/Attendance status), pagination matching the wireframe's
+   shape, and an "Edit Attendance" action. No attendance can be changed
+   from this view without taking that explicit action — matching §9's
+   "History is read-only by default. An explicit Edit action is used for
+   corrections."
+7. **Editing reuses Phase 15's existing correction model exactly**: Edit →
+   Review → Confirm & Save (`02-ux.md` Flow 08), the same shape
+   `attendance-panel.js`'s "Edit Attendance" already implements for Session
+   Details. **Admin may edit any session; an instructor may edit only a
+   session they are authorized to access** (`01-product.md` §9 "Editing":
+   *"Instructors can edit attendance for their own assigned sessions.
+   Admins can edit any attendance record"*) — enforced the same way
+   decision 1's list visibility is, not by a second rule.
+8. **The existing Phase 15 review UI is upgraded to match the approved
+   Phase 16 wireframe (p.33), not replaced or redesigned.** The current
+   `attendance-panel.js` `ConfirmDialog` shows only aggregate
+   Present/Absent/Unmarked counts; the wireframe additionally shows, for a
+   correction: a per-student **Current Status → New Status** table (only
+   the students whose mark actually changed), a **before/after attendance
+   comparison** (e.g. "Current: 17 Present · 1 Absent · 94.4% → After
+   Changes: 18 Present · 0 Absent · 100%"), the Confirm & Save action, and
+   the historical-integrity note ("This change updates attendance for this
+   class session only. Historical session and schedule information remain
+   unchanged.") already present in `attendance-panel.js`'s dialog copy.
+   This is a presentation upgrade to the one review dialog every Edit
+   Attendance path already shares — reached from Session Details **or**
+   from the new Attendance Details page — not a second, Phase-16-specific
+   dialog and not a change to what gets saved or how (see decision 9).
+9. **Persistence and authorization are entirely reused, not
+   reimplemented.** Every edit, from either entry point, still calls the
+   existing `saveSessionAttendance` (`lib/attendance/actions.js`), which
+   still calls the existing `save_session_attendance` database function —
+   the same atomic validate/re-resolve-eligibility/upsert/complete sequence
+   Phase 15 built, with the same admin-or-owning-instructor check enforced
+   at the database. **No ownership or authorization check is duplicated in
+   JavaScript** for Attendance History's own list or detail views; a
+   weaker client-side approximation of `can_access_session` is exactly what
+   this decision forbids.
+10. **Historical Integrity (§9, §12) is a guarantee Phase 16 verifies, not
+    one it builds.** The five listed scenarios — a student changes batch,
+    a student leaves a batch, a membership expires, a batch becomes
+    inactive, a schedule changes — are already structurally satisfied by
+    the snapshot architecture Phase 14/15 already shipped (materialized
+    `class_sessions` rows snapshot batch/instructor/time; `attendance` rows
+    are never deleted, only corrected in place). Phase 16's QA must
+    demonstrate this holds for the History list and Attendance Details
+    specifically, not assume it because the underlying tables already
+    behave this way.
+11. **Explicitly out of scope, deferred to their own later phases:** CSV/
+    Excel export and the Google Sheets export path (`01-product.md` §10 —
+    Reports, Phase 17); the Reports screens themselves (Student
+    Attendance, Batch Attendance, Attendance Summary — wireframe p.35–37,
+    which visually resemble but are not Attendance History); and the
+    Assigned Classes screen (D9, still deferred). None of these are built,
+    wired, or linked to as part of this phase.
+12. **All completed Phase 15 / 15A behavior is preserved exactly.** Take
+    Attendance, the Eligible Students tab, the Attendance Summary panel on
+    Session Details' Overview, the Today's/All Sessions list columns and
+    actions, and every RLS policy and `SECURITY DEFINER` function from
+    `0011`–`0014` are unchanged by this phase. Decision 8's review-dialog
+    upgrade touches presentation only and must not alter
+    `saveSessionAttendance`'s behavior, its authorization, or any existing
+    caller's contract.
+
+**In scope**
+
+- Admin and Instructor Attendance History list views (decision 1), reading
+  existing `attendance`/`class_sessions` data under existing RLS — no new
+  table, no new migration.
+- The Attendance Details page (decisions 5–6), reusing existing data
+  functions.
+- Wiring Student Details' existing "Recent Attendance" panel's "View Full
+  Attendance History" link to Attendance History, filtered to that student
+  (decision 3).
+- The Edit → Review → Confirm & Save correction path reached from
+  Attendance Details, and the review-dialog content upgrade (decisions
+  7–8), shared with Session Details' existing Edit Attendance entry point.
+- QA demonstrating Historical Integrity (decision 10) for the History list
+  and Attendance Details specifically.
+
+**Out of scope**
+
+- Any new Batch Details attendance panel (decision 4).
+- CSV/Excel export, Google Sheets export, and every Reports screen
+  (decision 11; `01-product.md` §10, Phase 17).
+- The Assigned Classes screen (D9).
+- Any new migration, RLS policy, or `SECURITY DEFINER` function — Phase 16
+  reads and corrects through what `0011`–`0014` already provide.
+  **Superseded by Phase 16A below**: browser QA proved that reading
+  completed-session eligibility live is itself the defect, which cannot be
+  fixed without a new table and new function bodies. The rest of this
+  bullet list still stands.
+- Any change to eligibility, the materialization boundary, or the
+  attendance completion rule — all Phase 15/15A concerns, unchanged here.
+  **Phase 16A narrows this**: *when* eligibility is resolved for an
+  already-completed session changes; the eligibility *rule* itself, the
+  materialization boundary, and the completion rule do not.
+
+### Phase 16A — Historical eligibility snapshot (historical-integrity correction)
+
+**This runs before Phase 16 can be called complete.** Phase 16's screens are
+built and working, but browser QA proved that a completed session's
+attendance summary and roster still change when a student's enrollment
+changes later — a direct violation of `01-product.md` §9 "Historical
+Integrity" and §12 ("Past attendance must not be silently changed by …
+student batch changes or leaving a batch"). Shipping Attendance History on
+top of that would mean shipping a history screen that rewrites history.
+
+**The defect**
+
+`computeAttendanceSummary(eligibleStudents.length, marks)` combines two
+different time bases: `marks` (`getAttendanceForSession`) is a stored
+historical fact, while `eligibleStudents` (`resolve_eligible_students`) is
+recomputed live against mutable enrollment/assignment/membership/status
+rows.
+
+Motivating case, reproduced in QA (no application code was changed to
+produce it):
+
+- Aerial Yoga, 2026-09-11, instructor Subha Kannan — recorded Eligible 2,
+  Present 1, Absent 1, 50%. Venkatesh was one of the two eligible students
+  and was recorded **Absent**.
+- Venkatesh was then moved to Hatha Yoga Intermediate with the schedule
+  change effective 2026-09-11. `updateEnrollment`
+  (`lib/enrollments/actions.js`) correctly closed the old assignment the
+  day before, at 2026-09-10.
+- The same historical session then showed Eligible 1, Present 1, Absent 1,
+  **100%** — two stored marks against one "eligible" student, an
+  arithmetically impossible state, with Venkatesh's recorded Absent mark no
+  longer rendered on any roster at all (every roster iterates the eligible
+  list and looks marks up by student id).
+
+Five independent predicates in `resolve_eligible_students` leak live state
+into a historical answer, and each maps onto one of the five scenarios
+`01-product.md` §9 requires to hold:
+
+1. `es.effective_end_date >= p_session_date` — assignment closed later
+   (schedule changes). **This is the case above.**
+2. `be.effective_end_date >= p_session_date` — enrollment end moved back
+   (student changes batch).
+3. `be.status = 'active'` — **not date-scoped**: deactivating an enrollment
+   removes the student from *every* past session (student leaves a batch).
+4. `s.status = 'active'` — **not date-scoped**: deactivating a student does
+   the same (D1 intends this for *new* eligibility only).
+5. `m.start_date`/`m.end_date` — membership rows are freely editable
+   (membership expires).
+
+A fourth consequence, beyond the wrong numbers and the vanishing roster
+row: `save_session_attendance` re-validates submitted marks against live
+eligibility and raises `22023` for anyone no longer eligible, so an
+affected session's attendance can no longer be corrected at all from
+Session Details.
+
+This is **systemic and predates Phase 16** — Phase 15 Slice 3 introduced
+the live `eligibleCount`; Phase 16 only made it visible.
+
+**Approved architecture — A2: snapshot the eligible student set**
+
+- A full **eligible-student snapshot per class session**, not merely an
+  `eligible_count`. The count alone would fix the arithmetic while leaving
+  the roster wrong and leaving corrections blocked.
+- The snapshot preserves the exact set used when attendance was first
+  saved. Later enrollment, membership, batch, student-status or schedule
+  changes must not alter it.
+- **An empty eligible set is valid and must be distinguishable from "no
+  snapshot"** (zero eligible students is legal — D4/D10). A child table
+  alone cannot express that difference, so the presence of a snapshot is
+  recorded on the session itself, separately from its rows.
+- The snapshot-versus-live decision belongs **inside
+  `resolve_eligible_students`**, which already receives
+  `(batch_id, schedule_id, session_date)` and can resolve the session
+  itself from `(schedule_id, session_date)`. Prefer the snapshot when one
+  exists; otherwise resolve live exactly as today. Every existing caller —
+  `listEligibleStudents`, `listEligibleStudentIds`, `getAttendanceSummary`,
+  every Phase 15 and Phase 16 screen, and `save_session_attendance`'s own
+  re-validation — then becomes historically correct with **no change to
+  any existing read path**, and the `22023` correction defect resolves
+  itself. (Phase 16A does change one application file overall — the
+  enrollment effective-date validation below — but nothing that reads
+  eligibility needs touching.)
+- The branch keys off **snapshot existence, not `status = 'completed'`**: a
+  completed session from before the backfill has no snapshot and must still
+  fall back to live resolution rather than reporting an empty set.
+
+**Snapshot timing**
+
+- Created on the **first successful attendance save**, inside
+  `save_session_attendance`, in the same transaction as the attendance rows
+  and the `status = 'completed'` flip.
+- **Not at materialization.** Flow 06 and Flow 07 materialize sessions that
+  may be days in the future, where eligibility legitimately still changes
+  before the class runs; freezing then would record the wrong set. The
+  moment attendance is first recorded is the moment the eligible set
+  becomes a historical fact — and it is already the exact set the function
+  used to validate those marks.
+- Ordering falls out correctly: a first save happens while the session is
+  still `scheduled` with no snapshot, so eligibility resolves live and the
+  snapshot is written from that result; a correction happens with a
+  snapshot present, so it validates against the frozen set.
+- **Corrections never recalculate live eligibility**, and never rewrite the
+  snapshot — it is write-once.
+
+**Provenance**
+
+Each snapshot records how it was obtained, so an inferred set is never
+later mistaken for a proven one:
+
+- `save` — captured during the original attendance save. Exact.
+- `backfill_consistent` — reconstructed later, where current evidence is
+  consistent with every recorded mark.
+- `backfill_drift` — reconstructed later, where current state has already
+  drifted; preserves the recorded attendance evidence plus the
+  best-supported eligibility.
+
+**Historical eligibility is never invented where evidence is insufficient.**
+
+**What the database can actually prove**
+
+Audited before choosing the backfill strategy:
+
+- **Attendance rows are the only proof.** A mark exists ⟹ that student
+  passed eligibility at save time, because `save_session_attendance`
+  rejects ineligible students outright.
+- Enrollment, assignment and membership rows are **mutated in place** with
+  no prior values retained, and enrollment effective dates have no
+  back-dating guard, so their current values cannot be read as historical.
+- **No audit or history table exists** anywhere in the schema.
+- **`updated_at` is not maintained.** There is no `set_updated_at` trigger
+  on any table and no application code sets it on update; the only place it
+  is ever written is `save_session_attendance`'s upsert on `attendance`. It
+  therefore cannot date any mutation outside that one table.
+- Schedule *versions* are retained and `class_sessions.schedule_id` pins
+  the exact one, and `class_sessions` freezes batch/instructor/date/time —
+  but neither says which students were eligible.
+
+**Existing-session backfill**
+
+1. **Dry run first** — classify every completed session and report the
+   tier counts, writing nothing.
+2. **Consistent sessions** (every student with a mark is still explained by
+   current records) — backfill as `backfill_consistent`.
+3. **Drift sessions** (a student has a mark but is no longer live-eligible
+   — provably mutated after the fact) — backfill as `backfill_drift` using
+   the approved evidence strategy: recorded attendance evidence plus the
+   best-supported current eligibility, **never less than the set of
+   students who already have a mark**.
+4. **Sessions with zero or no reliable evidence** — including sessions
+   completed with no marks at all (legal under D10) — **remain
+   unsnapshotted** and continue to fall back to live resolution. Nothing is
+   fabricated for them.
+5. **Post-condition, asserted for every completed session: the snapshot
+   never excludes a student who has an existing attendance mark.** This
+   assertion alone would have caught the original defect.
+6. The backfill runs transactionally and is one-way; the dry-run report is
+   reviewed before it is applied.
+
+Permanently unrecoverable, and accepted as such: students who were eligible
+but left **unmarked** and have since dropped out of live eligibility. No row,
+no stored count, no trace — `save_session_attendance` returns
+`eligible_count` to its caller but has never stored it.
+
+**Enrollment effective-date business rule**
+
+Because enrollment effective dates are **date-only**, a change effective on
+date D and a session already completed on date D cannot be ordered relative
+to one another. The Venkatesh case is exactly that: a same-day change, made
+after that morning's session had already been completed — and therefore not
+caught by the existing back-dating guard in `validateScheduleChangeDate`,
+which only rejects dates before today.
+
+Approved rule — **in scope for Phase 16A**, as an application-layer
+validation step (step 6 of the sequence below):
+
+- Enrollment and batch effective dates **remain date-only**.
+- If attendance already exists for that student on the proposed effective
+  date, the enrollment/batch change is **blocked**.
+- The user is asked to **choose a later effective date**.
+- **Date-time effective dates are explicitly not introduced.** Adding a
+  time component would resolve the ordering precisely but would change the
+  enrollment model, every enrollment form, and the eligibility rule's date
+  comparisons throughout. A deliberate business simplification for this
+  product: the centre does not need intra-day enrollment precision.
+
+This validation protects against the specific historical conflict the
+Venkatesh 2026-09-11 scenario exposed — a same-day change landing on a date
+whose session was already completed. **It does not replace the A2
+historical eligibility snapshot**, and neither substitutes for the other:
+the validation stops new same-day conflicts from being created, while the
+snapshot is what makes already-recorded history immutable regardless of any
+later change. Phase 16A ships both.
+
+**Instructor changes need no equivalent restriction**
+
+`class_sessions` already snapshots `instructor_id` at materialization
+(§7A), so a later instructor assignment change cannot alter a historical
+session's instructor, its attendance, or its eligible set. Flow 06's
+per-session instructor reassignment writes that column directly and is
+likewise historical. No new rule is required here.
+
+**Scope decisions**
+
+- Phase 16A delivers **two** things, not one: the A2 eligibility snapshot
+  (database) **and** the enrollment effective-date validation
+  (application layer, `lib/enrollments/`). The validation is **not** a
+  separate phase, a follow-up, or optional — it is step 6 of the sequence
+  below and Phase 16 is not complete without it.
+- **No admin "re-snapshot" escape hatch now.** Once snapshotted, a
+  session's eligible set is immutable — which is the point. The
+  operational question of whether an admin ever legitimately needs to add a
+  student to a past session's roster is recorded in §7 as an open item, not
+  answered by inventing a mechanism here.
+- Phase 16A is **not** an opportunity to expand Phase 16. No Reports, no
+  exports, no Assigned Classes, no Student/Batch contextual entry links, no
+  UI redesign. The enrollment validation above is the *only* application
+  code Phase 16A changes.
+
+**Implementation sequence**
+
+1. Documentation (this change).
+2. Migration `0015` — snapshot table, snapshot-presence marker, indexes,
+   grants and RLS (mirroring `attendance`: no instructor write policy,
+   reads flowing through the existing `SECURITY DEFINER` path so instructors
+   still never read `students` directly), plus the two function bodies.
+3. Verification script, in the style of
+   `supabase/verification/verify_0014_instructor_access.sql`: instructor
+   isolation, admin unchanged, snapshot preferred when present, live
+   fallback when absent, write-once, and corrections validating against the
+   snapshot.
+4. Backfill dry run, reviewed.
+5. Approved backfill, with the post-condition assertion above.
+6. **Enrollment effective-date validation** (application layer,
+   `lib/enrollments/` — validation and the enrollment/batch change action
+   that calls it). Blocks a batch/enrollment change from taking effect on a
+   date where that student already has recorded attendance, and asks for a
+   later effective date. Date-only throughout; no date-time support
+   introduced. Sequenced here deliberately: after the snapshot exists, so
+   the two protections are QA'd together in steps 7–8 rather than the
+   validation masking whether the snapshot itself holds.
+7. Historical-integrity QA — re-verify the Aerial Yoga 2026-09-11 session
+   reports Eligible 2, Present 1, Absent 1, 50% with Venkatesh visible, and
+   that it stays correct across all five §9 scenarios. Separately verify
+   that a same-day enrollment change onto a date with existing attendance
+   is now refused with a clear message, and that a later effective date is
+   accepted.
+8. Phase 15 / Phase 16 regression QA, both roles; confirm the snapshot work
+   itself required no application-code change beyond step 6's enrollment
+   validation.
+9. Phase 16 complete.
+10. Phase 17 — Reports.
+
+**Status of this sequence** — steps 1–5 are done: migration `0015` is
+applied, its structural and behavioural verification both passed, the
+backfill dry run was reviewed, and the approved backfill ran and was
+verified (Aerial Yoga 2026-09-11 confirmed Eligible 2 / Present 1 /
+Absent 1, matching step 7's QA target below). **Step 6 — the enrollment
+effective-date validation — has not been implemented**:
+`validateScheduleChangeDate` (`lib/enrollments/validation.js`) still only
+rejects a date before today; it does not check for existing attendance on
+the incoming effective date. Steps 7–9 therefore remain open, and Phase 16
+cannot be marked complete until step 6 closes the same gap that produced
+the original defect. Work beyond this sequence (Reports data layer and UI,
+Dashboard, Settings) proceeded in parallel and is tracked in the status
+table above — none of it depends on step 6.
+
 ### Phase 20 — Integration & business-rule validation
 End-to-end verification of the historical-integrity rules in `01-product.md`
 §12 — particularly that membership expiry/renewal, batch changes, student or
@@ -877,6 +1317,8 @@ schedules · class_sessions · attendance · center_profile
 | **Batch Details → Students tab** | Still shows the "not available yet" placeholder written before Phase 11, although Students and Batch Enrollment shipped in phase 11. Tracked as a Phase 11 follow-up; explicitly **not** part of Phase 13 (see §5). Needs scheduling into its own small phase or a follow-up commit. Once Phase 15A lands, this tab should also show each student's assigned schedules. |
 | **Backfill scope (Phase 15A)** | The `0013` backfill is specified for existing **active** enrollments. Whether inactive/historical enrollments should also receive assignments — and if so, dated to what — is undecided. Recommended: active enrollments only, since historical eligibility for past sessions is only consulted through screens that would show the same students either way. |
 | **Backfill date vs. schedule age (Phase 15A)** | The backfill dates each assignment from the enrollment's own start date, which can predate a schedule that was created later. Harmless in practice (eligibility also requires the schedule to have produced a session on that date) but it does store an assignment period wider than the schedule ever existed for. Alternative: date each assignment from the later of the enrollment start and the schedule series' first effective date. |
+| **Re-snapshot escape hatch (Phase 16A)** | Once a session's eligible set is snapshotted it is immutable, which is the intended behaviour. Whether an admin ever legitimately needs to add a student to an already-completed session's roster — and if so, through what audited mechanism — is **undecided and deliberately not built** in Phase 16A. Recorded here rather than answered by inventing a mechanism. |
+| **Eligible-but-unmarked students lost before Phase 16A (Phase 16A)** | For sessions completed before the snapshot existed, a student who was eligible but left unmarked, and has since dropped out of live eligibility, cannot be recovered — no attendance row, no stored `eligible_count`, no audit trail. Those sessions will under-report Eligible by that number. Accepted as unrecoverable; no action proposed. |
 | **Enforcing "at least one schedule assignment"** | Recorded as a product rule (`01-product.md` §4). Not expressible as a simple database constraint — the enrollment must exist before its assignments can reference it — so it is planned as form-level validation. Confirm that application-level enforcement is acceptable rather than a deferred constraint or trigger. |
 
 The AppShell structural relationship between Sidebar and Header previously
