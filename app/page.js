@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { Calendar } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import Container from "@/components/layout/Container";
-import PageHeader from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireUser, ROLES } from "@/lib/auth/dal";
@@ -236,15 +236,34 @@ export default async function Home() {
   return (
     <AppShell role={user.role} user={user}>
       <Container>
-        <PageHeader
-          title={greeting(user.name)}
-          description={
-            isAdmin
-              ? "Here's your center overview for today."
-              : "Here's your schedule and session overview for today."
-          }
-          actions={<p className="text-body font-medium text-text-primary">{formatHeadingDate(today)}</p>}
-        />
+        {/*
+          Dashboard-local header, not the shared PageHeader: the greeting
+          needs a slightly different visual rhythm (tighter title/subtitle
+          coupling, a subtle icon+date treatment, more breathing room before
+          the KPI row) than PageHeader's one-size-fits-all defaults, and
+          PageHeader is used by every other page in the app — changing it
+          here would be a global typography change, not a Dashboard one.
+          Same responsive recipe PageHeader itself uses (stacks on mobile,
+          row from sm: up, date never causes horizontal overflow), and no
+          card/border, matching the approved reference.
+        */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-page-title font-semibold text-text-primary">
+              {greeting(user.name)} <span aria-hidden="true">👋</span>
+            </h1>
+            <p className="text-body mt-1.5 text-text-secondary">
+              {isAdmin
+                ? "Here's your center overview for today."
+                : "Here's your schedule and session overview for today."}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5 text-text-secondary">
+            <Calendar className="size-4 shrink-0" aria-hidden="true" />
+            <p className="text-body font-medium">{formatHeadingDate(today)}</p>
+          </div>
+        </div>
 
         <Suspense fallback={<DashboardSkeleton isAdmin={isAdmin} />}>
           <DashboardContent isAdmin={isAdmin} today={today} />
