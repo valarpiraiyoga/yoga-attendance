@@ -27,8 +27,8 @@ export default function MobileMenu({ role }) {
         <Menu className="size-5" aria-hidden="true" />
       </SheetTrigger>
 
-      <SheetContent side="left" className="flex w-72 flex-col p-0">
-        <SheetHeader className="border-b border-border">
+      <SheetContent side="left" className="sidebar-surface flex w-72 flex-col p-0">
+        <SheetHeader className="border-b border-border/70">
           <SheetTitle className="flex flex-col items-start text-left leading-tight">
             <span className="text-sm font-semibold text-text-primary">Yoga Center</span>
             <span className="text-xs font-normal text-text-secondary">Attendance System</span>
@@ -41,10 +41,10 @@ export default function MobileMenu({ role }) {
         <div className="flex flex-1 flex-col justify-between overflow-y-auto px-3 py-4">
           <NavList role={role} onNavigate={() => setOpen(false)} />
 
-          <form action={signOut}>
+          <form action={signOut} className="border-t border-border/60 pt-3">
             <button
               type="submit"
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium text-text-secondary hover:bg-background hover:text-text-primary"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-background hover:text-text-primary"
             >
               <LogOut className="size-4 shrink-0" aria-hidden="true" />
               Logout

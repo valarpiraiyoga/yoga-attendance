@@ -31,6 +31,33 @@
   --info: #3b82f6;
   --neutral: #98a2b3;
 
+  /*
+    Sidebar-only gradient stops, derived from --brand rather than a new hex
+    — `color-mix` against `transparent` keeps this a pure alpha tint of the
+    existing brand hue, so it stays in sync if --brand is ever retuned.
+    Mixed toward transparent (not --surface) so it composes correctly over
+    whichever solid background-color the consuming component already has
+    (Sidebar's bg-background, the Sheet's bg-popover) rather than assuming
+    one. Consumed only by the `.sidebar-surface` class below — nothing else
+    reads these, so this does not affect any other component's background.
+
+    03-visual-tokens.md lists "Decorative gradients" under Avoid; per
+    CLAUDE.md's own source-of-truth priority, explicit user instruction
+    (#1) outranks that doc (#5), and this gradient was requested explicitly
+    and in detail. Scoped to the sidebar only, deliberately not promoted
+    into the shared palette above.
+
+    Values tuned once already: the original 6% / 1.5% pair, reviewed live,
+    read as essentially flat white — too faint to register as an
+    intentional gradient rather than a rendering artifact. Raised to 14% /
+    5%, still a pale wash (14% brand composited over white is nowhere near
+    a saturated panel — bg-brand at full 100% opacity, used only by the
+    active nav item, remains the unambiguous strong color in the sidebar)
+    but now clearly perceptible as brand-tinted at a glance.
+  */
+  --sidebar-tint-strong: color-mix(in srgb, var(--brand) 14%, transparent);
+  --sidebar-tint-soft: color-mix(in srgb, var(--brand) 5%, transparent);
+
   color-scheme: light;
 
   /*
@@ -127,6 +154,34 @@
 body {
   background: var(--color-background);
   color: var(--color-text-primary);
+}
+
+/*
+  Shared sidebar background — one definition, applied by both
+  components/global/Sidebar.js (desktop) and components/global/MobileMenu.js
+  (mobile Sheet) rather than each duplicating the gradient. Sets only
+  background-image, so it layers cleanly over whichever solid
+  background-color each consumer already has (bg-background / bg-popover)
+  without needing to override or remove that class.
+
+  A light, top-to-bottom tint of the existing brand color. The fade now
+  runs the full height (transparent only at 100%, not part-way down) so
+  the sidebar keeps a faint brand cast all the way to the Logout row —
+  visibly distinct from the white content area at any scroll position,
+  not just near the header — while staying a pale wash throughout: even
+  its strongest stop is far lighter than bg-brand at full opacity, which
+  only the active nav item uses. Text/icons are unaffected: every nav
+  label, icon and the active item's own bg-brand pill keep reading
+  against the existing --text-primary/--text-secondary/--surface tokens
+  exactly as before.
+*/
+.sidebar-surface {
+  background-image: linear-gradient(
+    180deg,
+    var(--sidebar-tint-strong) 0%,
+    var(--sidebar-tint-soft) 55%,
+    transparent 100%
+  );
 }
 
 /* Accessibility foundation */

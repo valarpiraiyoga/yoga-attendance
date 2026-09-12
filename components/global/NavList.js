@@ -31,10 +31,10 @@ export default function NavList({ role, onNavigate, className }) {
             onClick={onNavigate}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
               isActive
-                ? "bg-brand text-surface"
-                : "text-text-secondary hover:bg-surface hover:text-text-primary"
+                ? "bg-brand text-surface shadow-sm"
+                : "text-text-secondary hover:bg-surface hover:text-text-primary hover:shadow-xs"
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden="true" />
