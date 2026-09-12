@@ -16,7 +16,13 @@ export default function NavList({ role, onNavigate, className }) {
   return (
     <nav aria-label="Primary" className={cn("flex flex-col gap-1", className)}>
       {items.map(({ label, href, icon: Icon }) => {
-        const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+        // Segment-aware match: `pathname === href` covers the exact route
+        // (including "/"), and `startsWith(`${href}/`)` only matches a real
+        // nested route (e.g. "/students/123" under "/students"). A bare
+        // `pathname.startsWith(href)` would also match "/attendance-history"
+        // against the "/attendance" item, since it is a literal string
+        // prefix of it — not a path segment of it.
+        const isActive = pathname === href || pathname.startsWith(`${href}/`);
 
         return (
           <Link

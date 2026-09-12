@@ -16,15 +16,12 @@ import {
  * IA in docs/02-ux.md for both roles — filtering by role preserves
  * each role's exact approved order without needing separate lists.
  *
- * "Assigned Classes" and "Attendance History" are approved instructor IA
- * (02-ux.md's Role-Based IA), but neither screen is built yet — D9 defers a
- * dedicated Assigned Classes screen, and Attendance History is a later
- * phase. `roles` on each is narrowed to admin-only-or-neither for now
- * rather than left pointing an instructor at a 404 (Phase 15 Instructor
- * Access, Step 5): "Assigned Classes" has no admin equivalent, so its list
- * becomes empty and it renders for no one; "Attendance History" keeps its
- * existing `admin` entry untouched; and either resolves to just adding
- * `"instructor"` back once its screen exists.
+ * "Assigned Classes" is approved instructor IA (02-ux.md's Role-Based IA)
+ * but has no screen yet — D9 defers a dedicated Assigned Classes screen, so
+ * `roles` stays empty rather than pointing an instructor at a 404 (Phase 15
+ * Instructor Access, Step 5): it has no admin equivalent, so its list
+ * becomes empty and it renders for no one. "Attendance History" now has a
+ * real screen (Phase 16) open to both roles.
  */
 export const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "instructor"] },
@@ -34,7 +31,7 @@ export const NAV_ITEMS = [
   { label: "Batches", href: "/batches", icon: Layers, roles: ["admin"] },
   { label: "Schedule", href: "/schedule", icon: Calendar, roles: ["admin"] },
   { label: "Attendance", href: "/attendance", icon: CircleCheck, roles: ["admin", "instructor"] },
-  { label: "Attendance History", href: "/attendance-history", icon: History, roles: ["admin"] },
+  { label: "Attendance History", href: "/attendance-history", icon: History, roles: ["admin", "instructor"] },
   { label: "Reports", href: "/reports", icon: BarChart3, roles: ["admin"] },
   { label: "Settings", href: "/settings", icon: Settings, roles: ["admin"] },
 ];
