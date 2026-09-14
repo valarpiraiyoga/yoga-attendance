@@ -38,19 +38,19 @@ export default function MobileMenu({ role }) {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex flex-1 flex-col justify-between overflow-y-auto px-3 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
           <NavList role={role} onNavigate={() => setOpen(false)} />
+        </div>
 
-          <form action={signOut} className="border-t border-border/60 pt-3">
+        <form action={signOut} className="shrink-0 border-t border-border/60 px-3 py-3">
             <button
               type="submit"
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-background hover:text-text-primary"
             >
               <LogOut className="size-4 shrink-0" aria-hidden="true" />
               Logout
-            </button>
-          </form>
-        </div>
+          </button>
+        </form>
       </SheetContent>
     </Sheet>
   );

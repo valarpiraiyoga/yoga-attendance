@@ -17,12 +17,12 @@ import Sidebar from "@/components/global/Sidebar";
  */
 export default function AppShell({ role, user, children }) {
   return (
-    <div className="flex flex-1 bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       <Sidebar role={role} />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Header role={role} user={user} />
-        <main className="flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
           {children}
         </main>
       </div>
