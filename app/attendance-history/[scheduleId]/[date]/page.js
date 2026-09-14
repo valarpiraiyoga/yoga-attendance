@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, ClipboardCheck, Clock, Layers, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireRole, ROLES } from "@/lib/auth/dal";
@@ -19,87 +19,66 @@ function formatTime(value) {
   return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
 }
 
-function formatDate(value) {
+function formatDate(value, options = {}) {
   if (!value) return "—";
   return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    weekday: "long",
+    weekday: "short",
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
     timeZone: "UTC",
+    ...options,
   });
 }
 
+function MetricTile({ icon: Icon, value, label, tone }) {
+  const tones = {
+    warning: "border-warning/20 bg-warning/10 text-warning",
+    info: "border-info/20 bg-info/10 text-info",
+    success: "border-success/20 bg-success/10 text-success",
+    danger: "border-danger/20 bg-danger/10 text-danger",
+    brand: "border-brand/20 bg-brand/10 text-brand",
+  };
+
+  return (
+    <div className={`flex min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2.5 ${tones[tone] ?? tones.brand}`}>
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface/80 shadow-xs">
+        <Icon className="size-3.5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[10px] leading-[14px] font-medium tracking-wide text-text-secondary uppercase">
+          {label}
+        </p>
+        <p className="truncate text-body font-semibold tracking-tight text-text-primary">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function SummaryTile({ label, value, tone }) {
+  const tones = {
+    brand: "border-brand/20 bg-brand/10",
+    success: "border-success/20 bg-success/10",
+    danger: "border-danger/20 bg-danger/10",
+    warning: "border-warning/20 bg-warning/10",
+    info: "border-info/20 bg-info/10",
+  };
+
+  return (
+    <div className={`rounded-xl border px-3 py-2.5 ${tones[tone] ?? tones.brand}`}>
+      <p className="text-[10px] leading-[14px] font-medium tracking-wide text-text-secondary uppercase">
+        {label}
+      </p>
+      <p className="mt-0.5 text-body font-semibold tracking-tight text-text-primary">{value}</p>
+    </div>
+  );
+}
+
 /**
- * Attendance Details (Phase 16; approved wireframe p.31), addressed by
- * `(scheduleId, date)` — same reasoning as Session Details
- * (`app/attendance/[scheduleId]/[date]/page.js`): a class session has no
- * product-facing identifier (`01-product.md` §7A), so schedule + date is
- * the only address that works.
- *
- * Deliberately its own, flatter page — not the tabbed Session Details
- * screen reused with a different breadcrumb. The wireframe draws it
- * without Overview/Eligible Students/Attendance tabs, and it is reached
- * from Attendance History (`Back to Attendance History`), a different
- * entry context than Session Details' own (`Back to Attendance`). It
- * reuses Session Details' *visual* language (the same Session
- * Information / Attendance Summary card pattern from
- * `session-details-tabs.js`) without importing that component, since this
- * page has no tabs to share it with.
- *
- * Attendance Details only makes sense for a session whose attendance has
- * actually been recorded — `session.status !== "completed"` 404s, the same
- * way an out-of-range date already does. This is a product-shape guard
- * (what this page is *for*), not a security check: `listAttendanceHistory`
- * (lib/attendance-history/data.js) never links here for anything but a
- * completed session, and a direct URL to a materialized-but-not-completed
- * or purely projected occurrence has nothing to show here anyway.
- *
- * Authorization is entirely reused, not reimplemented. `getSessionOccurrence`
- * reads `class_sessions`/`schedules` under the same RLS Session Details
- * already relies on (`class_sessions_select_instructor`,
- * `schedules_select_instructor`, `0014_instructor_attendance_access.sql`):
- * another instructor's completed session simply resolves to `null` (or, in
- * the one case it doesn't, is never `completed`), and this page 404s —
- * indistinguishable from a session that does not exist. `listEligibleStudents`
- * and `getAttendanceForSession` are the same two functions Session Details'
- * Attendance tab already calls, under the same `resolve_eligible_students`/
- * `attendance` RLS. No ownership check is added here in JavaScript.
- *
- * The summary (Eligible/Present/Absent/Attendance %) is derived locally
- * with `computeAttendanceSummary` from the eligible list and marks this
- * page already fetched, rather than a second call to `getAttendanceSummary`
- * (lib/attendance/data.js) — that function would only re-fetch the same
- * two things again internally. Same numbers, one fewer round trip.
- *
- * "Edit Attendance" always renders once this page has loaded at all: an
- * admin and an authorized instructor are the only two ways to reach a
- * completed session's Details, and editing follows the exact same
- * ownership rule viewing already enforced — there is nothing further to
- * branch on in JavaScript. It links to the planned Edit Attendance route
- * (`/attendance-history/[scheduleId]/[date]/edit`), not built yet.
- *
- * The post-save success banner (approved wireframe p.34) reuses the exact
- * `?success=` query-param convention Session Details' own Edit This
- * Session flow already established
- * (`app/attendance/[scheduleId]/[date]/page.js`'s `SUCCESS_MESSAGES`) —
- * not a new mechanism. `review-attendance-changes.js`'s Confirm & Save
- * appends `?success=updated&changes=N` only on its own successful
- * `saveSessionAttendance` call before navigating here, so the banner is
- * pure UI state driven by how this page was *reached*, never by anything
- * this page re-derives, checks, or trusts for authorization —
- * `sessionStorage` plays no part in it. A direct visit, a link from
- * History, a Cancel from Edit, or a failed save (Review stays put and
- * shows its own error instead of navigating away) all reach this page
- * with no such param and render no banner. The message itself only
- * confirms an attendance count changed — it says nothing about, and must
- * not be read as implying anything about, session/schedule/membership/
- * batch history or student relationships, none of which this flow ever
- * touches.
+ * Attendance Details — flatter page (no tabs), visual sibling of Session
+ * Details hero + summary + roster. Behaviour unchanged.
  */
 export default async function AttendanceDetailsPage({ params, searchParams }) {
-  // Authorization boundary — see app/attendance-history/layout.js for why
-  // this must be repeated here rather than relying on the layout alone.
   await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
 
   const { scheduleId, date } = await params;
@@ -133,98 +112,94 @@ export default async function AttendanceDetailsPage({ params, searchParams }) {
         }`
       : null;
 
+  const batchName = session.batches?.name ?? "Session";
+  const batchCode = session.batches?.code || "—";
+  const timeLabel = `${formatTime(session.start_time)} – ${formatTime(session.end_time)}`;
+  const dateLabel = formatDate(session.session_date);
+  const instructorName = session.instructors?.full_name ?? "—";
+
   return (
-    <div>
-      <Link
-        href="/attendance-history"
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Attendance History
-      </Link>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
+        <Link
+          href="/attendance-history"
+          className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Back to Attendance History
+        </Link>
 
-      <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-page-title font-semibold text-text-primary">Attendance Details</h1>
-            <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS.completed}>{DISPLAY_STATUS_LABELS.completed}</Badge>
+        <div className="overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-info/10 via-surface to-brand/10 shadow-xs">
+          <section className="relative p-4 sm:p-5">
+            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-info/40 bg-info/10 text-small font-semibold text-info sm:size-[4.25rem]">
+                  {batchCode}
+                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-page-title font-semibold break-words text-brand">{batchName}</h1>
+                    <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS.completed} className="px-1.5 py-0">
+                      <span className="text-[10px] leading-[14px] font-medium">
+                        {DISPLAY_STATUS_LABELS.completed}
+                      </span>
+                    </Badge>
+                  </div>
+                  <p className="text-small mt-1 text-text-secondary">
+                    {dateLabel} · {timeLabel}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-brand/30 bg-surface/80 text-brand hover:bg-brand/5 hover:text-brand"
+                render={<Link href={`/attendance-history/${scheduleId}/${date}/edit`} />}
+                nativeButton={false}
+              >
+                Edit Attendance
+                <ArrowRight className="size-3.5" aria-hidden="true" />
+              </Button>
+            </div>
+          </section>
+
+          <div className="grid grid-cols-2 gap-2 border-t border-border/50 bg-surface/50 px-3 py-2.5 sm:gap-2.5 sm:px-4 sm:py-3 lg:grid-cols-4">
+            <MetricTile icon={Calendar} value={dateLabel} label="Date" tone="info" />
+            <MetricTile icon={Clock} value={timeLabel} label="Time" tone="warning" />
+            <MetricTile icon={UserRound} value={instructorName} label="Instructor" tone="brand" />
+            <MetricTile icon={Layers} value={DISPLAY_STATUS_LABELS.completed} label="Status" tone="success" />
           </div>
-          <p className="text-body mt-1 text-text-secondary">
-            {formatTime(session.start_time)} – {formatTime(session.end_time)} · {session.instructors?.full_name ?? "—"}
-          </p>
-          <p className="text-body text-text-secondary">
-            {session.batches?.name ?? "—"} {session.batches?.code ? `(${session.batches.code})` : ""} ·{" "}
-            {formatDate(session.session_date)}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-start gap-3">
-          <Button render={<Link href={`/attendance-history/${scheduleId}/${date}/edit`} />} nativeButton={false}>
-            Edit Attendance
-          </Button>
         </div>
       </div>
 
       {message ? (
         <div
           role="status"
-          className="mt-4 rounded-input border border-success/30 bg-success/5 px-3 py-2 text-body text-success"
+          className="rounded-input border border-success/30 bg-success/5 px-3 py-2 text-body text-success"
         >
           {message}
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
-          <h2 className="text-section-title font-semibold text-text-primary">Session Information</h2>
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
-            <div>
-              <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Batch</dt>
-              <dd className="text-body text-text-primary">{session.batches?.name ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Instructor</dt>
-              <dd className="text-body text-text-primary">{session.instructors?.full_name ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Date</dt>
-              <dd className="text-body text-text-primary">{formatDate(session.session_date)}</dd>
-            </div>
-            <div>
-              <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Time</dt>
-              <dd className="text-body text-text-primary">
-                {formatTime(session.start_time)} – {formatTime(session.end_time)}
-              </dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
-          <h2 className="text-section-title font-semibold text-text-primary">Attendance Summary</h2>
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
-            <div>
-              <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Eligible</dt>
-              <dd className="text-body text-text-primary">{summary.eligibleCount}</dd>
-            </div>
-            <div>
-              <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Present</dt>
-              <dd className="text-body text-text-primary">{summary.presentCount}</dd>
-            </div>
-            <div>
-              <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Absent</dt>
-              <dd className="text-body text-text-primary">{summary.absentCount}</dd>
-            </div>
-            <div className="col-span-2">
-              <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Attendance</dt>
-              <dd className="text-body text-text-primary">{summary.percentage}%</dd>
-            </div>
-          </dl>
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
+        <h2 className="mb-3 flex items-center gap-2 text-body font-semibold text-text-primary">
+          <ClipboardCheck className="size-4 text-text-secondary" aria-hidden="true" />
+          Attendance Summary
+        </h2>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <SummaryTile label="Eligible" value={summary.eligibleCount} tone="info" />
+          <SummaryTile label="Present" value={summary.presentCount} tone="success" />
+          <SummaryTile label="Absent" value={summary.absentCount} tone="danger" />
+          <SummaryTile label="Attendance" value={`${summary.percentage}%`} tone="brand" />
         </div>
       </div>
 
-      <div className="mt-6">
-        <h2 className="text-section-title font-semibold text-text-primary">Attendance</h2>
-        <p className="text-body mt-1 mb-4 text-text-secondary">Recorded attendance for this class session.</p>
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
+        <h2 className="text-body font-semibold text-text-primary">Attendance Roster</h2>
+        <p className="text-small mt-1 mb-4 text-text-secondary">
+          Recorded attendance for this class session.
+        </p>
         <AttendanceDetailsRoster students={eligibleStudents} marksByStudentId={marksByStudentId} />
       </div>
     </div>

@@ -3,25 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import DataTableShell from "@/components/ui/data-table-shell";
 import { Button } from "@/components/ui/button";
 import { validateAttendanceMarks } from "@/lib/attendance/validation";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
 
-// The sessionStorage key a not-yet-built Review Attendance Changes page
-// (wireframe p.33) will read from, namespaced per session so editing two
-// different sessions in the same browser tab (e.g. two tabs) never
-// collides. Exported so that later page can import the exact same key
-// rather than re-deriving it.
 export function pendingReviewStorageKey(scheduleId, date) {
   return `attendance-history:pending-review:${scheduleId}:${date}`;
 }
@@ -45,35 +32,8 @@ function marksToMap(marks) {
 }
 
 /**
- * Edit Attendance's roster and Cancel/Review Changes actions (Phase 16;
- * approved wireframe p.32). Read-then-correct, not a fresh Take Attendance
- * form: `initialMarks` is this session's actual saved attendance
- * (`getAttendanceForSession`, fetched by the page), and local state starts
- * from it exactly (`marksToMap`, the same helper
- * `attendance-panel.js`'s own Edit Attendance mode already uses) — a
- * student who was saved Present starts this screen showing Present, not
- * reset to Unmarked. A student who was never marked at all (D10 — saving
- * with some students unmarked is allowed) correctly starts Unmarked here
- * too, because that is what was actually saved; nothing here invents a
- * third state or silently changes a value nobody touched.
- *
- * The Present/Absent controls are the exact same pattern
- * `attendance-panel.js`'s own editing mode already renders (`role="group"`,
- * `aria-pressed`, `default`/`destructive`/`outline` variants) — copied
- * here rather than imported, matching this codebase's established
- * per-component duplication of small, tightly-coupled UI fragments
- * (e.g. `formatTime`/`formatDate` duplicated across every session list).
- *
- * Nothing is saved from this page. "Cancel" is a plain link back to
- * Attendance Details — no state to discard because nothing was ever
- * written. "Review Changes" validates the current marks with the existing
- * `validateAttendanceMarks` (lib/attendance/validation.js) — the same
- * shape check `saveSessionAttendance` itself runs, reused rather than
- * duplicated — then hands the validated marks to the next screen via
- * `sessionStorage`, namespaced per session, and navigates to the planned
- * (not yet built) Review Attendance Changes route. This is a draft
- * handoff only: nothing here touches Supabase, `saveSessionAttendance`, or
- * any persisted attendance row.
+ * Edit Attendance roster — Present/Absent controls match Attendance marking
+ * screen. Nothing is saved here; Review Changes hands off via sessionStorage.
  */
 export default function EditAttendanceForm({ scheduleId, date, students, initialMarks }) {
   const router = useRouter();
@@ -101,10 +61,7 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
         JSON.stringify({ marks: result.data })
       );
     } catch {
-      // Private browsing / storage disabled: fall through and navigate
-      // anyway rather than blocking Review entirely on a browser quirk —
-      // the not-yet-built Review page is responsible for handling a
-      // missing draft (e.g. by falling back to the saved marks).
+      // Private browsing / storage disabled — still navigate; Review handles missing draft.
     }
 
     router.push(`/attendance-history/${scheduleId}/${date}/review`);
@@ -112,7 +69,7 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
 
   if (students.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-16 text-center">
+      <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-border bg-background/40 px-6 py-16 text-center">
         <p className="text-body max-w-sm text-text-secondary">
           No students were eligible for this session.
         </p>
@@ -133,71 +90,84 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
   return (
     <div>
       {error ? (
-        <p role="alert" className="mb-4 text-body text-danger">
+        <p role="alert" className="mb-4 rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-body text-danger">
           {error}
         </p>
       ) : null}
 
-      <DataTableShell>
-        <Table aria-label="Edit Attendance">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Student</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Attendance</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pageStudents.map((student) => {
-              const status = marks[student.id];
-              return (
-                <TableRow key={student.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <span
-                        aria-hidden="true"
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background text-small font-medium text-brand"
-                      >
-                        {getInitials(student.full_name)}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-text-primary">{student.full_name}</p>
-                        <p className="text-small text-text-secondary">{student.student_code}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-text-secondary">{student.phone}</TableCell>
-                  <TableCell>
-                    <div role="group" aria-label={`Attendance for ${student.full_name}`} className="flex gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={status === "present" ? "default" : "outline"}
-                        aria-pressed={status === "present"}
-                        onClick={() => setMark(student.id, "present")}
-                      >
-                        Present
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={status === "absent" ? "destructive" : "outline"}
-                        aria-pressed={status === "absent"}
-                        onClick={() => setMark(student.id, "absent")}
-                      >
-                        Absent
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </DataTableShell>
+      <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border" aria-label="Edit Attendance">
+        {pageStudents.map((student) => {
+          const status = marks[student.id];
+          const rowTone =
+            status === "present"
+              ? "bg-success/5"
+              : status === "absent"
+                ? "bg-danger/5"
+                : "bg-surface";
+
+          return (
+            <li
+              key={student.id}
+              className={cn(
+                "flex flex-col gap-3 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
+                rowTone
+              )}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-small font-semibold text-brand"
+                >
+                  {getInitials(student.full_name)}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-body font-semibold text-text-primary">{student.full_name}</p>
+                  <p className="text-small truncate text-text-secondary">
+                    {student.student_code}
+                    {student.phone ? ` · ${student.phone}` : ""}
+                  </p>
+                </div>
+              </div>
+
+              <div role="group" aria-label={`Attendance for ${student.full_name}`} className="flex w-full gap-2 sm:w-auto">
+                <Button
+                  type="button"
+                  size="sm"
+                  aria-pressed={status === "present"}
+                  onClick={() => setMark(student.id, "present")}
+                  variant="outline"
+                  className={cn(
+                    "h-10 flex-1 sm:min-w-24 sm:flex-none",
+                    status === "present"
+                      ? "border-success bg-success text-surface hover:bg-success/90 hover:text-surface"
+                      : "border-border bg-surface text-text-secondary hover:border-success/40 hover:text-success"
+                  )}
+                >
+                  Present
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  aria-pressed={status === "absent"}
+                  onClick={() => setMark(student.id, "absent")}
+                  variant="outline"
+                  className={cn(
+                    "h-10 flex-1 sm:min-w-24 sm:flex-none",
+                    status === "absent"
+                      ? "border-danger bg-danger text-surface hover:bg-danger/90 hover:text-surface"
+                      : "border-border bg-surface text-text-secondary hover:border-danger/40 hover:text-danger"
+                  )}
+                >
+                  Absent
+                </Button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-body text-text-secondary">
+        <p className="text-small text-text-secondary">
           Showing {rangeStart}–{rangeEnd} of {students.length} entries
         </p>
 
@@ -234,7 +204,7 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
         </nav>
       </div>
 
-      <div className="mt-6 flex justify-end gap-3">
+      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
         <Button variant="outline" render={<Link href={`/attendance-history/${scheduleId}/${date}`} />} nativeButton={false}>
           Cancel
         </Button>

@@ -6,15 +6,6 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import DataTableShell from "@/components/ui/data-table-shell";
 import { saveSessionAttendance } from "@/lib/attendance/actions";
 import { validateAttendanceMarks, computeAttendanceSummary } from "@/lib/attendance/validation";
 import { pendingReviewStorageKey } from "@/app/attendance-history/[scheduleId]/[date]/edit/edit-attendance-form";
@@ -217,7 +208,7 @@ export default function ReviewAttendanceChanges({
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       <Link
         href={`/attendance-history/${scheduleId}/${date}/edit`}
         className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
@@ -226,95 +217,96 @@ export default function ReviewAttendanceChanges({
         Back to Edit Attendance
       </Link>
 
-      <div className="mt-3">
+      <div>
         <h1 className="text-page-title font-semibold text-text-primary">Review Attendance Changes</h1>
-        <p className="text-body mt-1 text-text-secondary">Review the changes before saving.</p>
+        <p className="text-small mt-1 text-text-secondary">Review the changes before saving.</p>
       </div>
 
-      <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
-        <h2 className="text-section-title font-semibold text-text-primary">Session Details</h2>
-        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
-          <div>
-            <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Batch</dt>
-            <dd className="text-body text-text-primary">{session.batches?.name ?? "—"}</dd>
+      <section className="rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
+        <h2 className="text-body font-semibold text-text-primary">Session Details</h2>
+        <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2.5">
+            <dt className="text-[10px] font-medium tracking-wide text-text-secondary uppercase">Batch</dt>
+            <dd className="mt-0.5 text-body font-semibold text-text-primary">{session.batches?.name ?? "—"}</dd>
           </div>
-          <div>
-            <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Instructor</dt>
-            <dd className="text-body text-text-primary">{session.instructors?.full_name ?? "—"}</dd>
+          <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2.5">
+            <dt className="text-[10px] font-medium tracking-wide text-text-secondary uppercase">Instructor</dt>
+            <dd className="mt-0.5 text-body font-semibold text-text-primary">
+              {session.instructors?.full_name ?? "—"}
+            </dd>
           </div>
-          <div>
-            <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Date &amp; Time</dt>
-            <dd className="text-body text-text-primary">
+          <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2.5">
+            <dt className="text-[10px] font-medium tracking-wide text-text-secondary uppercase">Date &amp; Time</dt>
+            <dd className="mt-0.5 text-body font-semibold text-text-primary">
               {formatDate(session.session_date)}, {formatTime(session.start_time)} – {formatTime(session.end_time)}
             </dd>
           </div>
         </dl>
-      </div>
+      </section>
 
       {feedback ? (
-        <p role="alert" className="mt-4 text-body text-danger">
+        <p role="alert" className="rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-body text-danger">
           {feedback}
         </p>
       ) : null}
 
       {hasChanges ? (
         <>
-          <div className="mt-6">
-            <h2 className="text-section-title font-semibold text-text-primary">Changes to Review ({changes.length})</h2>
-            <div className="mt-4">
-              <DataTableShell>
-                <Table aria-label="Changes to review">
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead>Student</TableHead>
-                      <TableHead>Current Status</TableHead>
-                      <TableHead>New Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {changes.map(({ student, before, after }) => (
-                      <TableRow key={student.id}>
-                        <TableCell className="font-medium text-text-primary">{student.full_name}</TableCell>
-                        <TableCell>
-                          <Badge variant={statusBadgeVariant(before)}>{statusLabel(before)}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={statusBadgeVariant(after)}>{statusLabel(after)}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </DataTableShell>
-            </div>
-          </div>
+          <section className="rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
+            <h2 className="text-body font-semibold text-text-primary">
+              Changes to Review ({changes.length})
+            </h2>
+            <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {changes.map(({ student, before, after }) => (
+                <li
+                  key={student.id}
+                  className="flex flex-col gap-2 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                >
+                  <p className="text-body font-semibold text-text-primary">{student.full_name}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={statusBadgeVariant(before)} className="rounded-full px-2 py-0">
+                      <span className="text-[10px] leading-[14px] font-medium">{statusLabel(before)}</span>
+                    </Badge>
+                    <span className="text-small text-text-secondary" aria-hidden="true">
+                      →
+                    </span>
+                    <Badge variant={statusBadgeVariant(after)} className="rounded-full px-2 py-0">
+                      <span className="text-[10px] leading-[14px] font-medium">{statusLabel(after)}</span>
+                    </Badge>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
 
-          <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
-            <h2 className="text-section-title font-semibold text-text-primary">Comparative View</h2>
-            <div className="mt-4 grid gap-6 sm:grid-cols-2">
-              <div>
-                <p className="text-small font-medium tracking-wide text-text-secondary uppercase">Current</p>
-                <p className="text-body mt-1 text-text-primary">
-                  {originalSummary.presentCount} Present · {originalSummary.absentCount} Absent ·{" "}
-                  {originalSummary.percentage}% Attendance
+          <section className="rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
+            <h2 className="text-body font-semibold text-text-primary">Comparative View</h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-border/60 bg-background/40 px-3.5 py-3">
+                <p className="text-[10px] font-medium tracking-wide text-text-secondary uppercase">Current</p>
+                <p className="mt-1 text-body text-text-primary">
+                  <span className="font-semibold text-success">{originalSummary.presentCount}</span> Present ·{" "}
+                  <span className="font-semibold text-danger">{originalSummary.absentCount}</span> Absent ·{" "}
+                  <span className="font-semibold text-brand">{originalSummary.percentage}%</span>
                 </p>
               </div>
-              <div>
-                <p className="text-small font-medium tracking-wide text-text-secondary uppercase">After Changes</p>
-                <p className="text-body mt-1 text-text-primary">
-                  {afterSummary.presentCount} Present · {afterSummary.absentCount} Absent ·{" "}
-                  {afterSummary.percentage}% Attendance
+              <div className="rounded-xl border border-brand/20 bg-brand/5 px-3.5 py-3">
+                <p className="text-[10px] font-medium tracking-wide text-text-secondary uppercase">After Changes</p>
+                <p className="mt-1 text-body text-text-primary">
+                  <span className="font-semibold text-success">{afterSummary.presentCount}</span> Present ·{" "}
+                  <span className="font-semibold text-danger">{afterSummary.absentCount}</span> Absent ·{" "}
+                  <span className="font-semibold text-brand">{afterSummary.percentage}%</span>
                 </p>
               </div>
             </div>
-          </div>
+          </section>
 
-          <p className="text-body mt-6 max-w-2xl text-text-secondary">
+          <p className="text-small max-w-2xl text-text-secondary">
             This change updates attendance for this class session only. Historical session and schedule
             information remain unchanged.
           </p>
 
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               disabled={isPending}
@@ -329,7 +321,7 @@ export default function ReviewAttendanceChanges({
           </div>
         </>
       ) : (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-lg border border-dashed border-border px-6 py-16 text-center">
+        <div className="flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
           <p className="text-body max-w-sm text-text-secondary">
             No attendance changes to review. Nothing will be saved.
           </p>

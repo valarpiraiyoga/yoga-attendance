@@ -1,17 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
 
@@ -26,32 +18,15 @@ function getInitials(name) {
 }
 
 /**
- * Attendance Details' student roster (Phase 16; approved wireframe p.31:
- * STUDENT / PHONE / ATTENDANCE, paginated). Read-only — there is no Edit
- * mode here; correcting a mark is the separate, not-yet-built Edit
- * Attendance route (`/attendance-history/[scheduleId]/[date]/edit`), not
- * an inline toggle on this page.
- *
- * `students` is the session's already-resolved eligible list
- * (`listEligibleStudents`, lib/attendance/data.js) and `marksByStudentId`
- * is that session's already-recorded marks (`getAttendanceForSession`),
- * both fetched once by the page and handed down already joined — this
- * component only displays them, it does not resolve eligibility or
- * attendance itself. A student with no entry in `marksByStudentId` shows
- * "Unmarked" (D10 — saving with some students unmarked is allowed and
- * still completes the session), never a fabricated third status.
- *
- * Client-side pagination over the already-fully-loaded list — the same
- * approved pattern app/attendance/[scheduleId]/[date]/eligible-students-list.js
- * already uses for the same reason: every row is already in memory, so
- * paging is a local `slice()`, not a second fetch.
+ * Attendance Details roster — scannable list rows with semantic Present /
+ * Absent / Unmarked states (same visual language as Attendance marking).
  */
 export default function AttendanceDetailsRoster({ students, marksByStudentId }) {
   const [page, setPage] = useState(1);
 
   if (students.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-16 text-center">
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-background/40 px-6 py-16 text-center">
         <p className="text-body max-w-sm text-text-secondary">
           No students were eligible for this session.
         </p>
@@ -68,49 +43,54 @@ export default function AttendanceDetailsRoster({ students, marksByStudentId }) 
 
   return (
     <div>
-      <DataTableShell>
-        <Table aria-label="Attendance">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Student</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Attendance</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pageStudents.map((student) => {
-              const status = marksByStudentId[student.id];
-              return (
-                <TableRow key={student.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <span
-                        aria-hidden="true"
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background text-small font-medium text-brand"
-                      >
-                        {getInitials(student.full_name)}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-text-primary">{student.full_name}</p>
-                        <p className="text-small text-text-secondary">{student.student_code}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-text-secondary">{student.phone}</TableCell>
-                  <TableCell>
-                    <Badge variant={status === "present" ? "success" : status === "absent" ? "danger" : "neutral"}>
-                      {status === "present" ? "Present" : status === "absent" ? "Absent" : "Unmarked"}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </DataTableShell>
+      <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border" aria-label="Attendance">
+        {pageStudents.map((student) => {
+          const status = marksByStudentId[student.id];
+          const rowTone =
+            status === "present"
+              ? "bg-success/5"
+              : status === "absent"
+                ? "bg-danger/5"
+                : "bg-surface";
+
+          return (
+            <li
+              key={student.id}
+              className={cn(
+                "flex flex-col gap-2 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
+                rowTone
+              )}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-small font-semibold text-brand"
+                >
+                  {getInitials(student.full_name)}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-body font-semibold text-text-primary">{student.full_name}</p>
+                  <p className="text-small truncate text-text-secondary">
+                    {student.student_code}
+                    {student.phone ? ` · ${student.phone}` : ""}
+                  </p>
+                </div>
+              </div>
+              <Badge
+                variant={status === "present" ? "success" : status === "absent" ? "danger" : "neutral"}
+                className="w-fit rounded-full px-2.5 py-0.5"
+              >
+                <span className="text-[11px] leading-[14px] font-medium">
+                  {status === "present" ? "Present" : status === "absent" ? "Absent" : "Unmarked"}
+                </span>
+              </Badge>
+            </li>
+          );
+        })}
+      </ul>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-body text-text-secondary">
+        <p className="text-small text-text-secondary">
           Showing {rangeStart}–{rangeEnd} of {students.length} students
         </p>
 
