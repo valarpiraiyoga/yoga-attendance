@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { saveSessionAttendance } from "@/lib/attendance/actions";
 import { validateAttendanceMarks, computeAttendanceSummary } from "@/lib/attendance/validation";
 import { pendingReviewStorageKey } from "@/app/attendance-history/[scheduleId]/[date]/edit/edit-attendance-form";
@@ -260,29 +261,31 @@ export default function ReviewAttendanceChanges({
         <>
           <div className="mt-6">
             <h2 className="text-section-title font-semibold text-text-primary">Changes to Review ({changes.length})</h2>
-            <div className="mt-4 overflow-hidden rounded-card border border-border bg-surface">
-              <Table aria-label="Changes to review">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Current Status</TableHead>
-                    <TableHead>New Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {changes.map(({ student, before, after }) => (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium text-text-primary">{student.full_name}</TableCell>
-                      <TableCell>
-                        <Badge variant={statusBadgeVariant(before)}>{statusLabel(before)}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusBadgeVariant(after)}>{statusLabel(after)}</Badge>
-                      </TableCell>
+            <div className="mt-4">
+              <DataTableShell>
+                <Table aria-label="Changes to review">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Student</TableHead>
+                      <TableHead>Current Status</TableHead>
+                      <TableHead>New Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {changes.map(({ student, before, after }) => (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium text-text-primary">{student.full_name}</TableCell>
+                        <TableCell>
+                          <Badge variant={statusBadgeVariant(before)}>{statusLabel(before)}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={statusBadgeVariant(after)}>{statusLabel(after)}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </DataTableShell>
             </div>
           </div>
 

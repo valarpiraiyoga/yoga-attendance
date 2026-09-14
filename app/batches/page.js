@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Layers, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
 import { requireRole, ROLES } from "@/lib/auth/dal";
@@ -25,6 +25,7 @@ export default async function BatchesPage({ searchParams }) {
   const q = typeof rawParams.q === "string" ? rawParams.q : "";
   const status = STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
+  const view = rawParams.view === "table" ? "table" : "cards";
 
   const { batches, total } = await listBatches({ q, status, page, pageSize: PAGE_SIZE });
 
@@ -38,6 +39,7 @@ export default async function BatchesPage({ searchParams }) {
       <PageHeader
         title="Batches"
         description="Manage yoga batches and their active status."
+        icon={<Layers className="size-6" />}
         actions={
           <Button render={<Link href="/batches/new" />} nativeButton={false}>
             <Plus className="size-4" aria-hidden="true" />
@@ -49,7 +51,7 @@ export default async function BatchesPage({ searchParams }) {
       <BatchFilters key={`${q}:${status}`} defaultQuery={q} defaultStatus={status} />
 
       {batches.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-lg border border-dashed border-border px-6 py-16 text-center">
+        <div className="mt-6 flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
           {isFiltered ? (
             <>
               <p className="text-body max-w-sm text-text-secondary">
@@ -73,10 +75,10 @@ export default async function BatchesPage({ searchParams }) {
         </div>
       ) : (
         <>
-          <BatchList batches={batches} />
+          <BatchList batches={batches} view={view} searchParams={rawParams} total={total} />
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-body text-text-secondary">
+            <p className="text-small text-text-secondary">
               Showing {rangeStart}–{rangeEnd} of {total} batches
             </p>
 
@@ -96,7 +98,7 @@ export default async function BatchesPage({ searchParams }) {
                 </Button>
               )}
 
-              <span className="text-body px-1 text-text-secondary">
+              <span className="text-small px-1 text-text-secondary">
                 Page {page} of {totalPages}
               </span>
 

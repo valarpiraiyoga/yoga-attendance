@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { NAV_ITEMS, ROLE_LABELS } from "@/app/data/navigation";
 
@@ -58,10 +59,10 @@ export default async function RolesPermissionsPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-card border border-border bg-surface">
+      <DataTableShell>
         <Table aria-label="Roles and Permissions">
           <TableHeader>
-            <TableRow>
+            <TableRow className="hover:bg-transparent">
               <TableHead>Product Area</TableHead>
               <TableHead className="text-center">{ROLE_LABELS[ROLES.ADMIN]}</TableHead>
               <TableHead className="text-center">{ROLE_LABELS[ROLES.INSTRUCTOR]}</TableHead>
@@ -104,7 +105,7 @@ export default async function RolesPermissionsPage() {
             })}
           </TableBody>
         </Table>
-      </div>
+      </DataTableShell>
 
       <p className="text-small mt-3 text-text-secondary">
         * Instructor access is limited to assigned classes / relevant attendance history. Instructors have

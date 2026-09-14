@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -77,7 +78,7 @@ export default function EligibleStudentsList({ students, batch }) {
         {students.length} student{students.length === 1 ? "" : "s"} eligible for this session.
       </p>
 
-      <div className="overflow-hidden rounded-card border border-border bg-surface">
+      <DataTableShell>
         <Table aria-label="Eligible Students">
           <TableHeader>
             <TableRow>
@@ -134,7 +135,7 @@ export default function EligibleStudentsList({ students, batch }) {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </DataTableShell>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-body text-text-secondary">

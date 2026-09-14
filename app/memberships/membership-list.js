@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { buildListHref } from "@/lib/url-params";
 import MembershipCardItem from "@/app/memberships/membership-card-item";
 import MembershipTableRow from "@/app/memberships/membership-table-row";
@@ -65,45 +66,27 @@ function MembershipCards({ memberships }) {
 
 function MembershipTable({ memberships }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-r from-info/10 via-surface to-brand/10 p-2 shadow-xs sm:p-3">
-      <div className="overflow-hidden rounded-xl bg-surface/55 backdrop-blur-sm">
-        <Table aria-label="Memberships">
-          <TableHeader className="bg-transparent">
-            <TableRow className="border-border/40 hover:bg-transparent">
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Membership
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Student
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Start Date
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                End Date
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Amount
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Payment
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Status
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Action
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {memberships.map((membership) => (
-              <MembershipTableRow key={membership.id} membership={membership} />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+    <DataTableShell tone="info">
+      <Table aria-label="Memberships">
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Membership</TableHead>
+            <TableHead>Student</TableHead>
+            <TableHead>Start Date</TableHead>
+            <TableHead>End Date</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Payment</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Action</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {memberships.map((membership) => (
+            <MembershipTableRow key={membership.id} membership={membership} />
+          ))}
+        </TableBody>
+      </Table>
+    </DataTableShell>
   );
 }
 

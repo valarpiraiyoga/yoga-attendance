@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -67,7 +68,7 @@ export default function AttendanceDetailsRoster({ students, marksByStudentId }) 
 
   return (
     <div>
-      <div className="overflow-hidden rounded-card border border-border bg-surface">
+      <DataTableShell>
         <Table aria-label="Attendance">
           <TableHeader>
             <TableRow>
@@ -106,7 +107,7 @@ export default function AttendanceDetailsRoster({ students, marksByStudentId }) 
             })}
           </TableBody>
         </Table>
-      </div>
+      </DataTableShell>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-body text-text-secondary">

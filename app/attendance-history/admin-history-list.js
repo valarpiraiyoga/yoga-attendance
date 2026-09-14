@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 
 function formatTime(value) {
   if (!value) return "—";
@@ -51,7 +52,7 @@ function formatDate(value) {
  */
 export default function AdminHistoryList({ sessions }) {
   return (
-    <div className="overflow-hidden rounded-card border border-border bg-surface">
+    <DataTableShell>
       <Table aria-label="Attendance History">
         <TableHeader>
           <TableRow>
@@ -100,6 +101,6 @@ export default function AdminHistoryList({ sessions }) {
           ))}
         </TableBody>
       </Table>
-    </div>
+    </DataTableShell>
   );
 }

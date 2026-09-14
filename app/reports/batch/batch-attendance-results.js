@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { getBatchAttendanceReport } from "@/lib/reports/data";
 import { attendanceRatio } from "@/lib/reports/validation";
 import ExportLinks from "@/app/reports/export-links";
@@ -124,10 +125,10 @@ export default async function BatchAttendanceResults({ batchId, batchLabel, date
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden">
+        <DataTableShell>
           <Table aria-label="Batch Attendance Report">
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableHead>Date</TableHead>
                 <TableHead>Time</TableHead>
                 <TableHead>Eligible</TableHead>
@@ -153,7 +154,7 @@ export default async function BatchAttendanceResults({ batchId, batchLabel, date
               ))}
             </TableBody>
           </Table>
-        </div>
+        </DataTableShell>
       )}
     </section>
   );

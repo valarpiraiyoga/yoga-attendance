@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { getStudentAttendanceReport } from "@/lib/reports/data";
 import ExportLinks from "@/app/reports/export-links";
@@ -120,10 +121,10 @@ export default async function StudentAttendanceResults({ studentId, studentLabel
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden">
+        <DataTableShell>
           <Table aria-label="Student Attendance Report">
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableHead>Date</TableHead>
                 <TableHead>Time</TableHead>
                 <TableHead>Batch</TableHead>
@@ -150,15 +151,20 @@ export default async function StudentAttendanceResults({ studentId, studentLabel
                   </TableCell>
                   <TableCell className="text-text-secondary">{session.instructor?.full_name ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_VARIANTS[session.status] ?? "neutral"}>
-                      {STATUS_LABELS[session.status] ?? "Unmarked"}
+                    <Badge
+                      variant={STATUS_VARIANTS[session.status] ?? "neutral"}
+                      className="rounded-full px-2 py-0"
+                    >
+                      <span className="text-[10px] leading-[14px] font-medium">
+                        {STATUS_LABELS[session.status] ?? "Unmarked"}
+                      </span>
                     </Badge>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </div>
+        </DataTableShell>
       )}
     </section>
   );

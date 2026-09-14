@@ -34,7 +34,7 @@ export default function StudentTableRow({ student }) {
         menuOpen && "bg-brand/10 hover:bg-brand/10"
       )}
     >
-      <TableCell className="px-5 py-4">
+      <TableCell className="px-5 py-3.5">
         <div className="flex min-w-0 items-center gap-3">
           <span
             aria-hidden="true"
@@ -48,8 +48,8 @@ export default function StudentTableRow({ student }) {
           </div>
         </div>
       </TableCell>
-      <TableCell className="px-5 py-4 text-text-secondary">{student.phone || "—"}</TableCell>
-      <TableCell className="px-5 py-4">
+      <TableCell className="text-text-secondary">{student.phone || "—"}</TableCell>
+      <TableCell className="px-5 py-3.5">
         {student.batchCodes.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {student.batchCodes.map((code) => (
@@ -62,17 +62,17 @@ export default function StudentTableRow({ student }) {
           <span className="text-text-secondary">—</span>
         )}
       </TableCell>
-      <TableCell className="px-5 py-4">
+      <TableCell className="px-5 py-3.5">
         <Badge variant={MEMBERSHIP_SUMMARY_VARIANTS[student.membershipSummary]}>
           {MEMBERSHIP_SUMMARY_LABELS[student.membershipSummary]}
         </Badge>
       </TableCell>
-      <TableCell className="px-5 py-4">
+      <TableCell className="px-5 py-3.5">
         <Badge variant={student.status === "active" ? "success" : "danger"}>
           {student.status === "active" ? "Active" : "Inactive"}
         </Badge>
       </TableCell>
-      <TableCell className="px-5 py-4">
+      <TableCell className="px-5 py-3.5">
         <div className="flex items-center gap-1">
           <Button
             type="button"

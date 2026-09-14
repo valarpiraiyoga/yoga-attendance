@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { Button } from "@/components/ui/button";
 import { validateAttendanceMarks } from "@/lib/attendance/validation";
 
@@ -137,7 +138,7 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-card border border-border bg-surface">
+      <DataTableShell>
         <Table aria-label="Edit Attendance">
           <TableHeader>
             <TableRow>
@@ -193,7 +194,7 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
             })}
           </TableBody>
         </Table>
-      </div>
+      </DataTableShell>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-body text-text-secondary">

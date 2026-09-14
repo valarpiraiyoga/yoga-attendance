@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getBatch } from "@/lib/batches/data";
@@ -62,10 +63,8 @@ export default async function BatchStudentsPage({ params }) {
   );
 
   return (
-    <div>
-      <BatchHeader batch={batch} active="students" />
-
-      <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+    <BatchHeader batch={batch} active="students">
+      <div>
         <h2 className="text-section-title font-semibold text-text-primary">Students</h2>
         <p className="text-body mt-1 text-text-secondary">
           Students enrolled in {batch.name} and their assigned schedules.
@@ -76,7 +75,7 @@ export default async function BatchStudentsPage({ params }) {
             No students are enrolled in this batch yet.
           </p>
         ) : (
-          <div className="mt-6 overflow-hidden rounded-lg border border-border">
+          <DataTableShell className="mt-6">
             <Table aria-label={`Students in ${batch.name}`}>
               <TableHeader>
                 <TableRow>
@@ -146,9 +145,9 @@ export default async function BatchStudentsPage({ params }) {
                 })}
               </TableBody>
             </Table>
-          </div>
+          </DataTableShell>
         )}
       </div>
-    </div>
+    </BatchHeader>
   );
 }

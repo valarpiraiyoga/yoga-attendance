@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { setInstructorStatus } from "@/lib/instructors/actions";
 
@@ -74,6 +75,7 @@ export default function InstructorList({ instructors, initialMessage }) {
         </div>
       ) : null}
 
+      <DataTableShell>
       <Table aria-label="Instructors">
         <TableHeader>
           <TableRow>
@@ -123,6 +125,7 @@ export default function InstructorList({ instructors, initialMessage }) {
           ))}
         </TableBody>
       </Table>
+    </DataTableShell>
     </div>
   );
 }

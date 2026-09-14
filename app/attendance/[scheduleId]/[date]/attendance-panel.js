@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
@@ -234,7 +235,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-card border border-border bg-surface">
+        <DataTableShell>
           <Table aria-label="Attendance">
             <TableHeader>
               <TableRow>
@@ -298,7 +299,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
               })}
             </TableBody>
           </Table>
-        </div>
+        </DataTableShell>
       )}
 
       <ConfirmDialog

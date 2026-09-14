@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Eye } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -7,7 +8,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DAY_LABELS } from "@/lib/schedules/validation";
 
 function formatTime(value) {
@@ -37,7 +40,7 @@ function formatDate(value) {
  */
 export default function ScheduleList({ schedules }) {
   return (
-    <div className="mt-6 overflow-hidden rounded-card border border-border bg-surface">
+    <DataTableShell className="mt-6">
       <Table aria-label="Schedules">
         <TableHeader>
           <TableRow>
@@ -74,22 +77,31 @@ export default function ScheduleList({ schedules }) {
                 {schedule.effective_until ? formatDate(schedule.effective_until) : "—"}
               </TableCell>
               <TableCell>
-                <Badge variant={schedule.status === "active" ? "success" : "danger"}>
-                  {schedule.status === "active" ? "Active" : "Inactive"}
+                <Badge
+                  variant={schedule.status === "active" ? "success" : "danger"}
+                  className="rounded-full px-2 py-0"
+                >
+                  <span className="text-[10px] leading-[14px] font-medium">
+                    {schedule.status === "active" ? "Active" : "Inactive"}
+                  </span>
                 </Badge>
               </TableCell>
               <TableCell>
-                <Link
-                  href={`/schedule/${schedule.id}`}
-                  className="font-medium text-brand hover:underline"
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="text-text-secondary hover:text-brand"
+                  render={<Link href={`/schedule/${schedule.id}`} />}
+                  nativeButton={false}
+                  aria-label={`View schedule for ${schedule.batches?.name ?? "batch"}`}
                 >
-                  View
-                </Link>
+                  <Eye className="size-4" aria-hidden="true" />
+                </Button>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
+    </DataTableShell>
   );
 }

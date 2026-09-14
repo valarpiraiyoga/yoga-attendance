@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_BADGE_VARIANTS } from "@/lib/class-sessions/validation";
 
@@ -54,7 +55,7 @@ function formatDate(value) {
  */
 export default function InstructorHistoryList({ sessions }) {
   return (
-    <div className="overflow-hidden rounded-card border border-border bg-surface">
+    <DataTableShell>
       <Table aria-label="Attendance History">
         <TableHeader>
           <TableRow>
@@ -103,6 +104,6 @@ export default function InstructorHistoryList({ sessions }) {
           ))}
         </TableBody>
       </Table>
-    </div>
+    </DataTableShell>
   );
 }

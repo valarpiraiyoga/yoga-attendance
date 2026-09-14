@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { buildListHref } from "@/lib/url-params";
 import StudentCardItem from "@/app/students/student-card-item";
 import StudentTableRow from "@/app/students/student-table-row";
@@ -65,39 +66,25 @@ function StudentCards({ students }) {
 
 function StudentTable({ students }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-r from-brand/10 via-surface to-info/10 p-2 shadow-xs sm:p-3">
-      <div className="overflow-hidden rounded-xl bg-surface/55 backdrop-blur-sm">
-        <Table aria-label="Students">
-          <TableHeader className="bg-transparent">
-            <TableRow className="border-border/40 hover:bg-transparent">
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Student
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Phone
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Batches
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Membership
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Status
-              </TableHead>
-              <TableHead className="h-12 px-5 text-small font-medium tracking-wide text-text-secondary uppercase">
-                Action
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {students.map((student) => (
-              <StudentTableRow key={student.id} student={student} />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+    <DataTableShell tone="info">
+      <Table aria-label="Students">
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Student</TableHead>
+            <TableHead>Phone</TableHead>
+            <TableHead>Batches</TableHead>
+            <TableHead>Membership</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Action</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {students.map((student) => (
+            <StudentTableRow key={student.id} student={student} />
+          ))}
+        </TableBody>
+      </Table>
+    </DataTableShell>
   );
 }
 

@@ -184,6 +184,45 @@ body {
   );
 }
 
+/*
+  Folder-style tabs: active tab shares the surface color with the shelf
+  below, with concave "shoulder" corners via box-shadow on ::before/::after.
+  Track background is --background; active fill is --surface.
+*/
+.folder-tabs-track {
+  background: color-mix(in srgb, var(--border) 55%, var(--background));
+}
+
+.folder-tab-active {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  border-radius: 14px 14px 0 0;
+}
+
+.folder-tab-active::before,
+.folder-tab-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.folder-tab-active::before {
+  left: -14px;
+  border-bottom-right-radius: 14px;
+  box-shadow: 4px 0 0 0 var(--surface);
+}
+
+.folder-tab-active::after {
+  right: -14px;
+  border-bottom-left-radius: 14px;
+  box-shadow: -4px 0 0 0 var(--surface);
+}
+
 /* Accessibility foundation */
 
 :focus-visible {

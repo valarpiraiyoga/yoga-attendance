@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireRole, ROLES } from "@/lib/auth/dal";
@@ -56,11 +57,9 @@ export default async function BatchSchedulesPage({ params }) {
   const schedules = await listSchedulesForBatch(id);
 
   return (
-    <div>
-      <BatchHeader batch={batch} active="schedules" />
-
-      <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
-        <div className="flex items-center justify-between">
+    <BatchHeader batch={batch} active="schedules">
+      <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-section-title font-semibold text-text-primary">Schedules</h2>
             <p className="text-body mt-1 text-text-secondary">
@@ -78,7 +77,7 @@ export default async function BatchSchedulesPage({ params }) {
             No schedules yet. Add one to define when this batch takes place.
           </p>
         ) : (
-          <div className="mt-6 overflow-hidden rounded-lg border border-border">
+          <DataTableShell className="mt-6">
             <Table aria-label={`Schedules for ${batch.name}`}>
               <TableHeader>
                 <TableRow>
@@ -122,9 +121,9 @@ export default async function BatchSchedulesPage({ params }) {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DataTableShell>
         )}
       </div>
-    </div>
+    </BatchHeader>
   );
 }
