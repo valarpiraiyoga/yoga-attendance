@@ -43,12 +43,12 @@ export default function MobileMenu({ role }) {
         </div>
 
         <form action={signOut} className="shrink-0 border-t border-border/60 px-3 py-3">
-            <button
-              type="submit"
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-background hover:text-text-primary"
-            >
-              <LogOut className="size-4 shrink-0" aria-hidden="true" />
-              Logout
+          <button
+            type="submit"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-background hover:text-text-primary"
+          >
+            <LogOut className="size-4 shrink-0" aria-hidden="true" />
+            Logout
           </button>
         </form>
       </SheetContent>
