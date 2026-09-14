@@ -21,7 +21,7 @@ export default function MobileMenu({ role }) {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         render={
-          <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open navigation menu" />
+          <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation menu" />
         }
       >
         <Menu className="size-5" aria-hidden="true" />

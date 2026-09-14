@@ -16,11 +16,11 @@ export default function PageHeader({ title, description, actions, className }) {
       )}
     >
       <div className="min-w-0">
-        <h1 className="text-page-title font-semibold text-text-primary">
+        <h1 className="text-page-title font-semibold break-words text-text-primary">
           {title}
         </h1>
         {description ? (
-          <p className="text-body mt-1 text-text-secondary">{description}</p>
+          <p className="text-body mt-1 break-words text-text-secondary">{description}</p>
         ) : null}
       </div>
 

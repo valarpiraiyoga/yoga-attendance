@@ -6,8 +6,9 @@ import { getNavItemsForRole } from "@/app/data/navigation";
 import { cn } from "@/lib/utils";
 
 /**
- * Shared nav renderer for Sidebar (desktop) and MobileMenu — a single
- * navigation definition, rendered twice, per the shell requirements.
+ * Shared nav renderer for Sidebar (desktop, lg+) and MobileMenu (below lg)
+ * — a single navigation definition, rendered twice, per the shell
+ * requirements.
  */
 export default function NavList({ role, onNavigate, className }) {
   const pathname = usePathname();

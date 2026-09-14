@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Calendar } from "lucide-react";
+import { Calendar, CircleCheck, Clock, Layers, Users } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import Container from "@/components/layout/Container";
 import { Button } from "@/components/ui/button";
@@ -25,27 +25,79 @@ const UPCOMING_LIMIT = 5;
 
 function formatHeadingDate(value) {
   return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    weekday: "long",
+    weekday: "short",
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
     timeZone: "UTC",
   });
 }
 
 /**
- * "Good morning/afternoon/evening, {first name}" (approved wireframes p.2,
- * p.8). Read against `CENTRE_TIMEZONE`, the same clock every other
- * date/time derivation in this codebase is required to use (§7A "Centre
- * Timezone") — never the server's own local time.
+ * "Good morning/afternoon/evening" (approved wireframes p.2, p.8).
+ * Read against `CENTRE_TIMEZONE`, the same clock every other date/time
+ * derivation in this codebase is required to use (§7A "Centre Timezone").
+ *
+ * Identity is presentation-only from `user.name`. A real name stays in the
+ * title. An email (fallback when `full_name` is empty) is shown on its own
+ * line so it can wrap at `@` / `.` instead of through the local part.
  */
-function greeting(name) {
+function getGreetingPresentation(name) {
   const hour = Number(
     new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: CENTRE_TIMEZONE }).format(new Date())
   );
   const partOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
-  const firstName = (name || "").trim().split(/\s+/)[0] || name;
-  return `Good ${partOfDay}, ${firstName}`;
+  const identity = String(name || "").trim();
+  const firstToken = identity.split(/\s+/).filter(Boolean)[0] || identity;
+  const isEmail = identity.includes("@");
+
+  return {
+    salutation: `Good ${partOfDay}`,
+    identity: isEmail ? identity : firstToken,
+    inlineIdentity: Boolean(firstToken) && !isEmail,
+  };
+}
+
+/** Zero-width wrap opportunities after `@` and at `.` in the domain. */
+function EmailIdentity({ value }) {
+  const [local, domain = ""] = value.split("@");
+  const domainParts = domain.split(".");
+
+  return (
+    <>
+      {local}
+      <wbr />
+      @
+      {domainParts.map((part, index) => (
+        <span key={`${part}-${index}`}>
+          {index > 0 ? (
+            <>
+              <wbr />.
+            </>
+          ) : null}
+          {part}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Presentation-only initials for the Dashboard greeting avatar.
+ * `profiles` has `full_name` only — no photo field — so this is the
+ * available identity treatment. First and last word initials, uppercase;
+ * a single name yields one letter; empty/whitespace falls back to "?".
+ */
+function getInitials(name) {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
 /**
@@ -63,11 +115,25 @@ async function withAttendanceSummaries(sessions) {
   return sessions.map((session, index) => ({ ...session, attendanceSummary: summaries[index] }));
 }
 
-function StatTile({ label, value }) {
+const STAT_TONES = {
+  brand: { wrap: "bg-brand/10", icon: "text-brand" },
+  warning: { wrap: "bg-warning/10", icon: "text-warning" },
+  info: { wrap: "bg-info/10", icon: "text-info" },
+  success: { wrap: "bg-success/10", icon: "text-success" },
+};
+
+function StatTile({ label, value, icon: Icon, tone = "brand" }) {
+  const palette = STAT_TONES[tone] ?? STAT_TONES.brand;
+
   return (
-    <div className="rounded-card border border-border bg-surface p-4 shadow-xs">
-      <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">{label}</dt>
-      <dd className="text-page-title mt-1 font-semibold text-text-primary">{value}</dd>
+    <div className="flex h-full items-center gap-3 rounded-card border border-border bg-surface p-3 shadow-xs">
+      <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${palette.wrap}`}>
+        <Icon className={`size-4 ${palette.icon}`} aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">{label}</dt>
+        <dd className="text-page-title font-semibold text-text-primary">{value}</dd>
+      </div>
     </div>
   );
 }
@@ -84,11 +150,14 @@ function EmptyState({ children }) {
 function DashboardSkeleton({ isAdmin }) {
   return (
     <div aria-busy="true" aria-label="Loading dashboard" role="status">
-      <dl className={`grid grid-cols-2 gap-4 sm:grid-cols-${isAdmin ? "4" : "3"}`}>
+      <dl className={`grid grid-cols-2 gap-3 ${isAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         {(isAdmin ? [0, 1, 2, 3] : [0, 1, 2]).map((tile) => (
-          <div key={tile} className="rounded-card border border-border bg-surface p-4 shadow-xs">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="mt-2 h-7 w-12" />
+          <div key={tile} className="flex h-full items-center gap-3 rounded-card border border-border bg-surface p-3 shadow-xs">
+            <Skeleton className="size-10 shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="mt-2 h-7 w-12" />
+            </div>
           </div>
         ))}
       </dl>
@@ -156,17 +225,22 @@ async function DashboardContent({ isAdmin, today }) {
   return (
     <>
       {isAdmin ? (
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatTile label="Active Students" value={activeStudentCount} />
-          <StatTile label="Active Batches" value={activeBatchCount} />
-          <StatTile label="Today's Classes" value={totalToday} />
-          <StatTile label="Attendance Marked" value={`${attendanceMarkedCount} / ${totalToday}`} />
+        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile label="Active Students" value={activeStudentCount} icon={Users} tone="brand" />
+          <StatTile label="Active Batches" value={activeBatchCount} icon={Layers} tone="info" />
+          <StatTile label="Today's Classes" value={totalToday} icon={Calendar} tone="warning" />
+          <StatTile
+            label="Attendance Marked"
+            value={`${attendanceMarkedCount} / ${totalToday}`}
+            icon={CircleCheck}
+            tone="success"
+          />
         </dl>
       ) : (
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <StatTile label="Today's Classes" value={totalToday} />
-          <StatTile label="Completed" value={attendanceMarkedCount} />
-          <StatTile label="Remaining" value={totalToday - attendanceMarkedCount} />
+        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <StatTile label="Today's Classes" value={totalToday} icon={Calendar} tone="warning" />
+          <StatTile label="Completed" value={attendanceMarkedCount} icon={CircleCheck} tone="success" />
+          <StatTile label="Remaining" value={totalToday - attendanceMarkedCount} icon={Clock} tone="info" />
         </dl>
       )}
 
@@ -232,36 +306,60 @@ export default async function Home() {
   const user = await requireUser();
   const isAdmin = user.role === ROLES.ADMIN;
   const today = todayInCentreTimezone();
+  const greeting = getGreetingPresentation(user.name);
 
   return (
     <AppShell role={user.role} user={user}>
       <Container>
         {/*
-          Dashboard-local header, not the shared PageHeader: the greeting
-          needs a slightly different visual rhythm (tighter title/subtitle
-          coupling, a subtle icon+date treatment, more breathing room before
-          the KPI row) than PageHeader's one-size-fits-all defaults, and
-          PageHeader is used by every other page in the app — changing it
-          here would be a global typography change, not a Dashboard one.
-          Same responsive recipe PageHeader itself uses (stacks on mobile,
-          row from sm: up, date never causes horizontal overflow), and no
-          card/border, matching the approved reference.
+          Dashboard-local header, not the shared PageHeader.
+          Mobile: compact column — avatar + salutation, email on its own
+          wrapping line, date as a single supporting row (not a KPI card).
+          sm+: greeting left, date right. Sidebar remains lg-only.
         */}
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-page-title font-semibold text-text-primary">
-              {greeting(user.name)} <span aria-hidden="true">👋</span>
-            </h1>
-            <p className="text-body mt-1.5 text-text-secondary">
-              {isAdmin
-                ? "Here's your center overview for today."
-                : "Here's your schedule and session overview for today."}
-            </p>
+        <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full border border-brand/20 bg-brand/10 text-small font-semibold leading-none text-brand shadow-xs sm:mt-0 sm:size-12 sm:text-body"
+            >
+              {getInitials(user.name)}
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-page-title font-semibold break-words text-text-primary">
+                {greeting.inlineIdentity ? (
+                  <>
+                    {greeting.salutation}, {greeting.identity}{" "}
+                    <span aria-hidden="true">👋</span>
+                  </>
+                ) : (
+                  <>
+                    {greeting.salutation}, <span aria-hidden="true">👋</span>
+                  </>
+                )}
+              </h1>
+              {!greeting.inlineIdentity && greeting.identity ? (
+                <p className="text-body mt-1 font-medium break-words text-text-primary">
+                  <EmailIdentity value={greeting.identity} />
+                </p>
+              ) : null}
+              <p className="text-body mt-1 break-words text-text-secondary">
+                {isAdmin
+                  ? "Here's your center overview for today."
+                  : "Here's your schedule and session overview for today."}
+              </p>
+            </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5 text-text-secondary">
-            <Calendar className="size-4 shrink-0" aria-hidden="true" />
-            <p className="text-body font-medium">{formatHeadingDate(today)}</p>
+          {/* Date chip: keep bg-brand/5, rounded-card, padding, and top-aligned icon. */}
+          <div className="flex w-full min-w-0 items-start gap-3 self-start rounded-card bg-brand/5 px-4 py-3 sm:w-auto sm:shrink-0">
+            <Calendar className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-small font-medium tracking-wide text-text-secondary uppercase">Today</p>
+              <time className="text-body font-medium text-text-primary" dateTime={today}>
+                {formatHeadingDate(today)}
+              </time>
+            </div>
           </div>
         </div>
 
