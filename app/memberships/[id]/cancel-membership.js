@@ -40,7 +40,7 @@ export default function CancelMembership({ membershipId, isCancelled }) {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button type="button" variant="outline" onClick={() => setConfirmOpen(true)} disabled={isPending}>
+      <Button type="button" size="sm" variant="outline" onClick={() => setConfirmOpen(true)} disabled={isPending}>
         Cancel Membership
       </Button>
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { CreditCard, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
 import { requireRole, ROLES } from "@/lib/auth/dal";
@@ -33,6 +33,7 @@ export default async function MembershipsPage({ searchParams }) {
   const fromDate = typeof rawParams.from === "string" && DATE_PATTERN.test(rawParams.from) ? rawParams.from : "";
   const toDate = typeof rawParams.to === "string" && DATE_PATTERN.test(rawParams.to) ? rawParams.to : "";
   const page = Math.max(1, Number(rawParams.page) || 1);
+  const view = rawParams.view === "table" ? "table" : "cards";
 
   const { memberships, total } = await listMemberships({
     q,
@@ -56,6 +57,7 @@ export default async function MembershipsPage({ searchParams }) {
       <PageHeader
         title="Memberships"
         description="Manage student memberships, plans, validity, and payment status."
+        icon={<CreditCard className="size-6" />}
         actions={
           <Button render={<Link href="/memberships/new" />} nativeButton={false}>
             <Plus className="size-4" aria-hidden="true" />
@@ -75,7 +77,7 @@ export default async function MembershipsPage({ searchParams }) {
       />
 
       {memberships.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-lg border border-dashed border-border px-6 py-16 text-center">
+        <div className="mt-6 flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
           {isFiltered ? (
             <>
               <p className="text-body max-w-sm text-text-secondary">
@@ -99,10 +101,15 @@ export default async function MembershipsPage({ searchParams }) {
         </div>
       ) : (
         <>
-          <MembershipList memberships={memberships} />
+          <MembershipList
+            memberships={memberships}
+            view={view}
+            searchParams={rawParams}
+            total={total}
+          />
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-body text-text-secondary">
+            <p className="text-small text-text-secondary">
               Showing {rangeStart}–{rangeEnd} of {total} memberships
             </p>
 
@@ -122,7 +129,7 @@ export default async function MembershipsPage({ searchParams }) {
                 </Button>
               )}
 
-              <span className="text-body px-1 text-text-secondary">
+              <span className="text-small px-1 text-text-secondary">
                 Page {page} of {totalPages}
               </span>
 
