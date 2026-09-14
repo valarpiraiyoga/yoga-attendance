@@ -1,14 +1,6 @@
 import Link from "next/link";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   deriveDisplayStatus,
   todayInCentreTimezone,
@@ -24,13 +16,18 @@ function formatTime(value) {
   return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
 }
 
-// The Take Attendance / View Attendance / View Session split (Phase 15
-// Slice 3; approved wireframe: TIME, BATCH, INSTRUCTOR, ELIGIBLE STUDENTS,
-// STATUS, ACTION). Based on the session's own persisted `status` and
-// `session_date`, not `deriveDisplayStatus` — a cancelled/holiday session
-// never takes attendance regardless of how its clock-derived display status
-// would read, and "future" here means date-only (AttendancePanel's own
-// blocked-future rule), not time-of-day.
+function getInitials(name) {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 function resolveAction(session, today) {
   if (session.status === "cancelled" || session.status === "holiday") {
     return "View Session";
@@ -42,79 +39,100 @@ function resolveAction(session, today) {
 }
 
 /**
- * Today's Sessions table (approved wireframe columns: TIME, BATCH,
- * INSTRUCTOR, ELIGIBLE STUDENTS, STATUS, ACTION). ELIGIBLE STUDENTS reads
- * `session.attendanceSummary.eligibleCount` — attached by
- * app/attendance/page.js's `withAttendanceSummaries`, which calls the
- * existing `getAttendanceSummary` (lib/attendance/data.js) per row; this
- * component only displays it, it does not resolve eligibility itself.
- *
- * ACTION now varies by status (`resolveAction` above) and always links to
- * Session Details' Attendance tab (`?tab=attendance`) — including the
- * "View Session" cases (cancelled/holiday, future-dated), since that tab
- * already renders the matching explanatory blocked state
- * (attendance-panel.js) rather than requiring a separate Overview link.
- * The link itself is always a plain navigation, never an action that
- * writes anything: Session Details is addressed by `(schedule_id,
- * session_date)` (`/attendance/[scheduleId]/[date]`), which a projected
- * occurrence already has without needing a `class_sessions` row — see
- * lib/class-sessions/data.js's `getSessionOccurrence`. Viewing a session
- * never materializes it (01-product.md §7A).
+ * Today's Sessions — card grid for fast scanning (time, batch, instructor,
+ * eligible count, status, primary action). Same data/actions as before;
+ * presentation only.
  */
 export default function TodaySessionsList({ sessions }) {
   const today = todayInCentreTimezone();
 
   return (
-    <DataTableShell>
-      <Table aria-label="Today's Sessions">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Time</TableHead>
-            <TableHead>Batch</TableHead>
-            <TableHead>Instructor</TableHead>
-            <TableHead>Eligible Students</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sessions.map((session) => {
-            const displayStatus = deriveDisplayStatus(session);
-            return (
-              <TableRow key={session.id ?? `${session.schedule_id}:${session.session_date}`}>
-                <TableCell className="text-text-secondary">
-                  {formatTime(session.start_time)} – {formatTime(session.end_time)}
-                </TableCell>
-                <TableCell>
-                  {session.batches ? (
-                    <>
-                      <p className="font-medium text-text-primary">{session.batches.name}</p>
-                      <p className="text-small text-text-secondary">{session.batches.code}</p>
-                    </>
-                  ) : (
-                    <span className="text-text-secondary">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-text-secondary">{session.instructors?.full_name ?? "—"}</TableCell>
-                <TableCell className="text-text-secondary">{session.attendanceSummary?.eligibleCount ?? 0}</TableCell>
-                <TableCell>
-                  <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS[displayStatus]}>
+    <div className="mt-2">
+      <div className="mb-3">
+        <p className="text-body font-medium text-text-primary">
+          {sessions.length} {sessions.length === 1 ? "Session" : "Sessions"} today
+        </p>
+        <p className="text-small text-text-secondary">Tap a session to take or view attendance</p>
+      </div>
+
+      <div
+        className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        aria-label="Today's Sessions"
+      >
+        {sessions.map((session) => {
+          const displayStatus = deriveDisplayStatus(session);
+          const actionLabel = resolveAction(session, today);
+          const instructorName = session.instructors?.full_name ?? null;
+          const eligibleCount = session.attendanceSummary?.eligibleCount ?? 0;
+          const href = `/attendance/${session.schedule_id}/${session.session_date}?tab=attendance`;
+
+          return (
+            <article
+              key={session.id ?? `${session.schedule_id}:${session.session_date}`}
+              className="flex h-full flex-col gap-3 rounded-2xl border border-border/70 bg-gradient-to-br from-brand/10 via-surface/80 to-info/10 p-3.5 shadow-sm backdrop-blur-sm"
+            >
+              <div className="flex items-start gap-2.5">
+                <span
+                  aria-hidden="true"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-brand/15 text-small font-semibold text-brand"
+                >
+                  {session.batches?.code || "—"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate text-body font-semibold leading-snug text-text-primary">
+                    {session.batches?.name ?? "—"}
+                  </h3>
+                  <p className="text-small mt-0.5 text-text-secondary">
+                    {formatTime(session.start_time)} – {formatTime(session.end_time)}
+                  </p>
+                </div>
+                <Badge
+                  variant={DISPLAY_STATUS_BADGE_VARIANTS[displayStatus]}
+                  className="shrink-0 rounded-full px-2 py-0"
+                >
+                  <span className="text-[10px] leading-[14px] font-medium">
                     {DISPLAY_STATUS_LABELS[displayStatus]}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/attendance/${session.schedule_id}/${session.session_date}?tab=attendance`}
-                    className="text-body font-medium text-brand hover:underline"
-                  >
-                    {resolveAction(session, today)}
-                  </Link>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </DataTableShell>
+                  </span>
+                </Badge>
+              </div>
+
+              <div className="flex min-w-0 items-center gap-2.5 border-y border-border/50 py-2.5">
+                <span
+                  aria-hidden="true"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-border/60 text-[10px] font-semibold text-text-secondary"
+                >
+                  {instructorName ? getInitials(instructorName) : "?"}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-body font-semibold text-text-primary">
+                    {instructorName || "—"}
+                  </p>
+                  <p className="text-small text-text-secondary">Instructor</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-text-secondary">
+                <span>
+                  Eligible{" "}
+                  <span className="font-medium text-text-primary">{eligibleCount}</span>
+                </span>
+              </div>
+
+              <div className="mt-auto">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 w-full rounded-full border-border/80 bg-surface/70 text-small font-semibold text-text-primary shadow-xs hover:bg-surface hover:text-text-primary"
+                  render={<Link href={href} />}
+                  nativeButton={false}
+                >
+                  {actionLabel}
+                </Button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
   );
 }

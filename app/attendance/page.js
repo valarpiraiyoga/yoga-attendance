@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ClipboardCheck } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
 import { listSessionsForDate, listSessions } from "@/lib/class-sessions/data";
@@ -17,9 +18,9 @@ const PAGE_SIZE = 10;
 
 function formatHeadingDate(value) {
   return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    weekday: "long",
+    weekday: "short",
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
     timeZone: "UTC",
   });
@@ -99,13 +100,18 @@ export default async function AttendancePage({ searchParams }) {
         <PageHeader
           title="Attendance"
           description="View today's class sessions."
-          actions={<p className="text-body font-medium text-text-primary">{formatHeadingDate(today)}</p>}
+          icon={<ClipboardCheck className="size-6" />}
+          actions={
+            <p className="rounded-lg border border-border bg-surface px-3 py-2 text-small font-medium text-text-primary shadow-xs">
+              {formatHeadingDate(today)}
+            </p>
+          }
         />
 
         <AttendanceViewToggle active="today" />
 
         {sessions.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-16 text-center">
+          <div className="flex flex-col items-center gap-2 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
             <p className="text-body max-w-sm text-text-secondary">
               No class sessions are scheduled for today.
             </p>
@@ -140,7 +146,11 @@ export default async function AttendancePage({ searchParams }) {
 
   return (
     <>
-      <PageHeader title="Attendance" description="View and manage class sessions and attendance." />
+      <PageHeader
+        title="Attendance"
+        description="View and manage class sessions and attendance."
+        icon={<ClipboardCheck className="size-6" />}
+      />
 
       <AttendanceViewToggle active="all" />
 
@@ -157,7 +167,7 @@ export default async function AttendancePage({ searchParams }) {
       />
 
       {sessions.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-lg border border-dashed border-border px-6 py-16 text-center">
+        <div className="mt-6 flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
           {isFiltered ? (
             <>
               <p className="text-body max-w-sm text-text-secondary">
@@ -175,12 +185,10 @@ export default async function AttendancePage({ searchParams }) {
         </div>
       ) : (
         <>
-          <div className="mt-6">
-            <AllSessionsList sessions={sessions} />
-          </div>
+          <AllSessionsList sessions={sessions} total={total} />
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-body text-text-secondary">
+            <p className="text-small text-text-secondary">
               Showing {rangeStart}–{rangeEnd} of {total} sessions
             </p>
 
@@ -200,7 +208,7 @@ export default async function AttendancePage({ searchParams }) {
                 </Button>
               )}
 
-              <span className="text-body px-1 text-text-secondary">
+              <span className="text-small px-1 text-text-secondary">
                 Page {page} of {totalPages}
               </span>
 

@@ -91,7 +91,7 @@ export default function MarkSession({ scheduleId, date }) {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button type="button" variant="outline" onClick={openCompose} disabled={isPending}>
+      <Button type="button" size="sm" variant="outline" onClick={openCompose} disabled={isPending}>
         Mark Cancelled / Holiday
       </Button>
 

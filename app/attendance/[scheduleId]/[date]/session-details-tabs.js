@@ -1,4 +1,13 @@
 import Link from "next/link";
+import {
+  Calendar,
+  ClipboardCheck,
+  Clock,
+  FileText,
+  Layers,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_BADGE_VARIANTS } from "@/lib/class-sessions/validation";
 import EligibleStudentsList from "@/app/attendance/[scheduleId]/[date]/eligible-students-list";
@@ -28,43 +37,54 @@ function formatDate(value) {
   });
 }
 
+function Panel({ title, icon: Icon, children }) {
+  return (
+    <section className="rounded-card border border-border bg-surface p-4 shadow-xs sm:p-5">
+      {title ? (
+        <h2 className="mb-3 flex items-center gap-2 text-body font-semibold text-text-primary">
+          {Icon ? <Icon className="size-4 text-text-secondary" aria-hidden="true" /> : null}
+          {title}
+        </h2>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
+function FieldRow({ icon: Icon, label, children }) {
+  return (
+    <div className="min-w-0">
+      <div className="flex items-center gap-1.5">
+        <Icon className="size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+        <p className="text-small text-text-secondary">{label}</p>
+      </div>
+      <div className="mt-1">{children}</div>
+    </div>
+  );
+}
+
+function SummaryTile({ label, value, tone }) {
+  const tones = {
+    brand: "border-brand/20 bg-brand/10",
+    success: "border-success/20 bg-success/10",
+    danger: "border-danger/20 bg-danger/10",
+    warning: "border-warning/20 bg-warning/10",
+    info: "border-info/20 bg-info/10",
+  };
+
+  return (
+    <div className={`rounded-xl border px-3 py-2.5 ${tones[tone] ?? tones.brand}`}>
+      <p className="text-[10px] leading-[14px] font-medium tracking-wide text-text-secondary uppercase">
+        {label}
+      </p>
+      <p className="mt-0.5 text-body font-semibold tracking-tight text-text-primary">{value}</p>
+    </div>
+  );
+}
+
 /**
- * Session Details' tabs (approved wireframe: Overview / Eligible Students /
- * Attendance). URL-addressable via `?tab=` (Phase 15 Slice 2 — Eligible
- * Students now has real content to navigate to, so this switched from
- * Phase 14's inert-`<span>` treatment to real `<Link>`s, the same
- * server-rendered, URL-driven pattern app/schedule/schedule-view-toggle.js
- * already uses for Today's Sessions/All Sessions). Overview stays the
- * default at the bare `/attendance/[scheduleId]/[date]` URL — its own href
- * omits `?tab=` entirely rather than writing `?tab=overview`, so the
- * canonical Session Details URL is unchanged from Phase 14.
- *
- * Attendance (Phase 15 Slice 3) renders `AttendancePanel`, which owns the
- * Take/View/Edit Attendance behavior itself — this component only wires the
- * tab and passes through what the page already fetched for it
- * (`eligibleStudents`, `initialAttendanceMarks`), the same "page fetches
- * for the active tab, this component only renders" split Eligible Students
- * already uses.
- *
- * Works identically for a materialized or a projected `session` — both
- * carry the same `batches`/`instructors`/`session_date`/`start_time`/
- * `end_time` shape (lib/class-sessions/data.js). `eligibleStudents` is only
- * ever non-empty when `activeTab` is `"eligible"` or `"attendance"` — the
- * page only fetches it for those tabs (app/attendance/[scheduleId]/[date]/page.js),
- * so opening Overview never triggers an eligibility lookup.
- * `initialAttendanceMarks` is likewise only fetched for `"attendance"`.
- *
- * Overview's Attendance Summary card reads `attendanceSummary`
- * (`getAttendanceSummary`, lib/attendance/data.js), fetched only when
- * Overview is the active tab — the same already-schedule-scoped,
- * already-safe-for-a-null-session-id summary `AttendancePanel` derives its
- * own live counts from, not a second implementation of it.
- *
- * The Note row (Flow 07 — Cancel/Holiday) only renders when `session.note`
- * is set — a projected occurrence's `note` is always null
- * (`buildProjectedOccurrence`), and a materialized `scheduled`/`completed`
- * session usually has none either, so this stays hidden far more often
- * than not, by design.
+ * Session Details tabs — folder-tab chrome matches Batch/Schedule Detail.
+ * Overview / Eligible / Attendance labels and `?tab=` routing unchanged.
  */
 export default function SessionDetailsTabs({
   session,
@@ -76,107 +96,162 @@ export default function SessionDetailsTabs({
   initialAttendanceMarks,
   attendanceSummary,
 }) {
+  const batchName = session.batches?.name ?? "—";
+  const batchCode = session.batches?.code ?? null;
+
   return (
-    <div>
-      <nav aria-label="Session sections" className="mb-6 border-b border-border">
-        <ul className="flex gap-6">
-          {TABS.map((tab) => (
-            <li key={tab.key}>
-              <Link
-                href={tab.key === "overview" ? `/attendance/${scheduleId}/${date}` : `/attendance/${scheduleId}/${date}?tab=${tab.key}`}
-                aria-current={activeTab === tab.key ? "page" : undefined}
-                className={
-                  activeTab === tab.key
-                    ? "inline-flex border-b-2 border-brand px-0.5 pb-3 text-body font-semibold text-text-primary"
-                    : "inline-flex border-b-2 border-transparent px-0.5 pb-3 text-body text-text-secondary hover:text-text-primary"
-                }
-              >
-                {tab.label}
-              </Link>
-            </li>
-          ))}
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-xs">
+      <nav aria-label="Session sections" className="folder-tabs-track px-3 pt-1.5">
+        <ul className="flex flex-wrap items-end gap-0.5">
+          {TABS.map((tab) => {
+            const isTabActive = activeTab === tab.key;
+            const href =
+              tab.key === "overview"
+                ? `/attendance/${scheduleId}/${date}`
+                : `/attendance/${scheduleId}/${date}?tab=${tab.key}`;
+
+            return (
+              <li key={tab.key}>
+                <Link
+                  href={href}
+                  aria-current={isTabActive ? "page" : undefined}
+                  className={
+                    isTabActive
+                      ? "folder-tab-active inline-flex px-4 pt-2.5 pb-2.5 text-body font-semibold text-text-primary sm:px-5"
+                      : "inline-flex px-4 pt-2.5 pb-2.5 text-body text-text-secondary transition-colors hover:text-text-primary sm:px-5"
+                  }
+                >
+                  <span className="relative inline-flex flex-col items-center gap-1.5">
+                    {tab.label}
+                    {isTabActive ? (
+                      <span aria-hidden="true" className="h-0.5 w-full rounded-full bg-text-primary" />
+                    ) : (
+                      <span aria-hidden="true" className="h-0.5 w-full" />
+                    )}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
-      {activeTab === "overview" ? (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
-            <h2 className="text-section-title font-semibold text-text-primary">Session Information</h2>
-            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
-              <div>
-                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Batch</dt>
-                <dd className="text-body text-text-primary">{session.batches?.name ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Instructor</dt>
-                <dd className="text-body text-text-primary">{session.instructors?.full_name ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Date</dt>
-                <dd className="text-body text-text-primary">{formatDate(session.session_date)}</dd>
-              </div>
-              <div>
-                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Time</dt>
-                <dd className="text-body text-text-primary">
-                  {formatTime(session.start_time)} – {formatTime(session.end_time)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Status</dt>
-                <dd className="text-body text-text-primary">
-                  <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS[displayStatus]}>
-                    {DISPLAY_STATUS_LABELS[displayStatus]}
-                  </Badge>
-                </dd>
-              </div>
-              {session.note ? (
-                <div className="col-span-2">
-                  <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Note</dt>
-                  <dd className="text-body text-text-primary">{session.note}</dd>
+      <div className="bg-surface px-4 pt-4 pb-4 sm:px-5 sm:pb-5">
+        {activeTab === "overview" ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Panel title="Session Information" icon={Calendar}>
+              <div className="overflow-hidden rounded-xl border border-brand/20 bg-brand/5">
+                <div className="flex items-start gap-3 bg-brand/10 px-3.5 py-3.5">
+                  <span
+                    aria-hidden="true"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand/15 text-small font-semibold text-brand"
+                  >
+                    {batchCode || "—"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-body font-semibold text-text-primary">{batchName}</p>
+                      <Badge
+                        variant={DISPLAY_STATUS_BADGE_VARIANTS[displayStatus]}
+                        className="px-1.5 py-0"
+                      >
+                        <span className="text-[10px] leading-[14px] font-medium">
+                          {DISPLAY_STATUS_LABELS[displayStatus]}
+                        </span>
+                      </Badge>
+                    </div>
+                    <p className="text-small mt-1 text-text-secondary">
+                      {batchCode ? `Code: ${batchCode}` : "Batch"}
+                    </p>
+                  </div>
                 </div>
-              ) : null}
-            </dl>
+
+                <div className="grid grid-cols-2 gap-3 border-t border-brand/15 px-3.5 py-3">
+                  <FieldRow icon={UserRound} label="Instructor">
+                    <p className="truncate text-body font-semibold text-text-primary">
+                      {session.instructors?.full_name ?? "—"}
+                    </p>
+                  </FieldRow>
+                  <FieldRow icon={Calendar} label="Date">
+                    <p className="truncate text-body font-semibold text-text-primary">
+                      {formatDate(session.session_date)}
+                    </p>
+                  </FieldRow>
+                  <FieldRow icon={Clock} label="Time">
+                    <p className="truncate text-body font-semibold text-text-primary">
+                      {formatTime(session.start_time)} – {formatTime(session.end_time)}
+                    </p>
+                  </FieldRow>
+                  <FieldRow icon={Layers} label="Status">
+                    <p className="truncate text-body font-semibold text-text-primary">
+                      {DISPLAY_STATUS_LABELS[displayStatus]}
+                    </p>
+                  </FieldRow>
+                </div>
+
+                {session.note ? (
+                  <div className="border-t border-brand/15 px-3.5 py-2.5">
+                    <div className="flex items-center gap-1.5 text-small text-text-secondary">
+                      <FileText className="size-3.5 shrink-0" aria-hidden="true" />
+                      Note
+                    </div>
+                    <p className="mt-1 text-body text-text-primary">{session.note}</p>
+                  </div>
+                ) : null}
+              </div>
+            </Panel>
+
+            <Panel title="Attendance Summary" icon={ClipboardCheck}>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <SummaryTile
+                  label="Eligible"
+                  value={attendanceSummary?.eligibleCount ?? 0}
+                  tone="info"
+                />
+                <SummaryTile
+                  label="Present"
+                  value={attendanceSummary?.presentCount ?? 0}
+                  tone="success"
+                />
+                <SummaryTile
+                  label="Absent"
+                  value={attendanceSummary?.absentCount ?? 0}
+                  tone="danger"
+                />
+                <SummaryTile
+                  label="Unmarked"
+                  value={attendanceSummary?.unmarkedCount ?? 0}
+                  tone="warning"
+                />
+                <SummaryTile
+                  label="Attendance"
+                  value={`${attendanceSummary?.percentage ?? 0}%`}
+                  tone="brand"
+                />
+              </div>
+              <p className="text-small mt-3 text-text-secondary">
+                Open the Attendance tab to take or review marks for this session.
+              </p>
+            </Panel>
           </div>
+        ) : null}
 
-          <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
-            <h2 className="text-section-title font-semibold text-text-primary">Attendance Summary</h2>
-            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
-              <div>
-                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Eligible</dt>
-                <dd className="text-body text-text-primary">{attendanceSummary?.eligibleCount ?? 0}</dd>
-              </div>
-              <div>
-                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Present</dt>
-                <dd className="text-body text-text-primary">{attendanceSummary?.presentCount ?? 0}</dd>
-              </div>
-              <div>
-                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Absent</dt>
-                <dd className="text-body text-text-primary">{attendanceSummary?.absentCount ?? 0}</dd>
-              </div>
-              <div>
-                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Unmarked</dt>
-                <dd className="text-body text-text-primary">{attendanceSummary?.unmarkedCount ?? 0}</dd>
-              </div>
-              <div className="col-span-2">
-                <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Attendance</dt>
-                <dd className="text-body text-text-primary">{attendanceSummary?.percentage ?? 0}%</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-      ) : null}
+        {activeTab === "eligible" ? (
+          <Panel title="Eligible Students" icon={Users}>
+            <EligibleStudentsList students={eligibleStudents} batch={session.batches} />
+          </Panel>
+        ) : null}
 
-      {activeTab === "eligible" ? <EligibleStudentsList students={eligibleStudents} batch={session.batches} /> : null}
-
-      {activeTab === "attendance" ? (
-        <AttendancePanel
-          session={session}
-          scheduleId={scheduleId}
-          date={date}
-          eligibleStudents={eligibleStudents}
-          initialMarks={initialAttendanceMarks}
-        />
-      ) : null}
+        {activeTab === "attendance" ? (
+          <AttendancePanel
+            session={session}
+            scheduleId={scheduleId}
+            date={date}
+            eligibleStudents={eligibleStudents}
+            initialMarks={initialAttendanceMarks}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

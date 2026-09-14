@@ -37,26 +37,15 @@ function formatDate(value) {
 }
 
 /**
- * Eligible Students tab content (approved wireframe: STUDENT / PHONE /
- * BATCH ENROLLMENT / MEMBERSHIP / STATUS / ACTION). `students` is already
- * the fully-resolved eligible list for this session's batch and date
- * (lib/attendance/data.js's `listEligibleStudents`, itself backed by
- * `resolve_eligible_students` — the single source of eligibility); this
- * component only paginates and displays it, it does not filter or
- * re-derive who is eligible.
- *
- * Client-side pagination (approved decision, no URL page param): every
- * eligible student is already loaded, so paging is a local `slice()`, not
- * a new fetch. `batch` is constant across every row — every student here
- * is eligible specifically because they are actively enrolled in *this*
- * session's own batch, so BATCH ENROLLMENT never varies row to row.
+ * Eligible Students tab content — same data/pagination behaviour; polished
+ * empty state and table shell only.
  */
 export default function EligibleStudentsList({ students, batch }) {
   const [page, setPage] = useState(1);
 
   if (students.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-16 text-center">
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-background/40 px-6 py-16 text-center">
         <p className="text-body max-w-sm text-text-secondary">
           No students are eligible for this session. Eligibility requires an active enrollment in this
           batch and an active membership covering this session&rsquo;s date.
@@ -74,14 +63,15 @@ export default function EligibleStudentsList({ students, batch }) {
 
   return (
     <div>
-      <p className="text-body mb-4 text-text-secondary">
-        {students.length} student{students.length === 1 ? "" : "s"} eligible for this session.
+      <p className="text-small mb-4 text-text-secondary">
+        <span className="font-medium text-text-primary">{students.length}</span> student
+        {students.length === 1 ? "" : "s"} eligible for this session
       </p>
 
-      <DataTableShell>
+      <DataTableShell tone="info">
         <Table aria-label="Eligible Students">
           <TableHeader>
-            <TableRow>
+            <TableRow className="hover:bg-transparent">
               <TableHead>Student</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Batch Enrollment</TableHead>
@@ -93,26 +83,26 @@ export default function EligibleStudentsList({ students, batch }) {
           <TableBody>
             {pageStudents.map((student) => (
               <TableRow key={student.id}>
-                <TableCell>
+                <TableCell className="px-5 py-3.5">
                   <div className="flex items-center gap-3">
                     <span
                       aria-hidden="true"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background text-small font-medium text-brand"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-small font-semibold text-brand"
                     >
                       {getInitials(student.full_name)}
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-text-primary">{student.full_name}</p>
+                      <p className="truncate font-semibold text-text-primary">{student.full_name}</p>
                       <p className="text-small text-text-secondary">{student.student_code}</p>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="text-text-secondary">{student.phone}</TableCell>
-                <TableCell className="text-text-secondary">
+                <TableCell className="px-5 py-3.5 text-text-secondary">{student.phone}</TableCell>
+                <TableCell className="px-5 py-3.5 text-text-secondary">
                   {batch?.name ?? "—"} {batch?.code ? `(${batch.code})` : ""}
                   <span className="block text-small">(Active)</span>
                 </TableCell>
-                <TableCell className="text-text-secondary">
+                <TableCell className="px-5 py-3.5 text-text-secondary">
                   Active
                   {student.membership ? (
                     <span className="block text-small">
@@ -120,10 +110,12 @@ export default function EligibleStudentsList({ students, batch }) {
                     </span>
                   ) : null}
                 </TableCell>
-                <TableCell>
-                  <Badge variant="success">Eligible</Badge>
+                <TableCell className="px-5 py-3.5">
+                  <Badge variant="success" className="rounded-full px-2 py-0">
+                    <span className="text-[10px] leading-[14px] font-medium">Eligible</span>
+                  </Badge>
                 </TableCell>
-                <TableCell>
+                <TableCell className="px-5 py-3.5">
                   <Link
                     href={`/students/${student.id}`}
                     className="text-body font-medium text-brand hover:underline"
@@ -138,7 +130,7 @@ export default function EligibleStudentsList({ students, batch }) {
       </DataTableShell>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-body text-text-secondary">
+        <p className="text-small text-text-secondary">
           Showing {rangeStart}–{rangeEnd} of {students.length} eligible students
         </p>
 
