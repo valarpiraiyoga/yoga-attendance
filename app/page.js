@@ -12,6 +12,7 @@ import { addDaysUTC } from "@/lib/schedules/validation";
 import { getAttendanceSummaries } from "@/lib/attendance/data";
 import { getActiveStudentCount } from "@/lib/students/data";
 import { getActiveBatchCount } from "@/lib/batches/data";
+import { cn } from "@/lib/utils";
 import DashboardTodaysClasses from "@/app/dashboard-todays-classes";
 import DashboardUpcomingClasses from "@/app/dashboard-upcoming-classes";
 
@@ -165,6 +166,16 @@ function StatTile({ label, value, caption, icon: Icon, tone = "brand" }) {
   );
 }
 
+const SECTION_FRAME = "rounded-card border border-border bg-surface p-4 shadow-xs sm:p-6";
+
+function DashboardSection({ children, className, ...props }) {
+  return (
+    <section className={cn(SECTION_FRAME, className)} {...props}>
+      {children}
+    </section>
+  );
+}
+
 function EmptyState({ children }) {
   return (
     <div className="mt-4 flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-16 text-center">
@@ -176,29 +187,29 @@ function EmptyState({ children }) {
 /** Mirrors the real content's shape so the Suspense swap-in is not a layout jump. */
 function DashboardSkeleton({ isAdmin }) {
   return (
-    <div aria-busy="true" aria-label="Loading dashboard" role="status">
-      <dl className={`grid grid-cols-2 gap-3 ${isAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
-        {(isAdmin ? [0, 1, 2, 3] : [0, 1, 2]).map((tile) => (
-          <div key={tile} className="relative min-h-36 overflow-hidden rounded-2xl bg-neutral/20 p-4 shadow-sm">
-            <Skeleton className="size-9 rounded-lg" />
-            <div className="mt-8 min-w-0">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="mt-2 h-7 w-12" />
-              <Skeleton className="mt-2 h-3 w-28" />
+    <div className="flex flex-col gap-8" aria-busy="true" aria-label="Loading dashboard" role="status">
+        <dl className={`grid grid-cols-2 gap-3 ${isAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+          {(isAdmin ? [0, 1, 2, 3] : [0, 1, 2]).map((tile) => (
+            <div key={tile} className="relative min-h-36 overflow-hidden rounded-2xl bg-neutral/20 p-4 shadow-sm">
+              <Skeleton className="size-9 rounded-lg" />
+              <div className="mt-8 min-w-0">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="mt-2 h-7 w-12" />
+                <Skeleton className="mt-2 h-3 w-28" />
+              </div>
             </div>
-          </div>
-        ))}
-      </dl>
+          ))}
+        </dl>
 
-      <div className="mt-8">
+      <DashboardSection>
         <Skeleton className="h-5 w-40" />
         <Skeleton className="mt-2 h-4 w-64" />
-        <div className="mt-4 space-y-3 rounded-card border border-border bg-surface p-4">
+        <div className="mt-4 space-y-3">
           {[0, 1, 2].map((row) => (
-            <Skeleton key={row} className="h-4 w-full" />
+            <Skeleton key={row} className="h-16 w-full rounded-card" />
           ))}
         </div>
-      </div>
+      </DashboardSection>
     </div>
   );
 }
@@ -226,8 +237,8 @@ function DashboardSkeleton({ isAdmin }) {
  *     `head: true` counts, transferring a number each, not a row per
  *     student/batch.
  *
- * Total round trips: 5 for an Instructor (today's occurrences, one batched
- * summary call, upcoming occurrences), 7 for an Admin (the same three plus
+ * Total round trips: 6 for an Instructor (today's occurrences, upcoming
+ * occurrences, two batched summary calls), 8 for an Admin (the same plus
  * the two counts) — independent of how many sessions exist on either list.
  */
 async function DashboardContent({ isAdmin, today }) {
@@ -236,7 +247,12 @@ async function DashboardContent({ isAdmin, today }) {
 
   const [todaysSessions, upcoming, activeStudentCount, activeBatchCount] = await Promise.all([
     listSessionsForDate(today).then(withAttendanceSummaries),
-    listSessions({ dateFrom: upcomingFrom, dateTo: upcomingTo, page: 1, pageSize: UPCOMING_LIMIT }),
+    listSessions({ dateFrom: upcomingFrom, dateTo: upcomingTo, page: 1, pageSize: UPCOMING_LIMIT }).then(
+      async (result) => ({
+        ...result,
+        sessions: await withAttendanceSummaries(result.sessions),
+      })
+    ),
     isAdmin ? getActiveStudentCount() : Promise.resolve(null),
     isAdmin ? getActiveBatchCount() : Promise.resolve(null),
   ]);
@@ -251,9 +267,9 @@ async function DashboardContent({ isAdmin, today }) {
   const attendanceMarkedCount = todaysSessions.filter((session) => session.status === "completed").length;
 
   return (
-    <>
+    <div className="flex flex-col gap-8">
       {isAdmin ? (
-        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Summary">
           <StatTile
             label="Active Students"
             value={activeStudentCount}
@@ -284,7 +300,7 @@ async function DashboardContent({ isAdmin, today }) {
           />
         </dl>
       ) : (
-        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3" aria-label="Summary">
           <StatTile
             label="Today's Classes"
             value={totalToday}
@@ -309,29 +325,29 @@ async function DashboardContent({ isAdmin, today }) {
         </dl>
       )}
 
-      <section className="mt-8">
-        <h2 className="text-section-title font-semibold text-text-primary">Today&apos;s Classes</h2>
-        <p className="text-body mt-1 text-text-secondary">
-          {isAdmin ? "All classes scheduled for today." : "Your assigned yoga classes for today."}
-        </p>
+      <DashboardTodaysClasses
+        sessions={todaysSessions}
+        showInstructor={isAdmin}
+        isAdmin={isAdmin}
+        description={isAdmin ? "All classes scheduled for today." : "Your assigned yoga classes for today."}
+      />
 
-        {totalToday === 0 ? (
-          <EmptyState>No class sessions are scheduled for today.</EmptyState>
-        ) : (
-          <div className="mt-4">
-            <DashboardTodaysClasses sessions={todaysSessions} showInstructor={isAdmin} />
-          </div>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-section-title font-semibold text-text-primary">Upcoming Classes</h2>
-            <p className="text-body mt-1 text-text-secondary">Your scheduled classes for the next few days.</p>
+      <DashboardSection>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info"
+            >
+              <Calendar className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-section-title font-semibold text-text-primary">Upcoming Classes</h2>
+              <p className="text-small mt-1 text-text-secondary">Your scheduled classes for the next few days.</p>
+            </div>
           </div>
           {isAdmin ? (
-            <Button variant="outline" size="sm" render={<Link href="/schedule" />} nativeButton={false}>
+            <Button variant="outline" size="sm" className="self-start" render={<Link href="/schedule" />} nativeButton={false}>
               View Full Schedule
             </Button>
           ) : null}
@@ -341,11 +357,11 @@ async function DashboardContent({ isAdmin, today }) {
           <EmptyState>No upcoming classes in the next {UPCOMING_WINDOW_DAYS} days.</EmptyState>
         ) : (
           <div className="mt-4">
-            <DashboardUpcomingClasses sessions={upcoming.sessions} />
+            <DashboardUpcomingClasses sessions={upcoming.sessions} showInstructor={isAdmin} />
           </div>
         )}
-      </section>
-    </>
+      </DashboardSection>
+    </div>
   );
 }
 
@@ -382,7 +398,9 @@ export default async function Home() {
           wrapping line, date as a single supporting row (not a KPI card).
           sm+: greeting left, date right. Sidebar remains lg-only.
         */}
-        <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+        <div className="flex flex-col gap-8">
+        <header className={SECTION_FRAME}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <span
               aria-hidden="true"
@@ -408,7 +426,7 @@ export default async function Home() {
                   <EmailIdentity value={greeting.identity} />
                 </p>
               ) : null}
-              <p className="text-body mt-1 break-words text-text-secondary">
+              <p className="text-small mt-1 break-words text-text-secondary">
                 {isAdmin
                   ? "Here's your center overview for today."
                   : "Here's your schedule and session overview for today."}
@@ -427,10 +445,12 @@ export default async function Home() {
             </div>
           </div>
         </div>
+        </header>
 
         <Suspense fallback={<DashboardSkeleton isAdmin={isAdmin} />}>
           <DashboardContent isAdmin={isAdmin} today={today} />
         </Suspense>
+        </div>
       </Container>
     </AppShell>
   );
