@@ -108,10 +108,10 @@ by another agent.
 3. **Plan** — smallest change set; list files; note risks and open questions.
 4. **Implement** — match existing architecture (presentation / feature UI /
    logic / data access / validation). Reuse components and tokens.
-5. **Validate** — section 7.
-6. **Report** — section 12.
-7. **Browser QA** — section 8 (user).
-8. **User approval** — then commit, then push, only when asked (section 9).
+5. **Validate** — section 8.
+6. **Report** — section 13.
+7. **Browser QA** — section 9 (user).
+8. **User approval** — then commit, then push, only when asked (section 10).
 
 Work incrementally. Do not implement the whole application in one task.
 
@@ -133,7 +133,40 @@ Work incrementally. Do not implement the whole application in one task.
 
 ---
 
-## 7. Validation requirements
+## 7. UI refinement boundary
+
+Protect already-developed, Browser-QA'd functionality. Allow presentation
+changes without silently changing application behaviour.
+
+Inspect the existing implementation first. If the requested UI can be
+achieved with existing data and behaviour, stay inside that boundary.
+
+**Presentation-first.** UI refinement normally changes only layout, spacing,
+typography, colors, borders, radius, shadows, icons, visual hierarchy,
+responsive presentation, presentation components, and presentation-only
+formatting/helpers.
+
+**Preserve functionality.** Do not change business rules, calculations, data
+flows, database schema, Supabase queries/mutations, authentication,
+authorization, permissions, routing, or application behaviour merely to
+improve UI.
+
+**Presentation-only logic is allowed** when required to render what already
+exists, for example: initials from existing first/last name; formatting
+existing data for display; an icon from an existing status; showing an
+existing field differently; responsive presentation logic.
+
+**Stop if a real functional or data change is required.** Do not implement
+it silently. Explain why it is required, name the affected files/systems,
+describe the smallest change, and wait for approval. Treat it as a separate
+scoped task unless the user explicitly authorizes it in the current task.
+
+Browser QA (section 9) remains required for visual/UX changes before
+approval, commit, and push.
+
+---
+
+## 8. Validation requirements
 
 Before treating agent work as done (still **before** user Browser QA):
 
@@ -149,7 +182,7 @@ Build/lint success is not a substitute for Browser QA.
 
 ---
 
-## 8. Browser QA / human approval
+## 9. Browser QA / human approval
 
 The agent cannot approve visual or UX correctness.
 
@@ -164,7 +197,7 @@ user explicitly says to commit anyway.
 
 ---
 
-## 9. Commit and push rules
+## 10. Commit and push rules
 
 - **Never commit or push unless the user explicitly asks.**
 - After Browser QA and user approval, commit only what that task covers.
@@ -180,7 +213,7 @@ Typical order: Browser QA → user approval → commit → push.
 
 ---
 
-## 10. Switching between Cursor and Claude Code
+## 11. Switching between Cursor and Claude Code
 
 Handoff is the repository, not the chat.
 
@@ -198,7 +231,7 @@ committed. Uncommitted work in the working tree is part of project state.
 
 ---
 
-## 11. Handling unclear requirements
+## 12. Handling unclear requirements
 
 If behaviour is missing or sources disagree:
 
@@ -209,7 +242,7 @@ If behaviour is missing or sources disagree:
 
 ---
 
-## 12. Required completion / report format
+## 13. Required completion / report format
 
 End every implementation task with a short report:
 
