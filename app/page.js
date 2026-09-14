@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Calendar, CircleCheck, Clock, Layers, Users } from "lucide-react";
+import { ArrowRight, Calendar, CircleCheck, Clock, Layers, Users } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import Container from "@/components/layout/Container";
 import { Button } from "@/components/ui/button";
@@ -116,23 +116,50 @@ async function withAttendanceSummaries(sessions) {
 }
 
 const STAT_TONES = {
-  brand: { wrap: "bg-brand/10", icon: "text-brand" },
-  warning: { wrap: "bg-warning/10", icon: "text-warning" },
-  info: { wrap: "bg-info/10", icon: "text-info" },
-  success: { wrap: "bg-success/10", icon: "text-success" },
+  brand: {
+    card: "bg-gradient-to-br from-brand to-brand/70",
+    icon: "text-brand",
+  },
+  warning: {
+    card: "bg-gradient-to-br from-warning to-warning/70",
+    icon: "text-warning",
+  },
+  info: {
+    card: "bg-gradient-to-br from-info to-info/70",
+    icon: "text-info",
+  },
+  success: {
+    card: "bg-gradient-to-br from-success to-success/70",
+    icon: "text-success",
+  },
 };
 
-function StatTile({ label, value, icon: Icon, tone = "brand" }) {
+function StatTile({ label, value, caption, icon: Icon, tone = "brand" }) {
   const palette = STAT_TONES[tone] ?? STAT_TONES.brand;
 
   return (
-    <div className="flex h-full items-center gap-3 rounded-card border border-border bg-surface p-3 shadow-xs">
-      <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${palette.wrap}`}>
-        <Icon className={`size-4 ${palette.icon}`} aria-hidden="true" />
-      </span>
-      <div className="min-w-0">
-        <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">{label}</dt>
-        <dd className="text-page-title font-semibold text-text-primary">{value}</dd>
+    <div
+      className={`relative flex h-full min-h-36 flex-col overflow-hidden rounded-2xl p-4 shadow-sm ${palette.card}`}
+    >
+      <svg
+        className="pointer-events-none absolute -right-6 -bottom-8 size-36 text-white/20"
+        viewBox="0 0 120 120"
+        aria-hidden="true"
+      >
+        <path fill="currentColor" d="M0 120c18-28 38-22 58-38 22-18 28-42 62-52v90H0Z" />
+      </svg>
+
+      <div className="relative flex items-start justify-between">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface shadow-xs">
+          <Icon className={`size-4 ${palette.icon}`} aria-hidden="true" />
+        </span>
+        <ArrowRight className="size-4 text-white/80" aria-hidden="true" />
+      </div>
+
+      <div className="relative mt-auto min-w-0 pt-6">
+        <dt className="text-small font-medium tracking-wider text-white/85 uppercase">{label}</dt>
+        <dd className="text-page-title mt-1 font-semibold tracking-tight text-white">{value}</dd>
+        {caption ? <p className="text-small mt-1 text-white/80">{caption}</p> : null}
       </div>
     </div>
   );
@@ -152,11 +179,12 @@ function DashboardSkeleton({ isAdmin }) {
     <div aria-busy="true" aria-label="Loading dashboard" role="status">
       <dl className={`grid grid-cols-2 gap-3 ${isAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         {(isAdmin ? [0, 1, 2, 3] : [0, 1, 2]).map((tile) => (
-          <div key={tile} className="flex h-full items-center gap-3 rounded-card border border-border bg-surface p-3 shadow-xs">
-            <Skeleton className="size-10 shrink-0 rounded-full" />
-            <div className="min-w-0 flex-1">
-              <Skeleton className="h-3 w-20" />
+          <div key={tile} className="relative min-h-36 overflow-hidden rounded-2xl bg-neutral/20 p-4 shadow-sm">
+            <Skeleton className="size-9 rounded-lg" />
+            <div className="mt-8 min-w-0">
+              <Skeleton className="h-3 w-24" />
               <Skeleton className="mt-2 h-7 w-12" />
+              <Skeleton className="mt-2 h-3 w-28" />
             </div>
           </div>
         ))}
@@ -226,21 +254,58 @@ async function DashboardContent({ isAdmin, today }) {
     <>
       {isAdmin ? (
         <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Active Students" value={activeStudentCount} icon={Users} tone="brand" />
-          <StatTile label="Active Batches" value={activeBatchCount} icon={Layers} tone="info" />
-          <StatTile label="Today's Classes" value={totalToday} icon={Calendar} tone="warning" />
+          <StatTile
+            label="Active Students"
+            value={activeStudentCount}
+            caption="Currently enrolled"
+            icon={Users}
+            tone="brand"
+          />
+          <StatTile
+            label="Active Batches"
+            value={activeBatchCount}
+            caption="Ongoing batches"
+            icon={Layers}
+            tone="info"
+          />
+          <StatTile
+            label="Today's Classes"
+            value={totalToday}
+            caption="Scheduled for today"
+            icon={Calendar}
+            tone="warning"
+          />
           <StatTile
             label="Attendance Marked"
             value={`${attendanceMarkedCount} / ${totalToday}`}
+            caption="Marked today"
             icon={CircleCheck}
             tone="success"
           />
         </dl>
       ) : (
         <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-          <StatTile label="Today's Classes" value={totalToday} icon={Calendar} tone="warning" />
-          <StatTile label="Completed" value={attendanceMarkedCount} icon={CircleCheck} tone="success" />
-          <StatTile label="Remaining" value={totalToday - attendanceMarkedCount} icon={Clock} tone="info" />
+          <StatTile
+            label="Today's Classes"
+            value={totalToday}
+            caption="Scheduled for today"
+            icon={Calendar}
+            tone="warning"
+          />
+          <StatTile
+            label="Completed"
+            value={attendanceMarkedCount}
+            caption="Marked today"
+            icon={CircleCheck}
+            tone="success"
+          />
+          <StatTile
+            label="Remaining"
+            value={totalToday - attendanceMarkedCount}
+            caption="Still scheduled"
+            icon={Clock}
+            tone="info"
+          />
         </dl>
       )}
 
