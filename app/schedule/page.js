@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Calendar, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
 import { requireRole, ROLES } from "@/lib/auth/dal";
@@ -47,6 +47,7 @@ export default async function SchedulePage({ searchParams }) {
         <PageHeader
           title="Schedule"
           description="View and manage recurring weekly schedules."
+          icon={<Calendar className="size-6" />}
           actions={
             <Button render={<Link href="/schedule/new" />} nativeButton={false}>
               <Plus className="size-4" aria-hidden="true" />
@@ -67,6 +68,7 @@ export default async function SchedulePage({ searchParams }) {
   const instructorId = typeof rawParams.instructor === "string" ? rawParams.instructor : "";
   const status = STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
+  const layout = rawParams.layout === "table" ? "table" : "cards";
 
   const [{ schedules, total }, batchOptions, instructorOptions] = await Promise.all([
     listSchedules({ q, batchId, instructorId, status, page, pageSize: PAGE_SIZE }),
@@ -84,6 +86,7 @@ export default async function SchedulePage({ searchParams }) {
       <PageHeader
         title="Schedule"
         description="View and manage recurring weekly schedules."
+        icon={<Calendar className="size-6" />}
         actions={
           <Button render={<Link href="/schedule/new" />} nativeButton={false}>
             <Plus className="size-4" aria-hidden="true" />
@@ -105,7 +108,7 @@ export default async function SchedulePage({ searchParams }) {
       />
 
       {schedules.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-lg border border-dashed border-border px-6 py-16 text-center">
+        <div className="mt-6 flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
           {isFiltered ? (
             <>
               <p className="text-body max-w-sm text-text-secondary">
@@ -129,10 +132,15 @@ export default async function SchedulePage({ searchParams }) {
         </div>
       ) : (
         <>
-          <ScheduleList schedules={schedules} />
+          <ScheduleList
+            schedules={schedules}
+            layout={layout}
+            searchParams={rawParams}
+            total={total}
+          />
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-body text-text-secondary">
+            <p className="text-small text-text-secondary">
               Showing {rangeStart}–{rangeEnd} of {total} schedules
             </p>
 
@@ -152,7 +160,7 @@ export default async function SchedulePage({ searchParams }) {
                 </Button>
               )}
 
-              <span className="text-body px-1 text-text-secondary">
+              <span className="text-small px-1 text-text-secondary">
                 Page {page} of {totalPages}
               </span>
 

@@ -1,49 +1,76 @@
 import Link from "next/link";
-import { Eye } from "lucide-react";
+import { LayoutGrid, Table2 } from "lucide-react";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import DataTableShell from "@/components/ui/data-table-shell";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { DAY_LABELS } from "@/lib/schedules/validation";
+import { buildListHref } from "@/lib/url-params";
+import ScheduleCardItem from "@/app/schedule/schedule-card-item";
+import ScheduleTableRow from "@/app/schedule/schedule-table-row";
 
-function formatTime(value) {
-  if (!value) return "—";
-  const [hours, minutes] = value.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
-}
+const LAYOUTS = [
+  { key: "cards", label: "Cards", icon: LayoutGrid },
+  { key: "table", label: "Table", icon: Table2 },
+];
 
-function formatDate(value) {
-  if (!value) return "—";
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-/**
- * The Schedule table for the List View (one of the Schedule area's two
- * approved views — see app/schedule/weekly-schedule.js for the other). A
- * plain Server Component, mirroring app/batches/batch-list.js and
- * app/memberships/membership-list.js: no quick actions here, only "View" —
- * Edit and Deactivate both live on Schedule Details.
- */
-export default function ScheduleList({ schedules }) {
+function LayoutToggle({ active, searchParams }) {
   return (
-    <DataTableShell className="mt-6">
+    <div
+      role="tablist"
+      aria-label="Schedule list layouts"
+      className="inline-flex gap-1 rounded-lg border border-border bg-background/60 p-1"
+    >
+      {LAYOUTS.map((layout) => {
+        const Icon = layout.icon;
+        const href = buildListHref("/schedule", searchParams, {
+          view: "list",
+          layout: layout.key === "cards" ? "" : layout.key,
+        });
+
+        return (
+          <Link
+            key={layout.key}
+            href={href}
+            role="tab"
+            aria-selected={active === layout.key}
+            className={
+              active === layout.key
+                ? "inline-flex items-center gap-1.5 rounded-md bg-surface px-2.5 py-1.5 text-small font-semibold text-text-primary shadow-xs"
+                : "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-small text-text-secondary hover:text-text-primary"
+            }
+          >
+            <Icon className="size-3.5" aria-hidden="true" />
+            {layout.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function ScheduleCards({ schedules }) {
+  return (
+    <div
+      className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      aria-label="Schedules"
+    >
+      {schedules.map((schedule) => (
+        <ScheduleCardItem key={schedule.id} schedule={schedule} />
+      ))}
+    </div>
+  );
+}
+
+function ScheduleTable({ schedules }) {
+  return (
+    <DataTableShell tone="info">
       <Table aria-label="Schedules">
         <TableHeader>
-          <TableRow>
+          <TableRow className="hover:bg-transparent">
             <TableHead>Batch</TableHead>
             <TableHead>Day</TableHead>
             <TableHead>Time</TableHead>
@@ -56,52 +83,40 @@ export default function ScheduleList({ schedules }) {
         </TableHeader>
         <TableBody>
           {schedules.map((schedule) => (
-            <TableRow key={schedule.id}>
-              <TableCell>
-                {schedule.batches ? (
-                  <>
-                    <p className="font-medium text-text-primary">{schedule.batches.name}</p>
-                    <p className="text-small text-text-secondary">{schedule.batches.code}</p>
-                  </>
-                ) : (
-                  <span className="text-text-secondary">—</span>
-                )}
-              </TableCell>
-              <TableCell className="text-text-secondary">{DAY_LABELS[schedule.day_of_week] ?? schedule.day_of_week}</TableCell>
-              <TableCell className="text-text-secondary">
-                {formatTime(schedule.start_time)} – {formatTime(schedule.end_time)}
-              </TableCell>
-              <TableCell className="text-text-secondary">{schedule.instructors?.full_name ?? "—"}</TableCell>
-              <TableCell className="text-text-secondary">{formatDate(schedule.effective_from)}</TableCell>
-              <TableCell className="text-text-secondary">
-                {schedule.effective_until ? formatDate(schedule.effective_until) : "—"}
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant={schedule.status === "active" ? "success" : "danger"}
-                  className="rounded-full px-2 py-0"
-                >
-                  <span className="text-[10px] leading-[14px] font-medium">
-                    {schedule.status === "active" ? "Active" : "Inactive"}
-                  </span>
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  className="text-text-secondary hover:text-brand"
-                  render={<Link href={`/schedule/${schedule.id}`} />}
-                  nativeButton={false}
-                  aria-label={`View schedule for ${schedule.batches?.name ?? "batch"}`}
-                >
-                  <Eye className="size-4" aria-hidden="true" />
-                </Button>
-              </TableCell>
-            </TableRow>
+            <ScheduleTableRow key={schedule.id} schedule={schedule} />
           ))}
         </TableBody>
       </Table>
     </DataTableShell>
+  );
+}
+
+/**
+ * Schedule List View results with Cards / Table toggle. Layout is URL-driven
+ * (`layout=table` or default cards) and keeps `view=list` so it never
+ * collides with the Weekly Schedule / List View toggle. Same data and View
+ * action in both layouts; Edit and Deactivate live on Schedule Details.
+ */
+export default function ScheduleList({ schedules, layout = "cards", searchParams, total }) {
+  return (
+    <div className="mt-6">
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-body font-medium text-text-primary">
+            {total} {total === 1 ? "Schedule" : "Schedules"}
+          </p>
+          <p className="text-small text-text-secondary">
+            {layout === "table" ? "Table view" : "Card list view"}
+          </p>
+        </div>
+        <LayoutToggle active={layout} searchParams={searchParams} />
+      </div>
+
+      {layout === "table" ? (
+        <ScheduleTable schedules={schedules} />
+      ) : (
+        <ScheduleCards schedules={schedules} />
+      )}
+    </div>
   );
 }

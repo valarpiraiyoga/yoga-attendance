@@ -27,14 +27,6 @@ const GRID_HEIGHT_PX = ((GRID_END_MINUTES - GRID_START_MINUTES) / 60) * HOUR_HEI
 const MIN_CARD_WIDTH_PX = 130;
 const CARD_GAP_PX = 4;
 
-// Approximate rendered height of the sticky day-header row (two lines of
-// text plus its own padding/border) — only used to size the single
-// scrollable area's visible window; a few px of slack either way changes
-// nothing about correctness, only how much of the body is visible at once
-// before the vertical scrollbar engages.
-const HEADER_ROW_HEIGHT_PX = 60;
-const VISIBLE_HEIGHT_PX = HEADER_ROW_HEIGHT_PX + 640;
-
 // Maps a clock-time (in minutes since midnight) to its pixel offset from the
 // top of the grid, including the buffer above — the single source of truth
 // every hour label, gridline and schedule card positions itself against.
@@ -59,8 +51,38 @@ function formatHourLabel(hour) {
 function formatWeekRange(weekStart, weekEnd) {
   const start = new Date(`${weekStart}T00:00:00Z`);
   const end = new Date(`${weekEnd}T00:00:00Z`);
-  const startLabel = start.toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
-  const endLabel = end.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const startMonth = start.getUTCMonth();
+  const endMonth = end.getUTCMonth();
+  const startYear = start.getUTCFullYear();
+  const endYear = end.getUTCFullYear();
+  const startDay = start.getUTCDate();
+  const endDay = end.getUTCDate();
+
+  // Compact when the week stays in one month/year: "Sep 14–20, 2026".
+  // Cross-month / cross-year keep both sides clear without repeating noise.
+  if (startYear === endYear && startMonth === endMonth) {
+    const month = start.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+    return `${month} ${startDay}–${endDay}, ${endYear}`;
+  }
+
+  if (startYear === endYear) {
+    const startLabel = start.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    const endLabel = end.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    return `${startLabel} – ${endLabel}, ${endYear}`;
+  }
+
+  const startLabel = start.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const endLabel = end.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
   return `${startLabel} – ${endLabel}`;
 }
 
@@ -181,41 +203,30 @@ export default function WeeklySchedule({ weekStart, schedules }) {
   const columnsTemplate = `64px ${days.map((day) => `minmax(${day.minWidthPx}px, 1fr)`).join(" ")}`;
 
   return (
-    <div className="rounded-card border border-border bg-surface shadow-xs">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
-        <Button variant="outline" size="sm" render={<Link href={todayHref} />} nativeButton={false}>
-          Today
-        </Button>
-        <Button variant="outline" size="sm" render={<Link href={previousWeekHref} />} nativeButton={false}>
-          Previous
-        </Button>
-        <Button variant="outline" size="sm" render={<Link href={nextWeekHref} />} nativeButton={false}>
-          Next
-        </Button>
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-xs">
+      <div className="flex flex-col gap-3 border-b border-border/70 bg-background/40 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" render={<Link href={todayHref} />} nativeButton={false}>
+            Today
+          </Button>
+          <Button variant="outline" size="sm" render={<Link href={previousWeekHref} />} nativeButton={false}>
+            Previous
+          </Button>
+          <Button variant="outline" size="sm" render={<Link href={nextWeekHref} />} nativeButton={false}>
+            Next
+          </Button>
+        </div>
         <span className="text-body font-medium text-text-primary">{formatWeekRange(weekStart, weekEnd)}</span>
       </div>
 
-      {/* A single scroll container for both axes (`overflow-auto` sets
-          overflow-x AND overflow-y explicitly, so neither gets silently
-          upgraded by the CSS Overflow spec's visible/non-visible coupling
-          rule — that coupling is what caused a second, independent
-          horizontal scrollbar when the vertical-only scroller below used
-          to be a separate nested element). The day-header row is a
-          `position: sticky` row *inside* this same container rather than
-          a separate element above it, so it is never its own overflow
-          context — it scrolls horizontally exactly as one unit with the
-          body grid below it (same gridTemplateColumns, same direct parent,
-          so both resolve to the identical column widths), while staying
-          pinned to the top of the visible area as the container scrolls
-          vertically. Wrapping the header in its own sibling div (as a
-          previous version of this fix did) required that div's own width
-          to independently match the grid's — a plain block does not grow
-          to fit a wide child's content the way a CSS grid does, so it
-          either clipped the grid or needed a `w-fit` that also broke the
-          1fr columns' "fill available width" behavior for the normal,
-          non-overlapping case. Making the header a sticky row of the same
-          grid sidesteps that entirely. */}
-      <div className="overflow-auto" style={{ maxHeight: `${VISIBLE_HEIGHT_PX}px` }}>
+      {/* Horizontal scroll only when day columns need more width than the
+          viewport (overlap floors). The full 6 AM–10 PM grid uses auto
+          height and relies on the page scroll — no nested vertical scroller.
+          The day-header row is `position: sticky` inside this same container
+          so it scrolls horizontally with the body grid (same
+          gridTemplateColumns, same parent) while staying pinned at the top
+          of this horizontal viewport. */}
+      <div className="overflow-x-auto">
         <div className="relative grid" style={{ gridTemplateColumns: columnsTemplate }}>
           <div className="sticky top-0 z-10 border-b border-border bg-surface" />
           {days.map((day) => (

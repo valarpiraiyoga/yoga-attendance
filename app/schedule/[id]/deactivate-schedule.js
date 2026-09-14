@@ -42,7 +42,7 @@ export default function DeactivateSchedule({ scheduleId, isActive }) {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button type="button" variant="outline" onClick={() => setConfirmOpen(true)} disabled={isPending}>
+      <Button type="button" size="sm" variant="outline" onClick={() => setConfirmOpen(true)} disabled={isPending}>
         Deactivate Schedule
       </Button>
 
