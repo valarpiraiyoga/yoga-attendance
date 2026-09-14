@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,20 +31,24 @@ export default function StudentCardItem({ student }) {
   return (
     <article
       className={cn(
-        "flex h-full flex-col rounded-card border bg-surface p-4 shadow-xs transition-colors",
-        menuOpen ? "border-brand/40 bg-brand/5" : "border-border"
+        "flex h-full flex-col gap-3 rounded-2xl border p-3.5 shadow-sm backdrop-blur-sm transition-colors",
+        menuOpen
+          ? "border-brand/40 bg-gradient-to-br from-brand/15 via-surface/90 to-info/15"
+          : "border-border/70 bg-gradient-to-br from-brand/10 via-surface/80 to-info/10"
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2.5">
         <span
           aria-hidden="true"
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-small font-semibold text-brand"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-surface/80 bg-brand/15 text-small font-semibold text-brand shadow-xs"
         >
           {getInitials(student.full_name)}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-body font-semibold text-text-primary">{student.full_name}</p>
-          <p className="text-small mt-0.5 truncate text-text-secondary">{student.student_code}</p>
+          <h3 className="truncate text-body font-semibold leading-snug text-text-primary">
+            {student.full_name}
+          </h3>
+          <p className="text-small truncate text-text-secondary">{student.student_code}</p>
         </div>
         <StudentCardMenu
           studentId={student.id}
@@ -54,43 +58,43 @@ export default function StudentCardItem({ student }) {
         />
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="min-w-0">
-          <p className="text-small text-text-secondary">Phone</p>
-          <p className="mt-1 truncate text-body font-semibold text-text-primary">{student.phone || "—"}</p>
-        </div>
-        <div className="min-w-0">
-          <p className="text-small text-text-secondary">Batch</p>
-          <p className="mt-1 truncate text-body font-semibold text-text-primary">{batchValue}</p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Badge variant={MEMBERSHIP_SUMMARY_VARIANTS[student.membershipSummary]} className="px-1.5 py-0">
+      <div className="flex flex-wrap gap-1.5">
+        <Badge variant={MEMBERSHIP_SUMMARY_VARIANTS[student.membershipSummary]} className="rounded-full px-2 py-0">
           <span className="text-[10px] leading-[14px] font-medium">
             Membership: {MEMBERSHIP_SUMMARY_LABELS[student.membershipSummary]}
           </span>
         </Badge>
-        <Badge variant={isActive ? "success" : "danger"} className="px-1.5 py-0">
+        <Badge variant={isActive ? "success" : "danger"} className="rounded-full px-2 py-0">
           <span className="text-[10px] leading-[14px] font-medium">
             Status: {isActive ? "Active" : "Inactive"}
           </span>
         </Badge>
       </div>
 
-      <div className="mt-auto pt-4">
-        <div className="border-t border-border pt-3">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-auto w-full justify-end gap-1 px-0 py-0 text-small font-semibold text-brand hover:bg-transparent hover:text-brand"
-            render={<Link href={`/students/${student.id}`} />}
-            nativeButton={false}
-          >
-            View Student
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Button>
+      <div className="grid grid-cols-2 border-y border-border/50 py-2.5">
+        <div className="min-w-0 pr-2">
+          <p className="flex items-center gap-1 truncate text-body font-semibold leading-snug text-text-primary">
+            <Phone className="size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+            <span className="truncate">{student.phone || "—"}</span>
+          </p>
+          <p className="text-small mt-0.5 text-text-secondary">Phone</p>
         </div>
+        <div className="min-w-0 border-l border-border/50 pl-3">
+          <p className="truncate text-body font-semibold leading-snug text-text-primary">{batchValue}</p>
+          <p className="text-small mt-0.5 text-text-secondary">Batch</p>
+        </div>
+      </div>
+
+      <div className="mt-auto">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 w-full rounded-full border-border/80 bg-surface/70 text-small font-semibold text-text-primary shadow-xs hover:bg-surface hover:text-text-primary"
+          render={<Link href={`/students/${student.id}`} />}
+          nativeButton={false}
+        >
+          View Student
+        </Button>
       </div>
     </article>
   );

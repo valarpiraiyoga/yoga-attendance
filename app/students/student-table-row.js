@@ -30,15 +30,15 @@ export default function StudentTableRow({ student }) {
   return (
     <TableRow
       className={cn(
-        "border-border/70 transition-colors",
-        menuOpen ? "bg-brand/5 hover:bg-brand/5" : undefined
+        "border-border/30 bg-surface/40 transition-colors hover:bg-surface/70",
+        menuOpen && "bg-brand/10 hover:bg-brand/10"
       )}
     >
-      <TableCell className="px-4 py-3.5">
+      <TableCell className="px-5 py-4">
         <div className="flex min-w-0 items-center gap-3">
           <span
             aria-hidden="true"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-small font-semibold text-brand"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-small font-semibold text-brand"
           >
             {getInitials(student.full_name)}
           </span>
@@ -48,12 +48,12 @@ export default function StudentTableRow({ student }) {
           </div>
         </div>
       </TableCell>
-      <TableCell className="px-4 py-3.5 text-text-secondary">{student.phone}</TableCell>
-      <TableCell className="px-4 py-3.5">
+      <TableCell className="px-5 py-4 text-text-secondary">{student.phone || "—"}</TableCell>
+      <TableCell className="px-5 py-4">
         {student.batchCodes.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {student.batchCodes.map((code) => (
-              <Badge key={code} variant="outline">
+              <Badge key={code} variant="outline" className="border-border/70 bg-surface/60">
                 {code}
               </Badge>
             ))}
@@ -62,23 +62,23 @@ export default function StudentTableRow({ student }) {
           <span className="text-text-secondary">—</span>
         )}
       </TableCell>
-      <TableCell className="px-4 py-3.5">
+      <TableCell className="px-5 py-4">
         <Badge variant={MEMBERSHIP_SUMMARY_VARIANTS[student.membershipSummary]}>
           {MEMBERSHIP_SUMMARY_LABELS[student.membershipSummary]}
         </Badge>
       </TableCell>
-      <TableCell className="px-4 py-3.5">
+      <TableCell className="px-5 py-4">
         <Badge variant={student.status === "active" ? "success" : "danger"}>
           {student.status === "active" ? "Active" : "Inactive"}
         </Badge>
       </TableCell>
-      <TableCell className="px-4 py-3.5">
+      <TableCell className="px-5 py-4">
         <div className="flex items-center gap-1">
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="text-brand hover:bg-brand/5 hover:text-brand"
+            className="text-brand hover:bg-brand/10 hover:text-brand"
             aria-label="View Student"
             render={<Link href={`/students/${student.id}`} />}
             nativeButton={false}
