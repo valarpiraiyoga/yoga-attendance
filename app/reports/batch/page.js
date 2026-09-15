@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { BarChart3 } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
 import { listBatchOptions } from "@/lib/batches/data";
@@ -115,26 +116,30 @@ export default async function BatchAttendanceReportPage({ searchParams }) {
 
   return (
     <>
-      <PageHeader title="Reports" description="View attendance reports and summaries." />
+      <PageHeader
+        title="Reports"
+        description="View attendance reports and summaries."
+        icon={<BarChart3 className="size-6" />}
+      />
 
-      <ReportTabs active="batch" />
+      <ReportTabs active="batch">
+        <section>
+          <h2 className="text-section-title font-semibold text-text-primary">Batch Attendance</h2>
+          <p className="text-body mt-1 text-text-secondary">
+            View attendance performance for a batch over a selected date range.
+          </p>
 
-      <section className="mt-6">
-        <h2 className="text-section-title font-semibold text-text-primary">Batch Attendance</h2>
-        <p className="text-body mt-1 text-text-secondary">
-          View attendance performance for a batch over a selected date range.
-        </p>
+          <BatchAttendanceFilters
+            key={`${batchId}:${dateFrom}:${dateTo}`}
+            defaultBatchId={batchId}
+            defaultDateFrom={dateFrom}
+            defaultDateTo={dateTo}
+            batchOptions={batchOptions}
+          />
+        </section>
 
-        <BatchAttendanceFilters
-          key={`${batchId}:${dateFrom}:${dateTo}`}
-          defaultBatchId={batchId}
-          defaultDateFrom={dateFrom}
-          defaultDateTo={dateTo}
-          batchOptions={batchOptions}
-        />
-      </section>
-
-      {results}
+        {results}
+      </ReportTabs>
     </>
   );
 }

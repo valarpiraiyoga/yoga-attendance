@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { BarChart3 } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
 import { listStudentOptions } from "@/lib/students/data";
@@ -113,26 +114,30 @@ export default async function ReportsPage({ searchParams }) {
 
   return (
     <>
-      <PageHeader title="Reports" description="View attendance reports and summaries." />
+      <PageHeader
+        title="Reports"
+        description="View attendance reports and summaries."
+        icon={<BarChart3 className="size-6" />}
+      />
 
-      <ReportTabs active="student" />
+      <ReportTabs active="student">
+        <section>
+          <h2 className="text-section-title font-semibold text-text-primary">Student Attendance</h2>
+          <p className="text-body mt-1 text-text-secondary">
+            View attendance history for a student over a selected date range.
+          </p>
 
-      <section className="mt-6">
-        <h2 className="text-section-title font-semibold text-text-primary">Student Attendance</h2>
-        <p className="text-body mt-1 text-text-secondary">
-          View attendance history for a student over a selected date range.
-        </p>
+          <StudentAttendanceFilters
+            key={`${studentId}:${dateFrom}:${dateTo}`}
+            defaultStudentId={studentId}
+            defaultDateFrom={dateFrom}
+            defaultDateTo={dateTo}
+            studentOptions={studentOptions}
+          />
+        </section>
 
-        <StudentAttendanceFilters
-          key={`${studentId}:${dateFrom}:${dateTo}`}
-          defaultStudentId={studentId}
-          defaultDateFrom={dateFrom}
-          defaultDateTo={dateTo}
-          studentOptions={studentOptions}
-        />
-      </section>
-
-      {results}
+        {results}
+      </ReportTabs>
     </>
   );
 }

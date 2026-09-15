@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 
 /**
  * The three approved Reports tabs (`02-ux.md`'s Reports IA; wireframe
@@ -23,43 +22,58 @@ const TABS = [
   { key: "summary", label: "Attendance Summary", href: "/reports/summary" },
 ];
 
-export default function ReportTabs({ active }) {
+export default function ReportTabs({ active, children }) {
   return (
-    <nav aria-label="Reports" className="flex flex-wrap items-center gap-1 border-b border-border">
-      {TABS.map((tab) => {
-        const isActive = tab.key === active;
-        const base =
-          "text-body -mb-px border-b-2 px-3 py-2 font-medium transition-colors";
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-xs">
+      <nav aria-label="Reports" className="folder-tabs-track px-3 pt-1.5">
+        <ul className="flex flex-wrap items-end gap-0.5">
+          {TABS.map((tab) => {
+            const isActive = tab.key === active;
 
-        if (!tab.href) {
-          return (
-            <span
-              key={tab.key}
-              aria-disabled="true"
-              title="Not available yet"
-              className={cn(base, "cursor-not-allowed border-transparent text-text-secondary/50")}
-            >
-              {tab.label}
-            </span>
-          );
-        }
+            if (!tab.href) {
+              return (
+                <li key={tab.key}>
+                  <span
+                    aria-disabled="true"
+                    title="Not available yet"
+                    className="inline-flex cursor-not-allowed px-4 pt-2.5 pb-2.5 text-body text-text-secondary/50 sm:px-5"
+                  >
+                    <span className="relative inline-flex flex-col items-center gap-1.5">
+                      {tab.label}
+                      <span aria-hidden="true" className="h-0.5 w-full" />
+                    </span>
+                  </span>
+                </li>
+              );
+            }
 
-        return (
-          <Link
-            key={tab.key}
-            href={tab.href}
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              base,
-              isActive
-                ? "border-brand text-text-primary"
-                : "border-transparent text-text-secondary hover:text-text-primary"
-            )}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </nav>
+            return (
+              <li key={tab.key}>
+                <Link
+                  href={tab.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={
+                    isActive
+                      ? "folder-tab-active inline-flex px-4 pt-2.5 pb-2.5 text-body font-semibold text-text-primary sm:px-5"
+                      : "inline-flex px-4 pt-2.5 pb-2.5 text-body text-text-secondary transition-colors hover:text-text-primary sm:px-5"
+                  }
+                >
+                  <span className="relative inline-flex flex-col items-center gap-1.5">
+                    {tab.label}
+                    {isActive ? (
+                      <span aria-hidden="true" className="h-0.5 w-full rounded-full bg-text-primary" />
+                    ) : (
+                      <span aria-hidden="true" className="h-0.5 w-full" />
+                    )}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div className="bg-surface px-4 pt-4 pb-4 sm:px-5 sm:pb-5">{children}</div>
+    </div>
   );
 }

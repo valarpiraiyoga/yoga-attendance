@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { BarChart3 } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
 import { validateReportDateRange } from "@/lib/reports/validation";
@@ -105,24 +106,28 @@ export default async function AttendanceSummaryReportPage({ searchParams }) {
 
   return (
     <>
-      <PageHeader title="Reports" description="View attendance reports and summaries." />
+      <PageHeader
+        title="Reports"
+        description="View attendance reports and summaries."
+        icon={<BarChart3 className="size-6" />}
+      />
 
-      <ReportTabs active="summary" />
+      <ReportTabs active="summary">
+        <section>
+          <h2 className="text-section-title font-semibold text-text-primary">Attendance Summary</h2>
+          <p className="text-body mt-1 text-text-secondary">
+            View attendance totals for a selected date or date range.
+          </p>
 
-      <section className="mt-6">
-        <h2 className="text-section-title font-semibold text-text-primary">Attendance Summary</h2>
-        <p className="text-body mt-1 text-text-secondary">
-          View attendance totals for a selected date or date range.
-        </p>
+          <AttendanceSummaryFilters
+            key={`${dateFrom}:${dateTo}`}
+            defaultDateFrom={dateFrom}
+            defaultDateTo={dateTo}
+          />
+        </section>
 
-        <AttendanceSummaryFilters
-          key={`${dateFrom}:${dateTo}`}
-          defaultDateFrom={dateFrom}
-          defaultDateTo={dateTo}
-        />
-      </section>
-
-      {results}
+        {results}
+      </ReportTabs>
     </>
   );
 }
