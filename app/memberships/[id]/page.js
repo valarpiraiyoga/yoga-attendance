@@ -8,6 +8,7 @@ import {
   History,
   IndianRupee,
   Layers,
+  Mail,
   Phone,
   UserRound,
 } from "lucide-react";
@@ -188,20 +189,17 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
 
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-              <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-brand/40 bg-brand/10 text-brand sm:size-[4.25rem]">
-                <CreditCard className="size-6" aria-hidden="true" />
+              <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-brand/40 bg-brand/10 text-body font-semibold text-brand sm:size-[4.25rem]">
+                {student ? getInitials(student.full_name) : "?"}
               </span>
 
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-page-title font-semibold break-words text-brand">
-                    {planLabel} Membership
-                  </h1>
-                  <Badge variant={STATUS_VARIANTS[membership.status]} className="px-1.5 py-0">
-                    <span className="text-[10px] leading-[14px] font-medium">{statusLabel}</span>
-                  </Badge>
-                </div>
-                <p className="text-small mt-1 text-text-secondary">ID: {membership.membership_code}</p>
+                <h1 className="text-page-title font-semibold break-words text-brand">
+                  {student?.full_name ?? "—"}
+                </h1>
+                <p className="text-small mt-1 text-text-secondary">
+                  ID: {student?.student_code ?? "—"}
+                </p>
               </div>
             </div>
 
@@ -229,13 +227,34 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
           </div>
         </section>
 
-        <div className="grid grid-cols-2 gap-2 border-t border-border/50 bg-surface/50 px-3 py-2.5 sm:gap-2.5 sm:px-4 sm:py-3 lg:grid-cols-4">
-          <MetricTile
-            icon={CreditCard}
-            value={statusLabel}
-            label="Status"
-            tone={statusMetricTone(membership.status)}
-          />
+        <div className="grid grid-cols-1 gap-2 border-t border-border/50 bg-surface/50 px-3 py-2.5 sm:grid-cols-2 sm:gap-2.5 sm:px-4 sm:py-3 lg:grid-cols-5">
+          <div
+            className={`flex min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2.5 sm:col-span-2 ${
+              {
+                warning: "border-warning/20 bg-warning/10",
+                info: "border-info/20 bg-info/10",
+                success: "border-success/20 bg-success/10",
+                brand: "border-brand/20 bg-brand/10",
+              }[statusMetricTone(membership.status)]
+            }`}
+          >
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface/80 text-brand shadow-xs">
+              <CreditCard className="size-3.5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="truncate text-body font-semibold tracking-tight text-text-primary">
+                  {planLabel} Membership
+                </p>
+                <Badge variant={STATUS_VARIANTS[membership.status]} className="px-1.5 py-0">
+                  <span className="text-[10px] leading-[14px] font-medium">{statusLabel}</span>
+                </Badge>
+              </div>
+              <p className="text-small mt-0.5 truncate text-text-secondary">
+                ID: {membership.membership_code}
+              </p>
+            </div>
+          </div>
           <MetricTile
             icon={IndianRupee}
             value={paymentLabel}
@@ -300,7 +319,9 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
               </div>
             </div>
           </Panel>
+        </div>
 
+        <div className="flex flex-col gap-4">
           {student ? (
             <Panel
               title="Student"
@@ -332,13 +353,14 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
                   <FieldRow icon={Phone} label="Phone">
                     <p className="truncate text-body font-semibold text-text-primary">{student.phone || "—"}</p>
                   </FieldRow>
+                  <FieldRow icon={Mail} label="Email">
+                    <p className="truncate text-body font-semibold text-text-primary">{student.email || "—"}</p>
+                  </FieldRow>
                 </div>
               </div>
             </Panel>
           ) : null}
-        </div>
 
-        <div className="flex flex-col gap-4">
           <Panel title="Covered Batch Enrollments" icon={Layers}>
             {coveredEnrollments.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background/40 px-4 py-8 text-center">
@@ -420,67 +442,67 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
               </ul>
             )}
           </Panel>
-
-          <Panel title="Membership History" icon={History}>
-            {otherMemberships.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background/40 px-4 py-8 text-center">
-                <span
-                  aria-hidden="true"
-                  className="flex size-10 items-center justify-center rounded-full bg-border/50 text-text-secondary"
-                >
-                  <History className="size-4" />
-                </span>
-                <p className="text-body font-medium text-text-primary">No other memberships</p>
-                <p className="text-small max-w-sm text-text-secondary">
-                  No other membership records for this student.
-                </p>
-              </div>
-            ) : (
-              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-                {otherMemberships.map((entry) => (
-                  <li
-                    key={entry.id}
-                    className="flex flex-col gap-2 bg-surface px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-body font-semibold text-text-primary">{entry.membership_code}</p>
-                        <Badge variant={STATUS_VARIANTS[entry.status]} className="px-1.5 py-0">
-                          <span className="text-[10px] leading-[14px] font-medium">
-                            {STATUS_LABELS[entry.status]}
-                          </span>
-                        </Badge>
-                      </div>
-                      <p className="text-small mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-text-secondary">
-                        <span className="inline-flex items-center gap-1">
-                          <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
-                          {PLAN_LABELS[entry.plan] ?? entry.plan}
-                        </span>
-                        <span aria-hidden="true">·</span>
-                        <span className="inline-flex items-center gap-1">
-                          <Calendar className="size-3.5 shrink-0" aria-hidden="true" />
-                          {formatDate(entry.start_date)} – {formatDate(entry.end_date)}
-                        </span>
-                        <span aria-hidden="true">·</span>
-                        <span className="inline-flex items-center gap-1">
-                          <IndianRupee className="size-3.5 shrink-0" aria-hidden="true" />
-                          {formatAmount(entry.amount)}
-                        </span>
-                      </p>
-                    </div>
-                    <Link
-                      href={`/memberships/${entry.id}`}
-                      className="text-small shrink-0 font-medium text-brand hover:underline sm:self-center"
-                    >
-                      View
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
         </div>
       </div>
+
+      <Panel title="Membership History" icon={History}>
+        {otherMemberships.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background/40 px-4 py-8 text-center">
+            <span
+              aria-hidden="true"
+              className="flex size-10 items-center justify-center rounded-full bg-border/50 text-text-secondary"
+            >
+              <History className="size-4" />
+            </span>
+            <p className="text-body font-medium text-text-primary">No other memberships</p>
+            <p className="text-small max-w-sm text-text-secondary">
+              No other membership records for this student.
+            </p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+            {otherMemberships.map((entry) => (
+              <li
+                key={entry.id}
+                className="flex flex-col gap-2 bg-surface px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-body font-semibold text-text-primary">{entry.membership_code}</p>
+                    <Badge variant={STATUS_VARIANTS[entry.status]} className="px-1.5 py-0">
+                      <span className="text-[10px] leading-[14px] font-medium">
+                        {STATUS_LABELS[entry.status]}
+                      </span>
+                    </Badge>
+                  </div>
+                  <p className="text-small mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-text-secondary">
+                    <span className="inline-flex items-center gap-1">
+                      <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
+                      {PLAN_LABELS[entry.plan] ?? entry.plan}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="size-3.5 shrink-0" aria-hidden="true" />
+                      {formatDate(entry.start_date)} – {formatDate(entry.end_date)}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <IndianRupee className="size-3.5 shrink-0" aria-hidden="true" />
+                      {formatAmount(entry.amount)}
+                    </span>
+                  </p>
+                </div>
+                <Link
+                  href={`/memberships/${entry.id}`}
+                  className="text-small shrink-0 font-medium text-brand hover:underline sm:self-center"
+                >
+                  View
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
     </div>
   );
 }

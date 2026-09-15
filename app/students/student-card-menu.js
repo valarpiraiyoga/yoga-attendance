@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MoreHorizontal } from "lucide-react";
+import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,12 +25,12 @@ export default function StudentCardMenu({ studentId, membershipId, enrollmentId,
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="shrink-0 text-text-secondary hover:text-text-primary"
+            className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
             aria-label="Student actions"
           />
         }
       >
-        <MoreHorizontal className="size-4" aria-hidden="true" />
+        <MoreVertical className="size-4" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
         <DropdownMenuItem render={<Link href={`/students/${studentId}`} />} nativeButton={false}>

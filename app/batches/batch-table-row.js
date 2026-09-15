@@ -33,6 +33,9 @@ export default function BatchTableRow({ batch }) {
       <TableCell className="max-w-xs truncate px-5 py-3.5 text-text-secondary">
         {batch.description || "—"}
       </TableCell>
+      <TableCell className="px-5 py-3.5 text-right tabular-nums text-text-secondary">
+        {batch.scheduleCount ?? 0}
+      </TableCell>
       <TableCell className="px-5 py-3.5">
         <Badge variant={isActive ? "success" : "danger"} className="rounded-full px-2 py-0">
           <span className="text-[10px] leading-[14px] font-medium">{isActive ? "Active" : "Inactive"}</span>

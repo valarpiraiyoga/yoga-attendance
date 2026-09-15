@@ -53,14 +53,16 @@ function ViewToggle({ active, searchParams }) {
 
 function BatchCards({ batches }) {
   return (
-    <div
-      className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3"
-      aria-label="Batches"
-    >
-      {batches.map((batch) => (
-        <BatchCardItem key={batch.id} batch={batch} />
-      ))}
-    </div>
+    <DataTableShell tone="info">
+      <div
+        className="grid grid-cols-1 items-stretch gap-4 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4"
+        aria-label="Batches"
+      >
+        {batches.map((batch) => (
+          <BatchCardItem key={batch.id} batch={batch} />
+        ))}
+      </div>
+    </DataTableShell>
   );
 }
 
@@ -73,6 +75,7 @@ function BatchTable({ batches }) {
             <TableHead>Batch</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Description</TableHead>
+            <TableHead className="text-right"># of Schedules</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Action</TableHead>
           </TableRow>

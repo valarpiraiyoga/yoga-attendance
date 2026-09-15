@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Phone } from "lucide-react";
+import { Eye, Layers, Phone, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,75 +26,91 @@ function getInitials(name) {
 export default function StudentCardItem({ student }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const batchValue = student.batchCodes.length > 0 ? student.batchCodes.join(", ") : "—";
+  const membershipLabel = MEMBERSHIP_SUMMARY_LABELS[student.membershipSummary];
   const isActive = student.status === "active";
 
   return (
     <article
       className={cn(
-        "flex h-full flex-col gap-3 rounded-2xl border p-3.5 shadow-sm backdrop-blur-sm transition-colors",
-        menuOpen
-          ? "border-brand/40 bg-gradient-to-br from-brand/15 via-surface/90 to-info/15"
-          : "border-border/70 bg-gradient-to-br from-brand/10 via-surface/80 to-info/10"
+        "flex h-full flex-col gap-3 rounded-2xl border border-border/70 bg-surface p-3.5 shadow-sm transition-colors",
+        menuOpen && "border-brand/40 bg-brand/5"
       )}
     >
       <div className="flex items-start gap-2.5">
         <span
           aria-hidden="true"
-          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-surface/80 bg-brand/15 text-small font-semibold text-brand shadow-xs"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full border border-surface/80 bg-brand/15 text-small font-semibold text-brand shadow-xs"
         >
           {getInitials(student.full_name)}
         </span>
+
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-body font-semibold leading-snug text-text-primary">
-            {student.full_name}
-          </h3>
-          <p className="text-small truncate text-text-secondary">{student.student_code}</p>
+          <div className="flex min-w-0 items-start gap-1.5">
+            <div className="min-w-0 flex-1">
+              <h3
+                className="min-w-0 truncate text-body font-semibold leading-snug text-text-primary"
+                title={student.full_name}
+              >
+                {student.full_name}
+              </h3>
+              <Badge
+                variant={isActive ? "success" : "danger"}
+                className="mt-1 rounded-full px-2 py-0"
+              >
+                <span className="text-[10px] leading-[14px] font-medium">
+                  {isActive ? "Active" : "Inactive"}
+                </span>
+              </Badge>
+            </div>
+            <div className="flex shrink-0 items-center">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="text-brand hover:bg-brand/10 hover:text-brand"
+                aria-label="View Student"
+                render={<Link href={`/students/${student.id}`} />}
+                nativeButton={false}
+              >
+                <Eye className="size-4" aria-hidden="true" />
+              </Button>
+              <StudentCardMenu
+                studentId={student.id}
+                membershipId={student.currentMembershipId}
+                enrollmentId={student.primaryEnrollmentId}
+                onOpenChange={setMenuOpen}
+              />
+            </div>
+          </div>
         </div>
-        <StudentCardMenu
-          studentId={student.id}
-          membershipId={student.currentMembershipId}
-          enrollmentId={student.primaryEnrollmentId}
-          onOpenChange={setMenuOpen}
-        />
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        <Badge variant={MEMBERSHIP_SUMMARY_VARIANTS[student.membershipSummary]} className="rounded-full px-2 py-0">
-          <span className="text-[10px] leading-[14px] font-medium">
-            Membership: {MEMBERSHIP_SUMMARY_LABELS[student.membershipSummary]}
+      <div className="flex flex-col gap-1.5 text-small text-text-secondary">
+        <span className="inline-flex min-w-0 items-center gap-1.5" title={student.phone || undefined}>
+          <Phone className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
+          <span className="min-w-0 truncate">{student.phone || "—"}</span>
+        </span>
+
+        <span className="inline-flex min-w-0 items-center gap-1.5" title={`Batch: ${batchValue}`}>
+          <Layers className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
+          <span className="min-w-0 truncate">
+            Batch: <span className="font-medium text-text-primary">{batchValue}</span>
           </span>
-        </Badge>
-        <Badge variant={isActive ? "success" : "danger"} className="rounded-full px-2 py-0">
-          <span className="text-[10px] leading-[14px] font-medium">
-            Status: {isActive ? "Active" : "Inactive"}
-          </span>
-        </Badge>
-      </div>
+        </span>
 
-      <div className="grid grid-cols-2 border-y border-border/50 py-2.5">
-        <div className="min-w-0 pr-2">
-          <p className="flex items-center gap-1 truncate text-body font-semibold leading-snug text-text-primary">
-            <Phone className="size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
-            <span className="truncate">{student.phone || "—"}</span>
-          </p>
-          <p className="text-small mt-0.5 text-text-secondary">Phone</p>
-        </div>
-        <div className="min-w-0 border-l border-border/50 pl-3">
-          <p className="truncate text-body font-semibold leading-snug text-text-primary">{batchValue}</p>
-          <p className="text-small mt-0.5 text-text-secondary">Batch</p>
-        </div>
-      </div>
-
-      <div className="mt-auto">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-9 w-full rounded-full border-border/80 bg-surface/70 text-small font-semibold text-text-primary shadow-xs hover:bg-surface hover:text-text-primary"
-          render={<Link href={`/students/${student.id}`} />}
-          nativeButton={false}
+        <span
+          className="inline-flex min-w-0 items-center gap-1.5"
+          title={`Membership: ${membershipLabel}`}
         >
-          View Student
-        </Button>
+          <Users className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
+          <span className="shrink-0">Membership:</span>
+          <Badge
+            variant={MEMBERSHIP_SUMMARY_VARIANTS[student.membershipSummary]}
+            className="rounded-full px-2 py-0"
+          >
+            <span className="text-[10px] leading-[14px] font-medium">{membershipLabel}</span>
+          </Badge>
+        </span>
       </div>
     </article>
   );

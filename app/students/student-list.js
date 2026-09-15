@@ -54,7 +54,7 @@ function ViewToggle({ active, searchParams }) {
 function StudentCards({ students }) {
   return (
     <div
-      className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
       aria-label="Students"
     >
       {students.map((student) => (

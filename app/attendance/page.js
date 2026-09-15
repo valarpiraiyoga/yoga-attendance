@@ -130,6 +130,7 @@ export default async function AttendancePage({ searchParams }) {
   const instructorId = typeof rawParams.instructor === "string" ? rawParams.instructor : "";
   const status = DISPLAY_STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
+  const layout = rawParams.layout === "table" ? "table" : "cards";
 
   const [{ sessions: rawSessions, total }, batchOptions, instructorOptions] = await Promise.all([
     listSessions({ q, dateFrom, dateTo, batchId, instructorId, status, page, pageSize: PAGE_SIZE }),
@@ -185,7 +186,12 @@ export default async function AttendancePage({ searchParams }) {
         </div>
       ) : (
         <>
-          <AllSessionsList sessions={sessions} total={total} />
+          <AllSessionsList
+            sessions={sessions}
+            total={total}
+            layout={layout}
+            searchParams={rawParams}
+          />
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-small text-text-secondary">
