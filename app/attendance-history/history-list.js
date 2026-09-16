@@ -254,10 +254,7 @@ function InstructorTable({ sessions }) {
 
 function HistoryCards({ sessions, variant }) {
   return (
-    <div
-      className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3"
-      aria-label="Attendance History"
-    >
+    <div className="flex flex-col gap-3" aria-label="Attendance History">
       {sessions.map((session) => (
         <HistorySessionCard key={session.id} session={session} variant={variant} />
       ))}
