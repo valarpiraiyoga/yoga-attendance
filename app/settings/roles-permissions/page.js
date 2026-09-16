@@ -1,4 +1,4 @@
-import { Check, Minus } from "lucide-react";
+import { Check, Minus, ShieldCheck } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import DataTableShell from "@/components/ui/data-table-shell";
 import { requireRole, ROLES } from "@/lib/auth/dal";
+import TabContentHeading from "@/components/layout/TabContentHeading";
 import { NAV_ITEMS, ROLE_LABELS } from "@/app/data/navigation";
 
 /**
@@ -39,8 +40,13 @@ export default async function RolesPermissionsPage() {
 
   return (
     <div>
-      <h2 className="text-section-title font-semibold text-text-primary">Roles &amp; Permissions</h2>
-      <p className="text-body mt-1 mb-6 text-text-secondary">Manage access for Admin and Instructor roles.</p>
+      <div className="mb-6">
+        <TabContentHeading
+          icon={ShieldCheck}
+          title="Roles & Permissions"
+          description="Manage access for Admin and Instructor roles."
+        />
+      </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-card border border-border bg-surface p-4 shadow-xs">

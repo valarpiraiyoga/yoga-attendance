@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ClipboardCheck } from "lucide-react";
+import { CalendarDays, CircleCheck, ClipboardCheck, Users, UserRoundX } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
 import { listSessionsForDate, listSessions } from "@/lib/class-sessions/data";
@@ -28,6 +28,47 @@ function formatHeadingDate(value) {
 
 function attendanceHref(searchParams, overrides) {
   return buildListHref("/attendance", searchParams, overrides);
+}
+
+/** Compact KPI tile for the Today's Sessions summary strip, beside the view toggle. */
+function AttendanceStatTile({ icon: Icon, value, label, tone }) {
+  const tones = {
+    info: "border-info/20 bg-info/10 text-info",
+    success: "border-success/20 bg-success/10 text-success",
+    danger: "border-danger/20 bg-danger/10 text-danger",
+  };
+
+  return (
+    <div
+      className={`flex min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2 shadow-xs ${tones[tone] ?? tones.info}`}
+    >
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface/80 shadow-xs">
+        <Icon className="size-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="truncate text-body leading-tight font-semibold text-text-primary">{value}</p>
+        <p className="truncate text-[11px] leading-[14px] text-text-secondary">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Sums each already-fetched session's attendance summary
+ * (`withAttendanceSummaries`, `lib/attendance/data.js`) into the Today's
+ * Sessions page-level totals shown by `AttendanceStatTile`. No new query:
+ * every count here is a presentation-only aggregation of numbers each
+ * session row already carries and already displays individually.
+ */
+function summarizeTodaysSessions(sessions) {
+  return sessions.reduce(
+    (totals, session) => ({
+      eligible: totals.eligible + (session.attendanceSummary?.eligibleCount ?? 0),
+      present: totals.present + (session.attendanceSummary?.presentCount ?? 0),
+      absent: totals.absent + (session.attendanceSummary?.absentCount ?? 0),
+    }),
+    { eligible: 0, present: 0, absent: 0 }
+  );
 }
 
 /**
@@ -94,6 +135,7 @@ export default async function AttendancePage({ searchParams }) {
 
   if (rawParams.view !== "all") {
     const sessions = await withAttendanceSummaries(await listSessionsForDate(today));
+    const totals = summarizeTodaysSessions(sessions);
 
     return (
       <>
@@ -108,7 +150,16 @@ export default async function AttendancePage({ searchParams }) {
           }
         />
 
-        <AttendanceViewToggle active="today" />
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <AttendanceViewToggle active="today" />
+
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <AttendanceStatTile icon={CalendarDays} value={sessions.length} label="Sessions Today" tone="info" />
+            <AttendanceStatTile icon={Users} value={totals.eligible} label="Total Eligible" tone="success" />
+            <AttendanceStatTile icon={CircleCheck} value={totals.present} label="Marked Present" tone="success" />
+            <AttendanceStatTile icon={UserRoundX} value={totals.absent} label="Marked Absent" tone="danger" />
+          </div>
+        </div>
 
         {sessions.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
@@ -117,7 +168,11 @@ export default async function AttendancePage({ searchParams }) {
             </p>
           </div>
         ) : (
-          <TodaySessionsList sessions={sessions} />
+          <TodaySessionsList
+            sessions={sessions}
+            layout={rawParams.layout === "table" ? "table" : "cards"}
+            searchParams={rawParams}
+          />
         )}
       </>
     );
@@ -153,7 +208,9 @@ export default async function AttendancePage({ searchParams }) {
         icon={<ClipboardCheck className="size-6" />}
       />
 
-      <AttendanceViewToggle active="all" />
+      <div className="mb-6">
+        <AttendanceViewToggle active="all" />
+      </div>
 
       <AttendanceFilters
         key={`${q}:${dateFrom}:${dateTo}:${batchId}:${instructorId}:${status}`}

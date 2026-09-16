@@ -1,4 +1,6 @@
+import { Building2 } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
+import TabContentHeading from "@/components/layout/TabContentHeading";
 import { getCenterProfile } from "@/lib/center-profile/data";
 import { updateCenterProfile } from "@/lib/center-profile/actions";
 import CenterProfileForm from "@/app/settings/center-profile/center-profile-form";
@@ -31,10 +33,13 @@ export default async function CenterProfilePage({ searchParams }) {
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-section-title font-semibold text-text-primary">Center Profile</h2>
-      <p className="text-body mt-1 mb-6 text-text-secondary">
-        Manage the yoga center information used throughout the application and exported reports.
-      </p>
+      <div className="mb-6">
+        <TabContentHeading
+          icon={Building2}
+          title="Center Profile"
+          description="Manage the yoga center information used throughout the application and exported reports."
+        />
+      </div>
 
       {message ? (
         <div

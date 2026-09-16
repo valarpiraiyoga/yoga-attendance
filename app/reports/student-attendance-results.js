@@ -1,3 +1,4 @@
+import { BarChart3, Calendar, UserRound, UserRoundX } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -55,6 +56,32 @@ function formatPercent(ratio) {
 const STATUS_LABELS = { present: "Present", absent: "Absent", unmarked: "Unmarked" };
 const STATUS_VARIANTS = { present: "success", absent: "danger", unmarked: "neutral" };
 
+// Local copy — matches app/reports/batch/batch-attendance-results.js's
+// ReportMetricCard exactly, so the KPI tiles share the same visual treatment
+// across all three Reports tabs (Student/Batch/Summary).
+function ReportMetricCard({ icon: Icon, label, value, tone }) {
+  const tones = {
+    info: "border-info/20 bg-info/10 text-info",
+    success: "border-success/20 bg-success/10 text-success",
+    danger: "border-danger/20 bg-danger/10 text-danger",
+    purple: "border-purple-200 bg-purple-50 text-purple-600",
+  };
+
+  return (
+    <div className={`flex min-w-0 items-center gap-3 rounded-xl border px-3 py-3 shadow-xs sm:px-4 ${tones[tone] ?? tones.info}`}>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface/80 shadow-xs">
+        <Icon className="size-5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <dt className="text-[10px] leading-[14px] font-medium tracking-wide text-text-secondary uppercase">
+          {label}
+        </dt>
+        <dd className="truncate text-page-title font-semibold tracking-tight text-text-primary">{value}</dd>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Student Attendance report results (approved wireframe p.35): the report
  * header, the SESSIONS / PRESENT / ABSENT / ATTENDANCE tiles, and the
@@ -83,35 +110,46 @@ export default async function StudentAttendanceResults({ studentId, studentLabel
 
   return (
     <section className="mt-6 rounded-card border border-border bg-surface shadow-xs">
-      <header className="flex flex-col gap-4 border-b border-border px-6 py-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h3 className="text-section-title font-semibold text-text-primary">
-            Student Attendance Report: {studentLabel}
-          </h3>
-          <p className="text-body mt-1 text-text-secondary">
-            {formatDate(dateFrom)} – {formatDate(dateTo)}
-          </p>
+      <header className="relative overflow-hidden border-b border-border/70 bg-gradient-to-br from-info/10 via-surface to-brand/10 p-4 sm:p-5">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-8 -right-6 size-32 rounded-full border border-info/20"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-8 right-12 size-16 rounded-full border border-brand/20"
+        />
+
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <span
+              aria-hidden="true"
+              className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-brand/40 bg-brand/10 text-brand sm:size-[4.25rem]"
+            >
+              <BarChart3 className="size-6" />
+            </span>
+
+            <div className="min-w-0">
+              <h3 className="text-page-title font-semibold break-words text-brand">
+                Student Attendance Report: {studentLabel}
+              </h3>
+              <p className="text-small mt-1 text-text-secondary">
+                {formatDate(dateFrom)} – {formatDate(dateTo)}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+            <ExportLinks type="student" params={{ student: studentId, from: dateFrom, to: dateTo }} />
+          </div>
         </div>
-        <ExportLinks type="student" params={{ student: studentId, from: dateFrom, to: dateTo }} />
       </header>
 
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-4 border-b border-border px-6 py-5 sm:grid-cols-4">
-        <div>
-          <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Sessions</dt>
-          <dd className="text-page-title font-semibold text-text-primary">{totals.eligibleSessions}</dd>
-        </div>
-        <div>
-          <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Present</dt>
-          <dd className="text-page-title font-semibold text-text-primary">{totals.presentCount}</dd>
-        </div>
-        <div>
-          <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Absent</dt>
-          <dd className="text-page-title font-semibold text-text-primary">{totals.absentCount}</dd>
-        </div>
-        <div>
-          <dt className="text-small font-medium tracking-wide text-text-secondary uppercase">Attendance</dt>
-          <dd className="text-page-title font-semibold text-text-primary">{formatPercent(totals.ratio)}</dd>
-        </div>
+      <dl className="grid grid-cols-1 gap-3 border-b border-border px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-4">
+        <ReportMetricCard icon={Calendar} label="Sessions" value={totals.eligibleSessions} tone="info" />
+        <ReportMetricCard icon={UserRound} label="Present" value={totals.presentCount} tone="success" />
+        <ReportMetricCard icon={UserRoundX} label="Absent" value={totals.absentCount} tone="danger" />
+        <ReportMetricCard icon={BarChart3} label="Attendance" value={formatPercent(totals.ratio)} tone="purple" />
       </dl>
 
       {sessions.length === 0 ? (

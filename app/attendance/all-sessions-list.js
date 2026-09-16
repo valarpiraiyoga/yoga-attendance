@@ -133,12 +133,12 @@ function SessionCards({ sessions, today }) {
           return (
             <article
               key={`${session.schedule_id}:${session.session_date}`}
-              className="flex h-full flex-col gap-3 rounded-2xl border border-border/70 bg-surface p-4 shadow-sm"
+              className="group flex h-full flex-col gap-3 rounded-2xl border border-border/70 bg-surface p-4 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none"
             >
               <div className="flex items-start gap-2.5">
                 <span
                   aria-hidden="true"
-                  className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand/15 text-small font-semibold text-brand"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand/15 text-small font-semibold text-brand transition-colors duration-200 group-hover:bg-brand/25"
                 >
                   {batchCode}
                 </span>
@@ -195,21 +195,6 @@ function SessionCards({ sessions, today }) {
                   <span className="min-w-0 truncate">{timeLabel}</span>
                 </span>
 
-                <span className="inline-flex min-w-0 items-center gap-2.5">
-                  <span
-                    aria-hidden="true"
-                    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-[10px] font-semibold leading-none text-brand"
-                  >
-                    {instructorName ? getInitials(instructorName) : "?"}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate font-semibold text-text-primary">
-                      {instructorName || "—"}
-                    </span>
-                    <span className="block text-small text-text-secondary">Instructor</span>
-                  </span>
-                </span>
-
                 <span
                   className="inline-flex min-w-0 items-center gap-2"
                   title={`Eligible: ${eligibleCount}`}
@@ -230,13 +215,28 @@ function SessionCards({ sessions, today }) {
                     <span className="font-semibold text-text-primary">{attendanceLabel}</span>
                   </span>
                 </span>
+
+                <span className="inline-flex min-w-0 items-center gap-2.5">
+                  <span
+                    aria-hidden="true"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-[10px] font-semibold leading-none text-brand"
+                  >
+                    {instructorName ? getInitials(instructorName) : "?"}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold text-text-primary">
+                      {instructorName || "—"}
+                    </span>
+                    <span className="block text-small text-text-secondary">Instructor</span>
+                  </span>
+                </span>
               </div>
 
               <div className="mt-auto">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-9 w-full rounded-full border-border/80 bg-surface text-small font-semibold text-text-primary shadow-xs hover:bg-background hover:text-text-primary"
+                  className="h-9 w-full rounded-full border-border/80 bg-surface text-small font-semibold text-text-primary shadow-xs transition-colors duration-200 group-hover:border-brand group-hover:bg-brand group-hover:text-surface group-hover:shadow-sm hover:border-brand hover:bg-brand hover:text-surface focus-visible:border-brand focus-visible:bg-brand focus-visible:text-surface"
                   render={<Link href={href} />}
                   nativeButton={false}
                 >

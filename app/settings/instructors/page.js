@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { requireRole, ROLES } from "@/lib/auth/dal";
+import TabContentHeading from "@/components/layout/TabContentHeading";
 import { listInstructors } from "@/lib/instructors/data";
 import { buildListHref } from "@/lib/url-params";
 import InstructorFilters from "@/app/settings/instructors/instructor-filters";
@@ -50,12 +51,11 @@ export default async function InstructorsPage({ searchParams }) {
   return (
     <section className="rounded-card border border-border bg-surface p-6 shadow-xs">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-section-title font-semibold text-text-primary">Instructors</h2>
-          <p className="text-body mt-1 text-text-secondary">
-            Manage instructors who conduct yoga classes.
-          </p>
-        </div>
+        <TabContentHeading
+          icon={Users}
+          title="Instructors"
+          description="Manage instructors who conduct yoga classes."
+        />
         <Button render={<Link href="/settings/instructors/new" />} nativeButton={false}>
           <Plus className="size-4" aria-hidden="true" />
           Add Instructor

@@ -1,3 +1,4 @@
+import { Settings } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
@@ -25,11 +26,10 @@ export default async function SettingsLayout({ children }) {
         <PageHeader
           title="Settings"
           description="Manage center information, instructors, and access permissions."
+          icon={<Settings className="size-6" />}
         />
 
-        <SettingsTabs />
-
-        {children}
+        <SettingsTabs>{children}</SettingsTabs>
       </Container>
     </AppShell>
   );

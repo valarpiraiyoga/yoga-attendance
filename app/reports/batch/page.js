@@ -1,10 +1,11 @@
 import { Suspense } from "react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Layers } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
 import { listBatchOptions } from "@/lib/batches/data";
 import { validateReportDateRange } from "@/lib/reports/validation";
 import ReportTabs from "@/app/reports/report-tabs";
+import TabContentHeading from "@/components/layout/TabContentHeading";
 import BatchAttendanceFilters from "@/app/reports/batch/batch-attendance-filters";
 import BatchAttendanceResults from "@/app/reports/batch/batch-attendance-results";
 
@@ -124,10 +125,11 @@ export default async function BatchAttendanceReportPage({ searchParams }) {
 
       <ReportTabs active="batch">
         <section>
-          <h2 className="text-section-title font-semibold text-text-primary">Batch Attendance</h2>
-          <p className="text-body mt-1 text-text-secondary">
-            View attendance performance for a batch over a selected date range.
-          </p>
+          <TabContentHeading
+            icon={Layers}
+            title="Batch Attendance"
+            description="View attendance performance for a batch over a selected date range."
+          />
 
           <BatchAttendanceFilters
             key={`${batchId}:${dateFrom}:${dateTo}`}

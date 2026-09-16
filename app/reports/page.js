@@ -1,10 +1,11 @@
 import { Suspense } from "react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Users } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
 import { listStudentOptions } from "@/lib/students/data";
 import { validateReportDateRange } from "@/lib/reports/validation";
 import ReportTabs from "@/app/reports/report-tabs";
+import TabContentHeading from "@/components/layout/TabContentHeading";
 import StudentAttendanceFilters from "@/app/reports/student-attendance-filters";
 import StudentAttendanceResults from "@/app/reports/student-attendance-results";
 
@@ -122,10 +123,11 @@ export default async function ReportsPage({ searchParams }) {
 
       <ReportTabs active="student">
         <section>
-          <h2 className="text-section-title font-semibold text-text-primary">Student Attendance</h2>
-          <p className="text-body mt-1 text-text-secondary">
-            View attendance history for a student over a selected date range.
-          </p>
+          <TabContentHeading
+            icon={Users}
+            title="Student Attendance"
+            description="View attendance history for a student over a selected date range."
+          />
 
           <StudentAttendanceFilters
             key={`${studentId}:${dateFrom}:${dateTo}`}

@@ -1,9 +1,10 @@
 import { Suspense } from "react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, ClipboardList } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
 import { validateReportDateRange } from "@/lib/reports/validation";
 import ReportTabs from "@/app/reports/report-tabs";
+import TabContentHeading from "@/components/layout/TabContentHeading";
 import AttendanceSummaryFilters from "@/app/reports/summary/attendance-summary-filters";
 import AttendanceSummaryResults from "@/app/reports/summary/attendance-summary-results";
 
@@ -114,10 +115,11 @@ export default async function AttendanceSummaryReportPage({ searchParams }) {
 
       <ReportTabs active="summary">
         <section>
-          <h2 className="text-section-title font-semibold text-text-primary">Attendance Summary</h2>
-          <p className="text-body mt-1 text-text-secondary">
-            View attendance totals for a selected date or date range.
-          </p>
+          <TabContentHeading
+            icon={ClipboardList}
+            title="Attendance Summary"
+            description="View attendance totals for a selected date or date range."
+          />
 
           <AttendanceSummaryFilters
             key={`${dateFrom}:${dateTo}`}

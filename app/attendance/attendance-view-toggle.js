@@ -7,15 +7,18 @@ const VIEWS = [
 ];
 
 /**
- * Today's Sessions / All Sessions toggle — same segmented control treatment
- * as Schedule's Weekly / List View toggle.
+ * Today's Sessions / All Sessions toggle. The active tab is filled with the
+ * brand color — the same "this is the current selection" treatment
+ * `components/global/NavList.js` already uses for the active sidebar item —
+ * so the current view reads clearly at a glance rather than blending into
+ * the track.
  */
 export default function AttendanceViewToggle({ active }) {
   return (
     <div
       role="tablist"
       aria-label="Attendance views"
-      className="mb-6 inline-flex gap-1 rounded-lg border border-border bg-background/60 p-1"
+      className="inline-flex shrink-0 gap-1 rounded-lg border border-border bg-background/60 p-1"
     >
       {VIEWS.map((view) => {
         const Icon = view.icon;
@@ -29,8 +32,8 @@ export default function AttendanceViewToggle({ active }) {
             aria-selected={isActive}
             className={
               isActive
-                ? "inline-flex items-center gap-1.5 rounded-md bg-surface px-3 py-1.5 text-body font-semibold text-text-primary shadow-xs"
-                : "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-body text-text-secondary hover:text-text-primary"
+                ? "inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-body font-semibold text-surface shadow-sm"
+                : "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-body text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
             }
           >
             <Icon className="size-3.5 shrink-0" aria-hidden="true" />
