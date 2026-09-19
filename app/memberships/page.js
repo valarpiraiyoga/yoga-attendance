@@ -5,6 +5,7 @@ import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/ui/pagination";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import { KpiStrip, KpiToggle } from "@/components/ui/kpi-visibility";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import {
   DEFAULT_MEMBERSHIP_SORT,
@@ -81,53 +82,58 @@ export default async function MembershipsPage({ searchParams }) {
         description="Manage student memberships, plans, validity, and payment status."
         icon={<CreditCard className="size-6" />}
         actions={
-          <Button render={<Link href="/memberships/new" />} nativeButton={false}>
-            <Plus className="size-4" aria-hidden="true" />
-            Add Membership
-          </Button>
+          <>
+            <KpiToggle pageKey="memberships" />
+            <Button render={<Link href="/memberships/new" />} nativeButton={false}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add Membership
+            </Button>
+          </>
         }
       />
 
       {/* Center-wide counts, independent of the search/filters below.
           Shares are derived from the counts. Expiring Soon = Active with
           EXPIRING_SOON_DAYS or fewer days left. */}
-      <StatTileGroup className="mb-6" ariaLabel="Membership summary">
-        <StatTile
-          valueFirst
-          decorativeChart
-          icon={CreditCard}
-          label="Total Memberships"
-          value={counts.total}
-          tone="brand"
-        />
-        <StatTile
-          valueFirst
-          decorativeChart
-          icon={CircleCheck}
-          label="Active"
-          value={counts.active}
-          aside={formatShare(counts.active, counts.total)}
-          tone="success"
-        />
-        <StatTile
-          valueFirst
-          decorativeChart
-          icon={Hourglass}
-          label="Expiring Soon"
-          value={counts.expiringSoon}
-          aside={formatShare(counts.expiringSoon, counts.total)}
-          tone="warning"
-        />
-        <StatTile
-          valueFirst
-          decorativeChart
-          icon={CalendarX}
-          label="Expired"
-          value={counts.expired}
-          aside={formatShare(counts.expired, counts.total)}
-          tone="danger"
-        />
-      </StatTileGroup>
+      <KpiStrip pageKey="memberships">
+        <StatTileGroup className="mb-6" ariaLabel="Membership summary">
+          <StatTile
+            valueFirst
+            decorativeChart
+            icon={CreditCard}
+            label="Total Memberships"
+            value={counts.total}
+            tone="brand"
+          />
+          <StatTile
+            valueFirst
+            decorativeChart
+            icon={CircleCheck}
+            label="Active"
+            value={counts.active}
+            aside={formatShare(counts.active, counts.total)}
+            tone="success"
+          />
+          <StatTile
+            valueFirst
+            decorativeChart
+            icon={Hourglass}
+            label="Expiring Soon"
+            value={counts.expiringSoon}
+            aside={formatShare(counts.expiringSoon, counts.total)}
+            tone="warning"
+          />
+          <StatTile
+            valueFirst
+            decorativeChart
+            icon={CalendarX}
+            label="Expired"
+            value={counts.expired}
+            aside={formatShare(counts.expired, counts.total)}
+            tone="danger"
+          />
+        </StatTileGroup>
+      </KpiStrip>
 
       <MembershipFilters
         key={`${q}:${plan}:${paymentStatus}:${membershipStatus}:${fromDate}:${toDate}`}

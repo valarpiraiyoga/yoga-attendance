@@ -5,6 +5,7 @@ import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/ui/pagination";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import { KpiStrip, KpiToggle } from "@/components/ui/kpi-visibility";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import {
   DEFAULT_STUDENT_SORT,
@@ -78,35 +79,40 @@ export default async function StudentsPage({ searchParams }) {
         description="Manage student profiles, memberships, and batch enrollments."
         icon={<Users className="size-6" />}
         actions={
-          <Button render={<Link href="/students/new" />} nativeButton={false}>
-            <Plus className="size-4" aria-hidden="true" />
-            Add Student
-          </Button>
+          <>
+            <KpiToggle pageKey="students" />
+            <Button render={<Link href="/students/new" />} nativeButton={false}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add Student
+            </Button>
+          </>
         }
       />
 
-      <StatTileGroup className="mb-6" ariaLabel="Student summary">
-        <StatTile valueFirst decorativeChart icon={Users} label="Total Students" value={totalStudentCount} tone="brand" />
-        <StatTile
-          valueFirst
-          decorativeChart
-          icon={UserCheck}
-          label="Active Students"
-          value={activeStudentCount}
-          aside={sharePercent(activeStudentCount)}
-          tone="success"
-        />
-        <StatTile
-          valueFirst
-          decorativeChart
-          icon={UserX}
-          label="Inactive Students"
-          value={inactiveStudentCount}
-          aside={sharePercent(inactiveStudentCount)}
-          tone="warning"
-        />
-        <StatTile valueFirst decorativeChart icon={Layers} label="Total Batches" value={totalBatchCount} tone="info" />
-      </StatTileGroup>
+      <KpiStrip pageKey="students">
+        <StatTileGroup className="mb-6" ariaLabel="Student summary">
+          <StatTile valueFirst decorativeChart icon={Users} label="Total Students" value={totalStudentCount} tone="brand" />
+          <StatTile
+            valueFirst
+            decorativeChart
+            icon={UserCheck}
+            label="Active Students"
+            value={activeStudentCount}
+            aside={sharePercent(activeStudentCount)}
+            tone="success"
+          />
+          <StatTile
+            valueFirst
+            decorativeChart
+            icon={UserX}
+            label="Inactive Students"
+            value={inactiveStudentCount}
+            aside={sharePercent(inactiveStudentCount)}
+            tone="warning"
+          />
+          <StatTile valueFirst decorativeChart icon={Layers} label="Total Batches" value={totalBatchCount} tone="info" />
+        </StatTileGroup>
+      </KpiStrip>
 
       <StudentFilters
         key={`${q}:${status}:${batchId}:${membershipFilter}`}
