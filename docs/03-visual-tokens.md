@@ -81,6 +81,20 @@ height from a parent wrapper. If a Badge instance ever renders at another
 size, the fault is that instance losing its own typography, not a missing
 size on the surrounding layout.
 
+**StatTile typography contract.** `StatTile` sets every text size itself; no
+parent style may change its hierarchy.
+
+| Part | Style | Role |
+|---|---|---|
+| Value | Page Title, 24px / 32px, SemiBold, primary text | The KPI figure — clearly the largest text in the tile |
+| Label | Small, 12px / 18px, Regular, secondary text | Noticeably smaller than the value; never inherits its size |
+| Supporting metric | Small, 12px / 18px, Medium, tone colour | Compact, right-aligned (e.g. share of total) |
+| Decorative chart | Fixed 5-bar graphic, tone colour, `aria-hidden` | Decoration only |
+
+The decorative chart is one fixed shape in every tile and encodes no data.
+It must never be given real values or trend meaning; trend figures (e.g.
+"+2") appear only when real historical data exists.
+
 ---
 
 ## 3. Spacing

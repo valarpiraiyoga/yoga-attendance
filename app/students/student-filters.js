@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { LayoutGrid, Table2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,13 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import SearchInput from "@/components/ui/search-input";
+import ViewSwitcher from "@/components/ui/view-switcher";
+import { FilterBar, FilterChips, FilterSheet, FilterSection } from "@/components/ui/filter-bar";
+import { ListToolbar } from "@/components/layout/list-page";
+import { buildListHref } from "@/lib/url-params";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
@@ -36,14 +32,24 @@ const MEMBERSHIP_OPTIONS = [
   { value: "none", label: "None" },
 ];
 
+const VIEWS = [
+  { key: "cards", label: "Cards", icon: LayoutGrid },
+  { key: "table", label: "Table", icon: Table2 },
+];
+
 function optionLabel(options, value) {
   return options.find((option) => option.value === value)?.label ?? value;
 }
 
 /**
- * Search is independent of the filter drawer. Filter apply/clear still
- * writes the same `q` / `status` / `batch` / `membership` URL params as
- * before (wireframe p9; keyed remount from the page).
+ * Search + Filters + Cards/Table toggle live in one toolbar row
+ * (06-ui-implementation-rules.md §16.1, matching `02`/`03`'s single
+ * combined bar — this was previously two rows, with the view toggle
+ * rendered separately above the results in `student-list.js`). Search
+ * stays independent of the filter drawer; filter apply/clear still write
+ * the same `q` / `status` / `batch` / `membership` URL params as before
+ * (wireframe p9; keyed remount from the page). View switching is a plain
+ * URL change, not client state.
  */
 export default function StudentFilters({
   defaultQuery,
@@ -51,6 +57,7 @@ export default function StudentFilters({
   defaultBatchId,
   defaultMembershipFilter,
   batchOptions,
+  view,
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -73,6 +80,11 @@ export default function StudentFilters({
   const activeFilterCount = [appliedStatus !== "all", appliedBatchId !== "all", appliedMembership !== "all"].filter(
     Boolean
   ).length;
+
+  const viewItems = VIEWS.map((item) => ({
+    ...item,
+    href: buildListHref("/students", searchParams, { view: item.key === "cards" ? "" : item.key }),
+  }));
 
   function pushParams(mutate) {
     const params = new URLSearchParams(searchParams);
@@ -172,155 +184,78 @@ export default function StudentFilters({
   }
 
   return (
-    <div className="rounded-card border border-border bg-surface p-4 shadow-xs">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <>
+      <ListToolbar
+        chips={
+          <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
+        }
+      >
         <form onSubmit={applySearch} className="min-w-0 flex-1">
-          <label htmlFor="student-search" className="sr-only">
-            Search
-          </label>
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-text-secondary"
-              aria-hidden="true"
-            />
-            <Input
-              id="student-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by student name or phone"
-              className="h-9 pl-8"
-            />
-          </div>
+          <SearchInput
+            id="student-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by student name or phone"
+          />
         </form>
 
-        <Button type="button" variant="outline" className="shrink-0 gap-2" onClick={() => setFiltersOpen(true)}>
-          <SlidersHorizontal className="size-4" aria-hidden="true" />
-          Filters
-          {activeFilterCount > 0 ? (
-            <span className="flex size-5 items-center justify-center rounded-full bg-brand text-small font-semibold text-surface">
-              {activeFilterCount}
-            </span>
-          ) : null}
-        </Button>
-      </div>
+        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
 
-      {chips.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-small text-text-secondary">Active filters:</span>
-          {chips.map((chip) => (
-            <span
-              key={chip.key}
-              className="inline-flex items-center gap-1 rounded-full bg-brand/10 py-0.5 pr-1 pl-2.5 text-small font-medium text-brand"
-            >
-              {chip.label}
-              <button
-                type="button"
-                className="flex size-5 items-center justify-center rounded-full text-brand hover:bg-brand/15"
-                aria-label={`Remove ${chip.label}`}
-                onClick={() => removeAppliedFilter(chip.key)}
-              >
-                <X className="size-3" aria-hidden="true" />
-              </button>
-            </span>
-          ))}
-          <button
-            type="button"
-            className="text-small font-medium text-brand hover:underline"
-            onClick={clearFilters}
-          >
-            Clear all
-          </button>
-        </div>
-      ) : null}
+        <ViewSwitcher items={viewItems} active={view} ariaLabel="Student list views" />
+      </ListToolbar>
 
-      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <SheetContent
-          side="right"
-          className="h-auto max-h-[90dvh] w-full gap-0 rounded-t-card p-0 data-[side=right]:inset-x-0 data-[side=right]:top-auto data-[side=right]:bottom-0 data-[side=right]:left-0 sm:inset-y-0 sm:h-full sm:max-h-none sm:w-96 sm:max-w-sm sm:rounded-none sm:data-[side=right]:inset-x-auto sm:data-[side=right]:top-0 sm:data-[side=right]:right-0 sm:data-[side=right]:left-auto"
-          showCloseButton
-        >
-          <SheetHeader className="border-b border-border pr-12">
-            <SheetTitle className="text-section-title font-semibold text-text-primary">Filters</SheetTitle>
-            <SheetDescription className="text-small text-text-secondary">Refine your student list</SheetDescription>
-          </SheetHeader>
+      <FilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        description="Refine your student list"
+        onSubmit={applyFilters}
+        onClearAll={clearAllIncludingSearch}
+      >
+        <FilterSection id="student-status" label="Student Status">
+          <Select items={STATUS_OPTIONS} value={status} onValueChange={setStatus}>
+            <SelectTrigger aria-labelledby="student-status-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSection>
 
-          <form onSubmit={applyFilters} className="flex min-h-0 flex-1 flex-col">
-            <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-              <div className="flex flex-col gap-1.5">
-                <span
-                  id="student-status-label"
-                  className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                >
-                  Student Status
-                </span>
-                <Select items={STATUS_OPTIONS} value={status} onValueChange={setStatus}>
-                  <SelectTrigger aria-labelledby="student-status-label" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        <FilterSection id="student-batch" label="Batch">
+          <Select items={batchSelectOptions} value={batchId} onValueChange={setBatchId}>
+            <SelectTrigger aria-labelledby="student-batch-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {batchSelectOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSection>
 
-              <div className="flex flex-col gap-1.5">
-                <span
-                  id="student-batch-label"
-                  className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                >
-                  Batch
-                </span>
-                <Select items={batchSelectOptions} value={batchId} onValueChange={setBatchId}>
-                  <SelectTrigger aria-labelledby="student-batch-label" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {batchSelectOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span
-                  id="student-membership-label"
-                  className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                >
-                  Membership
-                </span>
-                <Select items={MEMBERSHIP_OPTIONS} value={membershipFilter} onValueChange={setMembershipFilter}>
-                  <SelectTrigger aria-labelledby="student-membership-label" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MEMBERSHIP_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="mt-auto flex gap-3 border-t border-border p-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={clearAllIncludingSearch}>
-                Clear All
-              </Button>
-              <Button type="submit" className="flex-1">
-                Apply Filters
-              </Button>
-            </div>
-          </form>
-        </SheetContent>
-      </Sheet>
-    </div>
+        <FilterSection id="student-membership" label="Membership">
+          <Select items={MEMBERSHIP_OPTIONS} value={membershipFilter} onValueChange={setMembershipFilter}>
+            <SelectTrigger aria-labelledby="student-membership-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MEMBERSHIP_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSection>
+      </FilterSheet>
+    </>
   );
 }

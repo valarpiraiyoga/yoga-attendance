@@ -1,25 +1,29 @@
 import { cn } from "@/lib/utils";
 
-const TONE_GRADIENTS = {
-  brand: "from-brand/10 via-surface to-info/10",
-  info: "from-info/10 via-surface to-brand/10",
-  warning: "from-warning/10 via-surface to-brand/10",
-};
-
 /**
- * Shared soft-panel frame for data tables (Memberships / Students reference).
- * Gradient wash + frosted inner surface — wrap any `<Table>` with this.
+ * RETIRED (06-ui-implementation-rules.md §8/§9/§22.5): this no longer
+ * applies the gradient wash + `backdrop-blur` frosted-surface treatment.
+ * `03-visual-tokens.md` §6 lists decorative gradients under "Avoid", and
+ * every approved table/card-grid reference (`03`, `06`, `09`, `13`,
+ * `18 Settings instructor`, `02`, `05`, `08`, `12`) shows a plain surface.
+ *
+ * This file now renders the canonical plain bordered surface (`Panel`'s own
+ * treatment) so all 16 existing call sites get that fix applied for free,
+ * with no page-level edits — deliberately, per this task's "do not
+ * redesign individual pages yet simply to compensate for this change".
+ * `tone` is accepted and ignored; it no longer has a visual effect.
+ *
+ * This is a compatibility shim, not the canonical import going forward.
+ * The contract's end state (§8 rule 1) has card grids sitting directly on
+ * the page background with no wrapper at all, and tables importing
+ * `Panel` (`components/layout/Panel.js`) directly — each of this file's 16
+ * callers adopts one or the other when that page is next implemented, and
+ * this file is deleted once none remain.
  */
-export default function DataTableShell({ children, tone = "info", className }) {
+export default function DataTableShell({ children, tone, className }) {
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-r p-2 shadow-xs sm:p-3",
-        TONE_GRADIENTS[tone] ?? TONE_GRADIENTS.info,
-        className
-      )}
-    >
-      <div className="overflow-hidden rounded-xl bg-surface/55 backdrop-blur-sm">{children}</div>
+    <div className={cn("overflow-hidden rounded-card border border-border bg-surface shadow-xs", className)}>
+      {children}
     </div>
   );
 }

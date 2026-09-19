@@ -6,26 +6,15 @@ import { Eye } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Avatar from "@/components/ui/avatar";
+import { ENTITY_STATUS, MEMBERSHIP_SUMMARY } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import StudentCardMenu from "@/app/students/student-card-menu";
 
-const MEMBERSHIP_SUMMARY_VARIANTS = { active: "success", expired: "neutral", none: "outline" };
-const MEMBERSHIP_SUMMARY_LABELS = { active: "Active", expired: "Expired", none: "None" };
-
-function getInitials(name) {
-  const parts = String(name || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-}
-
 export default function StudentTableRow({ student }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const entityStatus = ENTITY_STATUS[student.status] ?? ENTITY_STATUS.inactive;
+  const membershipStatus = MEMBERSHIP_SUMMARY[student.membershipSummary] ?? MEMBERSHIP_SUMMARY.none;
 
   return (
     <TableRow
@@ -34,14 +23,9 @@ export default function StudentTableRow({ student }) {
         menuOpen && "bg-brand/10 hover:bg-brand/10"
       )}
     >
-      <TableCell className="px-5 py-3.5">
+      <TableCell>
         <div className="flex min-w-0 items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-small font-semibold text-brand"
-          >
-            {getInitials(student.full_name)}
-          </span>
+          <Avatar name={student.full_name} />
           <div className="min-w-0">
             <p className="truncate font-semibold text-text-primary">{student.full_name}</p>
             <p className="text-small text-text-secondary">{student.student_code}</p>
@@ -49,7 +33,7 @@ export default function StudentTableRow({ student }) {
         </div>
       </TableCell>
       <TableCell className="text-text-secondary">{student.phone || "—"}</TableCell>
-      <TableCell className="px-5 py-3.5">
+      <TableCell>
         {student.batchCodes.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {student.batchCodes.map((code) => (
@@ -62,17 +46,13 @@ export default function StudentTableRow({ student }) {
           <span className="text-text-secondary">—</span>
         )}
       </TableCell>
-      <TableCell className="px-5 py-3.5">
-        <Badge variant={MEMBERSHIP_SUMMARY_VARIANTS[student.membershipSummary]}>
-          {MEMBERSHIP_SUMMARY_LABELS[student.membershipSummary]}
-        </Badge>
+      <TableCell>
+        <Badge variant={membershipStatus.variant}>{membershipStatus.label}</Badge>
       </TableCell>
-      <TableCell className="px-5 py-3.5">
-        <Badge variant={student.status === "active" ? "success" : "danger"}>
-          {student.status === "active" ? "Active" : "Inactive"}
-        </Badge>
+      <TableCell>
+        <Badge variant={entityStatus.variant}>{entityStatus.label}</Badge>
       </TableCell>
-      <TableCell className="px-5 py-3.5">
+      <TableCell>
         <div className="flex items-center gap-1">
           <Button
             type="button"
