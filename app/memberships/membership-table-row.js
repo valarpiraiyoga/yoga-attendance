@@ -5,82 +5,91 @@ import Link from "next/link";
 import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Avatar from "@/components/ui/avatar";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { formatAmount, formatDate } from "@/lib/format";
+import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
+import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/validity";
 import { cn } from "@/lib/utils";
+import MembershipCardMenu from "@/app/memberships/membership-card-menu";
 
-const PLAN_LABELS = { monthly: "Monthly", quarterly: "Quarterly", custom: "Custom duration" };
-const PAYMENT_LABELS = { paid: "Paid", pending: "Pending" };
-const STATUS_LABELS = { upcoming: "Upcoming", active: "Active", expired: "Expired", cancelled: "Cancelled" };
-const STATUS_VARIANTS = { upcoming: "default", active: "success", expired: "neutral", cancelled: "danger" };
-
-function formatDate(value) {
-  if (!value) return "—";
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+/** "30 days" / "6 months" — real length of the period, derived from its dates. */
+function describePeriodLength(totalDays) {
+  if (totalDays === 1) return "1 day";
+  if (totalDays < 60) return `${totalDays} days`;
+  return `${Math.round(totalDays / 30)} months`;
 }
 
-function formatAmount(value) {
-  return `₹${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
+/**
+ * Membership table row (`06 Memberships table view.png`): Membership,
+ * Student, Plan, Period, Amount, Payment, Status, Days Left, Action.
+ * The Membership cell's second line is the period's real length rather than
+ * the reference's plan-type label, which would just repeat the Plan column.
+ */
+export default function MembershipTableRow({ membership, today }) {
+  const [menuOpen, setMenuOpen] = useState(false);
 
-export default function MembershipTableRow({ membership }) {
-  const [focused, setFocused] = useState(false);
+  const student = membership.students;
+  const status = MEMBERSHIP_STATUS[membership.status] ?? MEMBERSHIP_STATUS.expired;
+  const payment = PAYMENT_STATUS[membership.payment_status] ?? PAYMENT_STATUS.pending;
+  const validity = getMembershipValidity(membership, today);
+  const daysLeft = getValidityLabel(validity, { compact: true });
 
   return (
     <TableRow
       className={cn(
-        "border-border/40 transition-colors",
-        focused ? "bg-brand/10" : "hover:bg-brand/5"
+        "border-border/30 bg-surface/40 transition-colors hover:bg-surface/70",
+        menuOpen && "bg-brand/10 hover:bg-brand/10"
       )}
-      onFocusCapture={() => setFocused(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setFocused(false);
-        }
-      }}
     >
-      <TableCell className="px-5 py-3.5">
-        <p className="font-semibold text-text-primary">{membership.membership_code}</p>
-        <p className="text-small text-text-secondary">{PLAN_LABELS[membership.plan] ?? membership.plan}</p>
+      <TableCell>
+        <p className="whitespace-nowrap font-semibold text-text-primary">{membership.membership_code}</p>
+        <p className="text-small text-text-secondary">{describePeriodLength(validity.totalDays)}</p>
       </TableCell>
-      <TableCell className="px-5 py-3.5">
-        {membership.students ? (
-          <>
-            <p className="font-medium text-text-primary">{membership.students.full_name}</p>
-            <p className="text-small text-text-secondary">{membership.students.student_code}</p>
-          </>
+      <TableCell>
+        {student ? (
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar name={student.full_name} />
+            <div className="min-w-0">
+              <p className="font-medium text-text-primary">{student.full_name}</p>
+              <p className="text-small text-text-secondary">{student.student_code}</p>
+            </div>
+          </div>
         ) : (
           <span className="text-text-secondary">—</span>
         )}
       </TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">{formatDate(membership.start_date)}</TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">{formatDate(membership.end_date)}</TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">{formatAmount(membership.amount)}</TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">
-        {PAYMENT_LABELS[membership.payment_status] ?? membership.payment_status}
+      <TableCell className="text-text-secondary">{PLAN[membership.plan] ?? membership.plan}</TableCell>
+      <TableCell className="whitespace-nowrap text-text-secondary">
+        {formatDate(membership.start_date)} – {formatDate(membership.end_date)}
       </TableCell>
-      <TableCell className="px-5 py-3.5">
-        <Badge variant={STATUS_VARIANTS[membership.status]} className="rounded-full px-2 py-0">
-          <span className="text-[10px] leading-[14px] font-medium">
-            {STATUS_LABELS[membership.status]}
-          </span>
-        </Badge>
+      <TableCell className="whitespace-nowrap text-text-secondary">{formatAmount(membership.amount)}</TableCell>
+      <TableCell>
+        <Badge variant={payment.variant}>{payment.label}</Badge>
       </TableCell>
-      <TableCell className="px-5 py-3.5">
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          className="text-text-secondary hover:text-brand"
-          render={<Link href={`/memberships/${membership.id}`} />}
-          nativeButton={false}
-          aria-label={`View membership ${membership.membership_code}`}
-        >
-          <Eye className="size-4" aria-hidden="true" />
-        </Button>
+      <TableCell>
+        <Badge variant={status.variant}>{status.label}</Badge>
+      </TableCell>
+      <TableCell className="tabular-nums text-text-secondary">{daysLeft.text}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="text-brand hover:bg-brand/10 hover:text-brand"
+            aria-label={`View membership ${membership.membership_code}`}
+            render={<Link href={`/memberships/${membership.id}`} />}
+            nativeButton={false}
+          >
+            <Eye className="size-4" aria-hidden="true" />
+          </Button>
+          <MembershipCardMenu
+            membershipId={membership.id}
+            studentId={student?.id}
+            onOpenChange={setMenuOpen}
+          />
+        </div>
       </TableCell>
     </TableRow>
   );

@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { LayoutGrid, Table2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -7,115 +5,79 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import DataTableShell from "@/components/ui/data-table-shell";
-import { buildListHref } from "@/lib/url-params";
+import { Panel } from "@/components/layout/Panel";
+import { CardGrid, ResultsHeader } from "@/components/layout/list-page";
+import SortSelect from "@/components/ui/sort-select";
+import { DEFAULT_MEMBERSHIP_SORT } from "@/lib/memberships/data";
 import MembershipCardItem from "@/app/memberships/membership-card-item";
 import MembershipTableRow from "@/app/memberships/membership-table-row";
 
-const VIEWS = [
-  { key: "cards", label: "Cards", icon: LayoutGrid },
-  { key: "table", label: "Table", icon: Table2 },
-];
-
-function ViewToggle({ active, searchParams }) {
+function MembershipCards({ memberships, today }) {
   return (
-    <div
-      role="tablist"
-      aria-label="Membership list views"
-      className="inline-flex gap-1 rounded-lg border border-border bg-background/60 p-1"
-    >
-      {VIEWS.map((view) => {
-        const Icon = view.icon;
-        const href = buildListHref("/memberships", searchParams, {
-          view: view.key === "cards" ? "" : view.key,
-        });
-
-        return (
-          <Link
-            key={view.key}
-            href={href}
-            role="tab"
-            aria-selected={active === view.key}
-            className={
-              active === view.key
-                ? "inline-flex items-center gap-1.5 rounded-md bg-surface px-2.5 py-1.5 text-small font-semibold text-text-primary shadow-xs"
-                : "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-small text-text-secondary hover:text-text-primary"
-            }
-          >
-            <Icon className="size-3.5" aria-hidden="true" />
-            {view.label}
-          </Link>
-        );
-      })}
-    </div>
+    <CardGrid ariaLabel="Memberships">
+      {memberships.map((membership) => (
+        <MembershipCardItem key={membership.id} membership={membership} today={today} />
+      ))}
+    </CardGrid>
   );
 }
 
-function MembershipCards({ memberships }) {
+function MembershipTable({ memberships, today }) {
   return (
-    <DataTableShell tone="info">
-      <div
-        className="grid grid-cols-1 items-stretch gap-4 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4"
-        aria-label="Memberships"
-      >
-        {memberships.map((membership) => (
-          <MembershipCardItem key={membership.id} membership={membership} />
-        ))}
-      </div>
-    </DataTableShell>
-  );
-}
-
-function MembershipTable({ memberships }) {
-  return (
-    <DataTableShell tone="info">
-      <Table aria-label="Memberships">
+    <Panel className="overflow-hidden p-0 sm:p-0">
+      {/* Nine columns: tighter cell padding (12px vs the default 20px) so the
+          table fits a ~960px content column before it has to scroll. */}
+      <Table aria-label="Memberships" className="[&_td]:px-3 [&_th]:px-3">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead>Membership</TableHead>
             <TableHead>Student</TableHead>
-            <TableHead>Start Date</TableHead>
-            <TableHead>End Date</TableHead>
+            <TableHead>Plan</TableHead>
+            <TableHead>Period</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Payment</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Days Left</TableHead>
             <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {memberships.map((membership) => (
-            <MembershipTableRow key={membership.id} membership={membership} />
+            <MembershipTableRow key={membership.id} membership={membership} today={today} />
           ))}
         </TableBody>
       </Table>
-    </DataTableShell>
+    </Panel>
   );
 }
 
 /**
- * Membership results with Cards / Table toggle. View is URL-driven
- * (`view=table` or default cards). Same data and View action in both layouts;
- * Edit / Renew / Cancel remain on Membership Details.
+ * Membership results — Cards / Table view is a page-level `view` param
+ * decided by `MembershipFilters`' `ViewSwitcher`, not client state here.
+ * Same data and View action in both layouts; Edit / Renew / Cancel remain
+ * on Membership Details (the card menu links to Edit / Renew directly).
  */
-export default function MembershipList({ memberships, view = "cards", searchParams, total }) {
+export default function MembershipList({ memberships, view = "cards", total, today, sort, sortOptions }) {
   return (
     <div className="mt-6">
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-body font-medium text-text-primary">
-            {total} {total === 1 ? "Membership" : "Memberships"}
-          </p>
-          <p className="text-small text-text-secondary">
-            {view === "table" ? "Table view" : "Card list view"}
-          </p>
-        </div>
-        <ViewToggle active={view} searchParams={searchParams} />
-      </div>
+      <ResultsHeader
+        count={total}
+        label={total === 1 ? "Membership" : "Memberships"}
+        viewLabel={view === "table" ? "Table view" : "Card list view"}
+        aside={
+          <SortSelect
+            id="membership-sort"
+            options={sortOptions}
+            value={sort}
+            defaultValue={DEFAULT_MEMBERSHIP_SORT}
+          />
+        }
+      />
 
       {view === "table" ? (
-        <MembershipTable memberships={memberships} />
+        <MembershipTable memberships={memberships} today={today} />
       ) : (
-        <MembershipCards memberships={memberships} />
+        <MembershipCards memberships={memberships} today={today} />
       )}
     </div>
   );

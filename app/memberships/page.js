@@ -1,9 +1,18 @@
 import Link from "next/link";
-import { CreditCard, Plus } from "lucide-react";
+import { CircleCheck, CreditCard, Hourglass, CalendarX, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
+import EmptyState from "@/components/ui/empty-state";
+import Pagination from "@/components/ui/pagination";
+import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { listMemberships } from "@/lib/memberships/data";
+import {
+  DEFAULT_MEMBERSHIP_SORT,
+  getMembershipSummaryCounts,
+  listMemberships,
+  todayDateString,
+} from "@/lib/memberships/data";
+import { formatShare } from "@/lib/format";
 import { buildListHref } from "@/lib/url-params";
 import MembershipFilters from "@/app/memberships/membership-filters";
 import MembershipList from "@/app/memberships/membership-list";
@@ -14,9 +23,13 @@ const PAYMENT_STATUSES = ["paid", "pending"];
 const MEMBERSHIP_STATUSES = ["upcoming", "active", "expired", "cancelled"];
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-function membershipsHref(searchParams, overrides) {
-  return buildListHref("/memberships", searchParams, overrides);
-}
+// Labels for the "Sort by" control. Every `value` must be a key of
+// `MEMBERSHIP_SORTS` (lib/memberships/data.js), which owns the column and
+// direction.
+const SORT_OPTIONS = [
+  { value: "start-newest", label: "Start Date (Newest)" },
+  { value: "start-oldest", label: "Start Date (Oldest)" },
+];
 
 export default async function MembershipsPage({ searchParams }) {
   // Authorization boundary. app/memberships/layout.js also calls
@@ -34,23 +47,32 @@ export default async function MembershipsPage({ searchParams }) {
   const toDate = typeof rawParams.to === "string" && DATE_PATTERN.test(rawParams.to) ? rawParams.to : "";
   const page = Math.max(1, Number(rawParams.page) || 1);
   const view = rawParams.view === "table" ? "table" : "cards";
+  const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort)
+    ? rawParams.sort
+    : DEFAULT_MEMBERSHIP_SORT;
 
-  const { memberships, total } = await listMemberships({
-    q,
-    plan,
-    paymentStatus,
-    membershipStatus,
-    fromDate,
-    toDate,
-    page,
-    pageSize: PAGE_SIZE,
-  });
+  const [{ memberships, total }, counts] = await Promise.all([
+    listMemberships({
+      q,
+      plan,
+      paymentStatus,
+      membershipStatus,
+      fromDate,
+      toDate,
+      sort,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+    getMembershipSummaryCounts(),
+  ]);
+
+  // The same "today" `listMemberships` derived each row's status from, so a
+  // card's status and its days-left always agree.
+  const today = todayDateString();
 
   const isFiltered =
     Boolean(q) || plan !== "all" || paymentStatus !== "all" || membershipStatus !== "all" || Boolean(fromDate) || Boolean(toDate);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(total, page * PAGE_SIZE);
 
   return (
     <>
@@ -66,6 +88,47 @@ export default async function MembershipsPage({ searchParams }) {
         }
       />
 
+      {/* Center-wide counts, independent of the search/filters below.
+          Shares are derived from the counts. Expiring Soon = Active with
+          EXPIRING_SOON_DAYS or fewer days left. */}
+      <StatTileGroup className="mb-6" ariaLabel="Membership summary">
+        <StatTile
+          valueFirst
+          decorativeChart
+          icon={CreditCard}
+          label="Total Memberships"
+          value={counts.total}
+          tone="brand"
+        />
+        <StatTile
+          valueFirst
+          decorativeChart
+          icon={CircleCheck}
+          label="Active"
+          value={counts.active}
+          aside={formatShare(counts.active, counts.total)}
+          tone="success"
+        />
+        <StatTile
+          valueFirst
+          decorativeChart
+          icon={Hourglass}
+          label="Expiring Soon"
+          value={counts.expiringSoon}
+          aside={formatShare(counts.expiringSoon, counts.total)}
+          tone="warning"
+        />
+        <StatTile
+          valueFirst
+          decorativeChart
+          icon={CalendarX}
+          label="Expired"
+          value={counts.expired}
+          aside={formatShare(counts.expired, counts.total)}
+          tone="danger"
+        />
+      </StatTileGroup>
+
       <MembershipFilters
         key={`${q}:${plan}:${paymentStatus}:${membershipStatus}:${fromDate}:${toDate}`}
         defaultQuery={q}
@@ -74,81 +137,52 @@ export default async function MembershipsPage({ searchParams }) {
         defaultMembershipStatus={membershipStatus}
         defaultFromDate={fromDate}
         defaultToDate={toDate}
+        view={view}
       />
 
       {memberships.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
-          {isFiltered ? (
-            <>
-              <p className="text-body max-w-sm text-text-secondary">
-                No memberships match your search or filters.
-              </p>
+        <EmptyState
+          className="mt-6"
+          title={isFiltered ? undefined : "No memberships yet"}
+          description={
+            isFiltered
+              ? "No memberships match your search or filters."
+              : "Add the first membership to get started."
+          }
+          action={
+            isFiltered ? (
               <Button variant="outline" render={<Link href="/memberships" />} nativeButton={false}>
                 Clear Filters
               </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-body max-w-sm text-text-secondary">
-                No memberships yet. Add the first membership to get started.
-              </p>
+            ) : (
               <Button render={<Link href="/memberships/new" />} nativeButton={false}>
                 <Plus className="size-4" aria-hidden="true" />
                 Add Membership
               </Button>
-            </>
-          )}
-        </div>
+            )
+          }
+        />
       ) : (
         <>
           <MembershipList
             memberships={memberships}
             view={view}
-            searchParams={rawParams}
             total={total}
+            today={today}
+            sort={sort}
+            sortOptions={SORT_OPTIONS}
           />
 
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-small text-text-secondary">
-              Showing {rangeStart}–{rangeEnd} of {total} memberships
-            </p>
-
-            <nav aria-label="Membership list pagination" className="flex items-center gap-2">
-              {page > 1 ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={membershipsHref(rawParams, { page: page - 1 })} />}
-                  nativeButton={false}
-                >
-                  Previous
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
-              )}
-
-              <span className="text-small px-1 text-text-secondary">
-                Page {page} of {totalPages}
-              </span>
-
-              {page < totalPages ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={membershipsHref(rawParams, { page: page + 1 })} />}
-                  nativeButton={false}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Next
-                </Button>
-              )}
-            </nav>
-          </div>
+          <Pagination
+            className="mt-4"
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            itemLabel="memberships"
+            ariaLabel="Membership list pagination"
+            getHref={(targetPage) => buildListHref("/memberships", rawParams, { page: targetPage })}
+          />
         </>
       )}
     </>

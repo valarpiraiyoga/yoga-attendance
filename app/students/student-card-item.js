@@ -24,11 +24,7 @@ export default function StudentCardItem({ student }) {
       avatar={<Avatar name={student.full_name} bordered />}
       title={student.full_name}
       subtitle={`ID: ${student.student_code}`}
-      status={
-        <Badge variant={entityStatus.variant} className="text-small">
-          {entityStatus.label}
-        </Badge>
-      }
+      status={<Badge variant={entityStatus.variant}>{entityStatus.label}</Badge>}
       actions={
         <>
           <Button

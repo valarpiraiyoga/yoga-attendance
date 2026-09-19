@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LayoutGrid, Table2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -13,13 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import SearchInput from "@/components/ui/search-input";
+import ViewSwitcher from "@/components/ui/view-switcher";
+import { FilterBar, FilterChips, FilterSheet, FilterSection } from "@/components/ui/filter-bar";
+import { ListToolbar } from "@/components/layout/list-page";
+import { buildListHref } from "@/lib/url-params";
 
 const PLAN_OPTIONS = [
   { value: "all", label: "All Plans" },
@@ -42,14 +39,21 @@ const MEMBERSHIP_STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+const VIEWS = [
+  { key: "cards", label: "Cards", icon: LayoutGrid },
+  { key: "table", label: "Table", icon: Table2 },
+];
+
 function optionLabel(options, value) {
   return options.find((option) => option.value === value)?.label ?? value;
 }
 
 /**
- * Search is independent of the filter drawer. Filter apply/clear still
- * writes the same `q` / `plan` / `payment` / `status` / `from` / `to`
- * URL params as before (wireframe Memberships list; keyed remount from page).
+ * Search + Filters + Cards/Table toggle in one toolbar row (the same
+ * composition as `StudentFilters`). Search is independent of the filter
+ * drawer. Filter apply/clear still writes the same `q` / `plan` / `payment`
+ * / `status` / `from` / `to` URL params as before (keyed remount from the
+ * page); view switching is a plain URL change.
  *
  * From Date / To Date both filter Membership Start Date (02-ux.md
  * "Memberships list filters"), not End Date.
@@ -61,6 +65,7 @@ export default function MembershipFilters({
   defaultMembershipStatus,
   defaultFromDate,
   defaultToDate,
+  view,
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -86,6 +91,11 @@ export default function MembershipFilters({
     Boolean(appliedFrom),
     Boolean(appliedTo),
   ].filter(Boolean).length;
+
+  const viewItems = VIEWS.map((item) => ({
+    ...item,
+    href: buildListHref("/memberships", searchParams, { view: item.key === "cards" ? "" : item.key }),
+  }));
 
   function pushParams(mutate) {
     const params = new URLSearchParams(searchParams);
@@ -191,177 +201,98 @@ export default function MembershipFilters({
   }
 
   return (
-    <div className="rounded-card border border-border bg-surface p-4 shadow-xs">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <>
+      <ListToolbar
+        chips={
+          <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
+        }
+      >
         <form onSubmit={applySearch} className="min-w-0 flex-1">
-          <label htmlFor="membership-search" className="sr-only">
-            Search
-          </label>
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-text-secondary"
-              aria-hidden="true"
-            />
-            <Input
-              id="membership-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search student or membership ID"
-              className="h-9 pl-8"
-            />
-          </div>
+          <SearchInput
+            id="membership-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search student or membership ID"
+          />
         </form>
 
-        <Button type="button" variant="outline" className="shrink-0 gap-2" onClick={() => setFiltersOpen(true)}>
-          <SlidersHorizontal className="size-4" aria-hidden="true" />
-          Filters
-          {activeFilterCount > 0 ? (
-            <span className="flex size-5 items-center justify-center rounded-full bg-brand text-small font-semibold text-surface">
-              {activeFilterCount}
-            </span>
-          ) : null}
-        </Button>
-      </div>
+        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
 
-      {chips.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-small text-text-secondary">Active filters:</span>
-          {chips.map((chip) => (
-            <span
-              key={chip.key}
-              className="inline-flex items-center gap-1 rounded-full bg-brand/10 py-0.5 pr-1 pl-2.5 text-small font-medium text-brand"
-            >
-              {chip.label}
-              <button
-                type="button"
-                className="flex size-5 items-center justify-center rounded-full text-brand hover:bg-brand/15"
-                aria-label={`Remove ${chip.label}`}
-                onClick={() => removeAppliedFilter(chip.key)}
-              >
-                <X className="size-3" aria-hidden="true" />
-              </button>
-            </span>
-          ))}
-          <button
-            type="button"
-            className="text-small font-medium text-brand hover:underline"
-            onClick={clearFilters}
-          >
-            Clear all
-          </button>
+        <ViewSwitcher items={viewItems} active={view} ariaLabel="Membership list views" />
+      </ListToolbar>
+
+      <FilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        description="Refine your membership list"
+        onSubmit={applyFilters}
+        onClearAll={clearAllIncludingSearch}
+      >
+        <FilterSection id="membership-plan" label="Plan">
+          <Select items={PLAN_OPTIONS} value={plan} onValueChange={setPlan}>
+            <SelectTrigger aria-labelledby="membership-plan-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PLAN_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSection>
+
+        <FilterSection id="membership-payment" label="Payment Status">
+          <Select items={PAYMENT_STATUS_OPTIONS} value={paymentStatus} onValueChange={setPaymentStatus}>
+            <SelectTrigger aria-labelledby="membership-payment-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAYMENT_STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSection>
+
+        <FilterSection id="membership-status" label="Membership Status">
+          <Select items={MEMBERSHIP_STATUS_OPTIONS} value={membershipStatus} onValueChange={setMembershipStatus}>
+            <SelectTrigger aria-labelledby="membership-status-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MEMBERSHIP_STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSection>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="membership-from-date">From Date</Label>
+          <Input
+            id="membership-from-date"
+            type="date"
+            value={fromDate}
+            onChange={(event) => setFromDate(event.target.value)}
+          />
         </div>
-      ) : null}
 
-      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <SheetContent
-          side="right"
-          className="h-auto max-h-[90dvh] w-full gap-0 rounded-t-card p-0 data-[side=right]:inset-x-0 data-[side=right]:top-auto data-[side=right]:bottom-0 data-[side=right]:left-0 sm:inset-y-0 sm:h-full sm:max-h-none sm:w-96 sm:max-w-sm sm:rounded-none sm:data-[side=right]:inset-x-auto sm:data-[side=right]:top-0 sm:data-[side=right]:right-0 sm:data-[side=right]:left-auto"
-          showCloseButton
-        >
-          <SheetHeader className="border-b border-border pr-12">
-            <SheetTitle className="text-section-title font-semibold text-text-primary">Filters</SheetTitle>
-            <SheetDescription className="text-small text-text-secondary">
-              Refine your membership list
-            </SheetDescription>
-          </SheetHeader>
-
-          <form onSubmit={applyFilters} className="flex min-h-0 flex-1 flex-col">
-            <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-              <div className="flex flex-col gap-1.5">
-                <span
-                  id="membership-plan-label"
-                  className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                >
-                  Plan
-                </span>
-                <Select items={PLAN_OPTIONS} value={plan} onValueChange={setPlan}>
-                  <SelectTrigger aria-labelledby="membership-plan-label" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PLAN_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span
-                  id="membership-payment-label"
-                  className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                >
-                  Payment Status
-                </span>
-                <Select items={PAYMENT_STATUS_OPTIONS} value={paymentStatus} onValueChange={setPaymentStatus}>
-                  <SelectTrigger aria-labelledby="membership-payment-label" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_STATUS_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span
-                  id="membership-status-label"
-                  className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                >
-                  Membership Status
-                </span>
-                <Select items={MEMBERSHIP_STATUS_OPTIONS} value={membershipStatus} onValueChange={setMembershipStatus}>
-                  <SelectTrigger aria-labelledby="membership-status-label" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MEMBERSHIP_STATUS_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="membership-from-date">From Date</Label>
-                <Input
-                  id="membership-from-date"
-                  type="date"
-                  value={fromDate}
-                  onChange={(event) => setFromDate(event.target.value)}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="membership-to-date">To Date</Label>
-                <Input
-                  id="membership-to-date"
-                  type="date"
-                  value={toDate}
-                  onChange={(event) => setToDate(event.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="mt-auto flex gap-3 border-t border-border p-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={clearAllIncludingSearch}>
-                Clear All
-              </Button>
-              <Button type="submit" className="flex-1">
-                Apply Filters
-              </Button>
-            </div>
-          </form>
-        </SheetContent>
-      </Sheet>
-    </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="membership-to-date">To Date</Label>
+          <Input
+            id="membership-to-date"
+            type="date"
+            value={toDate}
+            onChange={(event) => setToDate(event.target.value)}
+          />
+        </div>
+      </FilterSheet>
+    </>
   );
 }
