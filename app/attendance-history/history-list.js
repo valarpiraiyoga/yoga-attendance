@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { LayoutGrid, Table2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -11,14 +10,11 @@ import {
 import DataTableShell from "@/components/ui/data-table-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { buildListHref } from "@/lib/url-params";
+import { CardGrid, ResultsHeader } from "@/components/layout/list-page";
+import SortSelect from "@/components/ui/sort-select";
+import { DEFAULT_HISTORY_SORT } from "@/lib/attendance-history/data";
 import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_BADGE_VARIANTS } from "@/lib/class-sessions/validation";
 import HistorySessionCard from "@/app/attendance-history/history-session-card";
-
-const LAYOUTS = [
-  { key: "table", label: "Table", icon: Table2 },
-  { key: "cards", label: "Cards", icon: LayoutGrid },
-];
 
 function formatTime(value) {
   if (!value) return "—";
@@ -48,40 +44,6 @@ function getInitials(name) {
   if (parts.length === 1) return parts[0][0].toUpperCase();
 
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-}
-
-function LayoutToggle({ active, searchParams }) {
-  return (
-    <div
-      role="tablist"
-      aria-label="Attendance history layouts"
-      className="inline-flex gap-1 rounded-lg border border-border bg-background/60 p-1"
-    >
-      {LAYOUTS.map((layout) => {
-        const Icon = layout.icon;
-        const href = buildListHref("/attendance-history", searchParams, {
-          layout: layout.key === "table" ? "" : layout.key,
-        });
-
-        return (
-          <Link
-            key={layout.key}
-            href={href}
-            role="tab"
-            aria-selected={active === layout.key}
-            className={
-              active === layout.key
-                ? "inline-flex items-center gap-1.5 rounded-md bg-surface px-2.5 py-1.5 text-small font-semibold text-text-primary shadow-xs"
-                : "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-small text-text-secondary hover:text-text-primary"
-            }
-          >
-            <Icon className="size-3.5" aria-hidden="true" />
-            {layout.label}
-          </Link>
-        );
-      })}
-    </div>
-  );
 }
 
 function AdminTable({ sessions }) {
@@ -254,39 +216,46 @@ function InstructorTable({ sessions }) {
 
 function HistoryCards({ sessions, variant }) {
   return (
-    <div className="flex flex-col gap-3" aria-label="Attendance History">
+    // Three columns at every width from `lg` up (the reference's density): the
+    // date tile takes 64px of each card's header, so a fourth column at `xl`
+    // would truncate most batch names.
+    <CardGrid ariaLabel="Attendance History" className="xl:grid-cols-3">
       {sessions.map((session) => (
         <HistorySessionCard key={session.id} session={session} variant={variant} />
       ))}
-    </div>
+    </CardGrid>
   );
 }
 
 /**
  * Attendance History results — TABLE is the default / primary desktop view
- * (data-review screen). Cards remain available via `layout=cards` for
- * mobile-friendly scanning, matching Students/Memberships/Batches toggle.
+ * (data-review screen). Cards remain available via `layout=cards`; the
+ * Cards / Table switch itself lives in `AttendanceHistoryFilters`'
+ * `ViewSwitcher`, beside search and Filters.
  */
 export default function HistoryList({
   sessions,
   total,
   variant = "admin",
   layout = "table",
-  searchParams,
+  sort,
+  sortOptions,
 }) {
   return (
     <div className="mt-6">
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-body font-medium text-text-primary">
-            {total} {total === 1 ? "Record" : "Records"}
-          </p>
-          <p className="text-small text-text-secondary">
-            {layout === "cards" ? "Card list view" : "Table view"}
-          </p>
-        </div>
-        <LayoutToggle active={layout} searchParams={searchParams} />
-      </div>
+      <ResultsHeader
+        count={total}
+        label={total === 1 ? "Session" : "Sessions"}
+        viewLabel={layout === "cards" ? "Card list view" : "Table view"}
+        aside={
+          <SortSelect
+            id="history-sort"
+            options={sortOptions}
+            value={sort}
+            defaultValue={DEFAULT_HISTORY_SORT}
+          />
+        }
+      />
 
       {layout === "cards" ? (
         <HistoryCards sessions={sessions} variant={variant} />

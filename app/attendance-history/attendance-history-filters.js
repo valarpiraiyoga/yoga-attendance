@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LayoutGrid, Table2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,14 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import SearchInput from "@/components/ui/search-input";
+import ViewSwitcher from "@/components/ui/view-switcher";
+import { FilterBar, FilterChips, FilterSheet, FilterSection } from "@/components/ui/filter-bar";
+import { ListToolbar } from "@/components/layout/list-page";
 import { ATTENDANCE_STATUSES } from "@/lib/attendance/validation";
+import { buildListHref } from "@/lib/url-params";
+import { formatDate } from "@/lib/format";
 
 const ATTENDANCE_STATUS_LABELS = { present: "Present", absent: "Absent" };
 const ATTENDANCE_STATUS_OPTIONS = [
@@ -27,27 +25,31 @@ const ATTENDANCE_STATUS_OPTIONS = [
   ...ATTENDANCE_STATUSES.map((status) => ({ value: status, label: ATTENDANCE_STATUS_LABELS[status] })),
 ];
 
+const LAYOUTS = [
+  { key: "cards", label: "Cards", icon: LayoutGrid },
+  { key: "table", label: "Table", icon: Table2 },
+];
+
 function optionLabel(options, value) {
   return options.find((option) => option.value === value)?.label ?? value;
 }
 
-function formatChipDate(value) {
-  if (!value) return value;
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 /**
- * Attendance History filters — sheet + chips pattern matching Attendance /
- * Schedule / Batches. Admin gets Instructor filter; instructor does not.
- * Batch label remains "Assigned Classes" for instructors.
+ * Search + Filters + Cards/Table toggle in one toolbar row (the same
+ * composition as the finalized Students / Memberships / Batches / Schedule /
+ * Attendance toolbars). Search is independent of the filter drawer; filter
+ * apply/clear writes the same `q` / `from` / `to` / `batch` / `instructor` /
+ * `status` URL params as before. The date range lives in the drawer with the
+ * other filters, and shows as one chip when both ends are set. Table is
+ * Attendance History's default layout (no `layout` param); Cards is
+ * `layout=cards`.
+ *
+ * Admin gets the Instructor filter; an instructor does not, and their Batch
+ * filter reads "Assigned Classes".
  */
 export default function AttendanceHistoryFilters({
   variant,
+  layout,
   defaultQuery,
   defaultDateFrom,
   defaultDateTo,
@@ -96,6 +98,13 @@ export default function AttendanceHistoryFilters({
     appliedStatus !== "all",
   ].filter(Boolean).length;
 
+  const layoutItems = LAYOUTS.map((item) => ({
+    ...item,
+    href: buildListHref("/attendance-history", searchParams, {
+      layout: item.key === "table" ? "" : item.key,
+    }),
+  }));
+
   function pushParams(mutate) {
     const params = new URLSearchParams(searchParams);
     mutate(params);
@@ -123,8 +132,10 @@ export default function AttendanceHistoryFilters({
       else params.delete("to");
       if (batchId !== "all") params.set("batch", batchId);
       else params.delete("batch");
-      if (!isInstructor && instructorId !== "all") params.set("instructor", instructorId);
-      else params.delete("instructor");
+      if (!isInstructor) {
+        if (instructorId !== "all") params.set("instructor", instructorId);
+        else params.delete("instructor");
+      }
       if (attendanceStatus !== "all") params.set("status", attendanceStatus);
       else params.delete("status");
     });
@@ -159,21 +170,35 @@ export default function AttendanceHistoryFilters({
   }
 
   function removeAppliedFilter(key) {
+    if (key === "range") {
+      setDateFrom("");
+      setDateTo("");
+    }
     if (key === "from") setDateFrom("");
     if (key === "to") setDateTo("");
     if (key === "batch") setBatchId("all");
     if (key === "instructor") setInstructorId("all");
     if (key === "status") setAttendanceStatus("all");
     pushParams((params) => {
-      params.delete(key === "status" ? "status" : key);
+      if (key === "range") {
+        params.delete("from");
+        params.delete("to");
+      } else {
+        params.delete(key);
+      }
     });
   }
 
   const chips = [];
-  if (appliedFrom) chips.push({ key: "from", label: `From: ${formatChipDate(appliedFrom)}` });
-  if (appliedTo) chips.push({ key: "to", label: `To: ${formatChipDate(appliedTo)}` });
+  if (appliedFrom && appliedTo) {
+    chips.push({ key: "range", label: `${formatDate(appliedFrom)} – ${formatDate(appliedTo)}` });
+  } else if (appliedFrom) {
+    chips.push({ key: "from", label: `From: ${formatDate(appliedFrom)}` });
+  } else if (appliedTo) {
+    chips.push({ key: "to", label: `To: ${formatDate(appliedTo)}` });
+  }
   if (appliedBatchId !== "all") {
-    chips.push({ key: "batch", label: `${batchLabel}: ${optionLabel(batchSelectOptions, appliedBatchId)}` });
+    chips.push({ key: "batch", label: `${isInstructor ? "Class" : "Batch"}: ${optionLabel(batchSelectOptions, appliedBatchId)}` });
   }
   if (!isInstructor && appliedInstructorId !== "all") {
     chips.push({
@@ -189,190 +214,101 @@ export default function AttendanceHistoryFilters({
   }
 
   return (
-    <div className="rounded-card border border-border bg-surface p-4 shadow-xs">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <>
+      <ListToolbar
+        chips={
+          <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
+        }
+      >
         <form onSubmit={applySearch} className="min-w-0 flex-1">
-          <label htmlFor="attendance-history-search" className="sr-only">
-            Search
-          </label>
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-text-secondary"
-              aria-hidden="true"
-            />
-            <Input
-              id="attendance-history-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by student name or batch"
-              className="h-9 pl-8"
-            />
-          </div>
+          <SearchInput
+            id="attendance-history-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by student name or batch"
+          />
         </form>
 
-        <Button type="button" variant="outline" className="shrink-0 gap-2" onClick={() => setFiltersOpen(true)}>
-          <SlidersHorizontal className="size-4" aria-hidden="true" />
-          Filters
-          {activeFilterCount > 0 ? (
-            <span className="flex size-5 items-center justify-center rounded-full bg-brand text-small font-semibold text-surface">
-              {activeFilterCount}
-            </span>
-          ) : null}
-        </Button>
-      </div>
+        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
 
-      {chips.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-small text-text-secondary">Active filters:</span>
-          {chips.map((chip) => (
-            <span
-              key={chip.key}
-              className="inline-flex items-center gap-1 rounded-full bg-brand/10 py-0.5 pr-1 pl-2.5 text-small font-medium text-brand"
-            >
-              {chip.label}
-              <button
-                type="button"
-                className="flex size-5 items-center justify-center rounded-full text-brand hover:bg-brand/15"
-                aria-label={`Remove ${chip.label}`}
-                onClick={() => removeAppliedFilter(chip.key)}
-              >
-                <X className="size-3" aria-hidden="true" />
-              </button>
-            </span>
-          ))}
-          <button type="button" className="text-small font-medium text-brand hover:underline" onClick={clearFilters}>
-            Clear all
-          </button>
+        <ViewSwitcher items={layoutItems} active={layout} ariaLabel="Attendance history views" />
+      </ListToolbar>
+
+      <FilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        description="Refine attendance history"
+        onSubmit={applyFilters}
+        onClearAll={clearAllIncludingSearch}
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <FilterSection id="attendance-history-date-from" label="From">
+            <Input
+              id="attendance-history-date-from"
+              type="date"
+              aria-labelledby="attendance-history-date-from-label"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+            />
+          </FilterSection>
+          <FilterSection id="attendance-history-date-to" label="To">
+            <Input
+              id="attendance-history-date-to"
+              type="date"
+              aria-labelledby="attendance-history-date-to-label"
+              value={dateTo}
+              onChange={(event) => setDateTo(event.target.value)}
+            />
+          </FilterSection>
         </div>
-      ) : null}
 
-      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <SheetContent
-          side="right"
-          className="h-auto max-h-[90dvh] w-full gap-0 rounded-t-card p-0 data-[side=right]:inset-x-0 data-[side=right]:top-auto data-[side=right]:bottom-0 data-[side=right]:left-0 sm:inset-y-0 sm:h-full sm:max-h-none sm:w-96 sm:max-w-sm sm:rounded-none sm:data-[side=right]:inset-x-auto sm:data-[side=right]:top-0 sm:data-[side=right]:right-0 sm:data-[side=right]:left-auto"
-          showCloseButton
-        >
-          <SheetHeader className="border-b border-border pr-12">
-            <SheetTitle className="text-section-title font-semibold text-text-primary">Filters</SheetTitle>
-            <SheetDescription className="text-small text-text-secondary">
-              Refine attendance history
-            </SheetDescription>
-          </SheetHeader>
+        <FilterSection id="attendance-history-batch" label={batchLabel}>
+          <Select items={batchSelectOptions} value={batchId} onValueChange={setBatchId}>
+            <SelectTrigger aria-labelledby="attendance-history-batch-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {batchSelectOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSection>
 
-          <form onSubmit={applyFilters} className="flex min-h-0 flex-1 flex-col">
-            <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="attendance-history-date-from"
-                    className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                  >
-                    From
-                  </label>
-                  <Input
-                    id="attendance-history-date-from"
-                    type="date"
-                    value={dateFrom}
-                    onChange={(event) => setDateFrom(event.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="attendance-history-date-to"
-                    className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                  >
-                    To
-                  </label>
-                  <Input
-                    id="attendance-history-date-to"
-                    type="date"
-                    value={dateTo}
-                    onChange={(event) => setDateTo(event.target.value)}
-                  />
-                </div>
-              </div>
+        {!isInstructor ? (
+          <FilterSection id="attendance-history-instructor" label="Instructor">
+            <Select items={instructorSelectOptions} value={instructorId} onValueChange={setInstructorId}>
+              <SelectTrigger aria-labelledby="attendance-history-instructor-label" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {instructorSelectOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterSection>
+        ) : null}
 
-              <div className="flex flex-col gap-1.5">
-                <span
-                  id="attendance-history-batch-label"
-                  className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                >
-                  {batchLabel}
-                </span>
-                <Select items={batchSelectOptions} value={batchId} onValueChange={setBatchId}>
-                  <SelectTrigger aria-labelledby="attendance-history-batch-label" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {batchSelectOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {!isInstructor ? (
-                <div className="flex flex-col gap-1.5">
-                  <span
-                    id="attendance-history-instructor-label"
-                    className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                  >
-                    Instructor
-                  </span>
-                  <Select items={instructorSelectOptions} value={instructorId} onValueChange={setInstructorId}>
-                    <SelectTrigger aria-labelledby="attendance-history-instructor-label" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {instructorSelectOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
-
-              <div className="flex flex-col gap-1.5">
-                <span
-                  id="attendance-history-status-label"
-                  className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                >
-                  Attendance Status
-                </span>
-                <Select
-                  items={ATTENDANCE_STATUS_OPTIONS}
-                  value={attendanceStatus}
-                  onValueChange={setAttendanceStatus}
-                >
-                  <SelectTrigger aria-labelledby="attendance-history-status-label" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ATTENDANCE_STATUS_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="mt-auto flex gap-3 border-t border-border p-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={clearAllIncludingSearch}>
-                Clear All
-              </Button>
-              <Button type="submit" className="flex-1">
-                Apply Filters
-              </Button>
-            </div>
-          </form>
-        </SheetContent>
-      </Sheet>
-    </div>
+        <FilterSection id="attendance-history-status" label="Attendance Status">
+          <Select items={ATTENDANCE_STATUS_OPTIONS} value={attendanceStatus} onValueChange={setAttendanceStatus}>
+            <SelectTrigger aria-labelledby="attendance-history-status-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ATTENDANCE_STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSection>
+      </FilterSheet>
+    </>
   );
 }

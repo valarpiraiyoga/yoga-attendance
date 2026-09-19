@@ -2,7 +2,9 @@ import Link from "next/link";
 import { History } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
-import { listAttendanceHistory } from "@/lib/attendance-history/data";
+import EmptyState from "@/components/ui/empty-state";
+import Pagination from "@/components/ui/pagination";
+import { DEFAULT_HISTORY_SORT, listAttendanceHistory } from "@/lib/attendance-history/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { ATTENDANCE_STATUSES } from "@/lib/attendance/validation";
@@ -13,9 +15,12 @@ import HistoryList from "@/app/attendance-history/history-list";
 
 const PAGE_SIZE = 10;
 
-function attendanceHistoryHref(searchParams, overrides) {
-  return buildListHref("/attendance-history", searchParams, overrides);
-}
+// Labels for the "Sort by" control. Every `value` must be a key of
+// `HISTORY_SORTS` (lib/attendance-history/data.js), which owns the direction.
+const SORT_OPTIONS = [
+  { value: "newest", label: "Date (Newest)" },
+  { value: "oldest", label: "Date (Oldest)" },
+];
 
 /**
  * Attendance History (Phase 16; approved wireframe p.6 Instructor, p.30 Admin).
@@ -36,6 +41,7 @@ export default async function AttendanceHistoryPage({ searchParams }) {
   const attendanceStatus = ATTENDANCE_STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
   const layout = rawParams.layout === "cards" ? "cards" : "table";
+  const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort) ? rawParams.sort : DEFAULT_HISTORY_SORT;
 
   const [{ sessions, total }, batchOptions, instructorOptions] = await Promise.all([
     listAttendanceHistory({
@@ -45,6 +51,7 @@ export default async function AttendanceHistoryPage({ searchParams }) {
       instructorId,
       q,
       attendanceStatus,
+      sort,
       page,
       pageSize: PAGE_SIZE,
     }),
@@ -55,20 +62,19 @@ export default async function AttendanceHistoryPage({ searchParams }) {
   const isFiltered =
     Boolean(q) || Boolean(dateFrom) || Boolean(dateTo) || Boolean(batchId) || Boolean(instructorId) || attendanceStatus !== "all";
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(total, page * PAGE_SIZE);
 
   return (
     <>
       <PageHeader
         title="Attendance History"
-        description="Review recorded attendance for past class sessions."
+        description="View past class sessions and attendance records."
         icon={<History className="size-6" />}
       />
 
       <AttendanceHistoryFilters
         key={`${q}:${dateFrom}:${dateTo}:${batchId}:${instructorId}:${attendanceStatus}`}
         variant={isAdmin ? "admin" : "instructor"}
+        layout={layout}
         defaultQuery={q}
         defaultDateFrom={dateFrom}
         defaultDateTo={dateTo}
@@ -80,22 +86,21 @@ export default async function AttendanceHistoryPage({ searchParams }) {
       />
 
       {sessions.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
-          {isFiltered ? (
-            <>
-              <p className="text-body max-w-sm text-text-secondary">
-                No attendance records match your search or filters.
-              </p>
+        <EmptyState
+          className="mt-6"
+          description={
+            isFiltered
+              ? "No attendance records match your search or filters."
+              : "No completed sessions have attendance recorded yet."
+          }
+          action={
+            isFiltered ? (
               <Button variant="outline" render={<Link href="/attendance-history" />} nativeButton={false}>
                 Clear Filters
               </Button>
-            </>
-          ) : (
-            <p className="text-body max-w-sm text-text-secondary">
-              No completed sessions have attendance recorded yet.
-            </p>
-          )}
-        </div>
+            ) : undefined
+          }
+        />
       ) : (
         <>
           <HistoryList
@@ -103,50 +108,20 @@ export default async function AttendanceHistoryPage({ searchParams }) {
             total={total}
             variant={isAdmin ? "admin" : "instructor"}
             layout={layout}
-            searchParams={rawParams}
+            sort={sort}
+            sortOptions={SORT_OPTIONS}
           />
 
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-small text-text-secondary">
-              Showing {rangeStart}–{rangeEnd} of {total} attendance records
-            </p>
-
-            <nav aria-label="Attendance History pagination" className="flex items-center gap-2">
-              {page > 1 ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={attendanceHistoryHref(rawParams, { page: page - 1 })} />}
-                  nativeButton={false}
-                >
-                  Previous
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
-              )}
-
-              <span className="text-small px-1 text-text-secondary">
-                Page {page} of {totalPages}
-              </span>
-
-              {page < totalPages ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={attendanceHistoryHref(rawParams, { page: page + 1 })} />}
-                  nativeButton={false}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Next
-                </Button>
-              )}
-            </nav>
-          </div>
+          <Pagination
+            className="mt-4"
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            itemLabel="sessions"
+            ariaLabel="Attendance History pagination"
+            getHref={(targetPage) => buildListHref("/attendance-history", rawParams, { page: targetPage })}
+          />
         </>
       )}
     </>

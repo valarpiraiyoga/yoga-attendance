@@ -1,161 +1,103 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Check, Clock, Eye, Users, X } from "lucide-react";
+import { Clock, Eye, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import EntityCard from "@/components/ui/entity-card";
+import Progress from "@/components/ui/progress";
+import { formatDateWithWeekday, formatTimeRange } from "@/lib/format";
 import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_BADGE_VARIANTS } from "@/lib/class-sessions/validation";
+import { cn } from "@/lib/utils";
+import HistoryCardMenu from "@/app/attendance-history/history-card-menu";
 
-function formatTime(value) {
-  if (!value) return "—";
-  const [hours, minutes] = value.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
-}
-
-function formatDayOfWeek(value) {
-  if (!value) return "—";
-  return new Date(`${value}T00:00:00Z`)
-    .toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })
-    .toUpperCase();
-}
-
-function formatDayNumber(value) {
-  if (!value) return "—";
-  return new Date(`${value}T00:00:00Z`).getUTCDate();
-}
-
-function formatMonthYear(value) {
-  if (!value) return "—";
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function getInitials(name) {
-  const parts = String(name || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-}
-
-const CHIP_TONES = {
-  info: { chip: "border-info/20 bg-info/10", icon: "bg-info text-surface" },
-  success: { chip: "border-success/20 bg-success/10", icon: "bg-success text-surface" },
-  danger: { chip: "border-danger/20 bg-danger/10", icon: "bg-danger text-surface" },
-  purple: { chip: "border-purple-200 bg-purple-50", icon: "bg-purple-500 text-surface" },
-};
-
-function SummaryChip({ icon: Icon, label, value, tone }) {
-  const palette = CHIP_TONES[tone] ?? CHIP_TONES.info;
+function DateTile({ date }) {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  const month = parsed.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase();
+  const year = parsed.getUTCFullYear();
 
   return (
-    <div
-      className={`flex min-w-[4.25rem] flex-col items-center gap-1 rounded-xl border px-2.5 py-2 text-center ${palette.chip}`}
-    >
-      <span className={`flex size-5 shrink-0 items-center justify-center rounded-full ${palette.icon}`}>
-        <Icon className="size-3" aria-hidden="true" />
+    <span className="flex w-16 shrink-0 flex-col items-center justify-center rounded-lg bg-brand/10 px-1 py-1.5 text-center">
+      <span className="sr-only">{formatDateWithWeekday(date)}</span>
+      <span aria-hidden="true" className="text-section-title font-semibold text-brand">
+        {parsed.getUTCDate()}
       </span>
-      <p className="text-body leading-none font-bold text-text-primary">{value}</p>
-      <p className="text-[10px] leading-[14px] font-medium text-text-secondary">{label}</p>
-    </div>
+      <span aria-hidden="true" className="text-small font-medium whitespace-nowrap text-brand">
+        {month} {year}
+      </span>
+    </span>
   );
 }
 
 /**
- * Shared history card — a single full-width row: date block, batch/instructor
- * identity, session details, the Eligible/Present/Absent/Rate summary chips,
- * and the View Details action, all in one line on wider screens and stacked
- * on narrow ones. `variant` only toggles the admin instructor row vs
- * instructor Completed badge (wireframe column sets) — same as before,
- * carried over onto the new row layout.
+ * Attendance History card (`16-attendance-history-card-view-desktop-final.png`):
+ * the session date tile, batch name and code, then time and (admin) the
+ * instructor, and the session's attendance — rate, a progress bar, and
+ * attended / eligible. Actions follow the finalized pattern shared with the
+ * other list pages: eye icon (View Details) + overflow menu. `variant` keeps
+ * the wireframe's role split: admin sees the instructor row, an instructor
+ * (viewing their own sessions) sees the Completed badge instead. Composed
+ * from `EntityCard`; only the menu-open tint is local state.
  */
 export default function HistorySessionCard({ session, variant = "admin" }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const summary = session.attendanceSummary;
-  const instructorName = session.instructors?.full_name ?? null;
-  const href = `/attendance-history/${session.schedule_id}/${session.session_date}`;
-  const batchCode = session.batches?.code || "—";
+  const eligible = summary?.eligibleCount ?? 0;
+  const present = summary?.presentCount ?? 0;
+  const percentage = summary?.percentage ?? 0;
   const batchName = session.batches?.name ?? "—";
+  const time = formatTimeRange(session.start_time, session.end_time);
+  const instructor = session.instructors?.full_name ?? "—";
+  const detailsHref = `/attendance-history/${session.schedule_id}/${session.session_date}`;
+
+  const meta = [{ icon: Clock, label: time, title: time }];
+  if (variant === "admin") meta.push({ icon: UserRound, label: instructor, title: instructor });
 
   return (
-    <article className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-surface p-4 shadow-sm sm:flex-row sm:items-center sm:gap-5">
-      <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-background px-3 py-2 text-center sm:w-[4.5rem]">
-        <p className="text-[10px] leading-[14px] font-semibold tracking-wide text-text-secondary uppercase">
-          {formatDayOfWeek(session.session_date)}
-        </p>
-        <p className="text-page-title leading-tight font-bold text-text-primary">
-          {formatDayNumber(session.session_date)}
-        </p>
-        <p className="text-[10px] leading-[14px] text-text-secondary whitespace-nowrap">
-          {formatMonthYear(session.session_date)}
-        </p>
-      </div>
-
-      <div className="flex min-w-0 flex-1 items-start gap-3">
-        <div className="flex shrink-0 flex-col items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand/15 text-small font-semibold text-brand"
+    <EntityCard
+      className={cn(menuOpen && "border-brand/40 bg-brand/5")}
+      iconClassName="text-brand"
+      avatar={<DateTile date={session.session_date} />}
+      title={batchName}
+      subtitle={session.batches?.code}
+      status={
+        variant === "instructor" ? (
+          <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS.completed}>{DISPLAY_STATUS_LABELS.completed}</Badge>
+        ) : null
+      }
+      actions={
+        <>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="text-brand hover:bg-brand/10 hover:text-brand"
+            aria-label={`View attendance details for ${batchName}`}
+            render={<Link href={detailsHref} />}
+            nativeButton={false}
           >
-            {batchCode}
-          </span>
-          {variant === "admin" ? (
-            <span
-              aria-hidden="true"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-[10px] font-semibold text-brand"
-            >
-              {instructorName ? getInitials(instructorName) : "?"}
-            </span>
-          ) : null}
+            <Eye className="size-4" aria-hidden="true" />
+          </Button>
+          <HistoryCardMenu batchName={batchName} detailsHref={detailsHref} onOpenChange={setMenuOpen} />
+        </>
+      }
+      meta={meta}
+    >
+      <div className="mt-auto flex flex-col gap-2 border-t border-border pt-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-small text-text-secondary">Attendance</span>
+          <span className="text-body font-semibold text-text-primary">{percentage}%</span>
         </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-body font-semibold leading-snug text-text-primary" title={batchName}>
-              {batchName}
-            </h3>
-            {variant === "instructor" ? (
-              <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS.completed} className="shrink-0 rounded-full px-2 py-0">
-                <span className="text-[10px] leading-[14px] font-medium">{DISPLAY_STATUS_LABELS.completed}</span>
-              </Badge>
-            ) : null}
-          </div>
-          <p className="mt-0.5 inline-flex items-center gap-1.5 text-small text-text-secondary">
-            <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-            {formatTime(session.start_time)} – {formatTime(session.end_time)}
-          </p>
-          {variant === "admin" ? (
-            <div className="mt-1 min-w-0">
-              <p className="truncate text-small font-semibold text-text-primary">{instructorName || "—"}</p>
-              <p className="text-[11px] leading-[14px] text-text-secondary">Instructor</p>
-            </div>
-          ) : null}
-        </div>
+        <Progress value={percentage} tone="brand" label={`Attendance rate for ${batchName}`} />
+        <p className="text-small text-text-secondary">
+          <span className="font-semibold text-text-primary">
+            {present} / {eligible}
+          </span>{" "}
+          attended
+        </p>
       </div>
-
-      <div className="grid grid-cols-4 gap-2 sm:flex sm:shrink-0">
-        <SummaryChip icon={Users} label="Eligible" value={summary?.eligibleCount ?? 0} tone="info" />
-        <SummaryChip icon={Check} label="Present" value={summary?.presentCount ?? 0} tone="success" />
-        <SummaryChip icon={X} label="Absent" value={summary?.absentCount ?? 0} tone="danger" />
-        <SummaryChip icon={BarChart3} label="Rate" value={`${summary?.percentage ?? 0}%`} tone="purple" />
-      </div>
-
-      <Button
-        size="sm"
-        className="h-10 shrink-0 gap-1.5 rounded-full bg-brand px-5 text-small font-semibold text-surface shadow-sm hover:bg-brand/90"
-        render={<Link href={href} />}
-        nativeButton={false}
-      >
-        <Eye className="size-4" aria-hidden="true" />
-        View Details
-        <ArrowRight className="size-4" aria-hidden="true" />
-      </Button>
-    </article>
+    </EntityCard>
   );
 }
