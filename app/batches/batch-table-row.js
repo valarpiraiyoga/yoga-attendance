@@ -5,53 +5,70 @@ import Link from "next/link";
 import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Avatar from "@/components/ui/avatar";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { BATCH_STATUS } from "@/lib/status";
+import { summarizeCurrentSchedules } from "@/lib/batches/summary";
 import { cn } from "@/lib/utils";
+import BatchCardMenu from "@/app/batches/batch-card-menu";
 
+/**
+ * Batch table row (`09 Batches table view.png`): Batch Name (avatar + name),
+ * Code, Category, Instructor, Days & Time, Students, Status, Action. The
+ * schedule-derived cells summarise the batch's current schedules; Action is
+ * the finalized eye + overflow menu.
+ */
 export default function BatchTableRow({ batch }) {
-  const [focused, setFocused] = useState(false);
-  const isActive = batch.status === "active";
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const status = BATCH_STATUS[batch.displayStatus] ?? BATCH_STATUS.active;
+  const summary = summarizeCurrentSchedules(batch.currentSchedules);
 
   return (
     <TableRow
       className={cn(
-        "border-border/40 transition-colors",
-        focused ? "bg-brand/10" : "hover:bg-brand/5"
+        "border-border/30 bg-surface/40 transition-colors hover:bg-surface/70",
+        menuOpen && "bg-brand/10 hover:bg-brand/10"
       )}
-      onFocusCapture={() => setFocused(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setFocused(false);
-        }
-      }}
     >
-      <TableCell className="px-5 py-3.5">
-        <p className="font-semibold text-text-primary">{batch.name}</p>
-        <p className="text-small text-text-secondary">{batch.code}</p>
+      <TableCell>
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={batch.name} shape="square" />
+          <p className="font-semibold text-text-primary">{batch.name}</p>
+        </div>
       </TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">{batch.category || "—"}</TableCell>
-      <TableCell className="max-w-xs truncate px-5 py-3.5 text-text-secondary">
-        {batch.description || "—"}
+      <TableCell className="whitespace-nowrap text-text-secondary">{batch.code || "—"}</TableCell>
+      <TableCell className="text-text-secondary">{batch.category || "—"}</TableCell>
+      <TableCell className="text-text-secondary">{summary.instructor}</TableCell>
+      <TableCell>
+        {summary.hasSchedule ? (
+          <>
+            <p className="text-text-primary">{summary.days}</p>
+            <p className="text-small whitespace-nowrap text-text-secondary">{summary.time}</p>
+          </>
+        ) : (
+          <span className="text-text-secondary">{summary.time}</span>
+        )}
       </TableCell>
-      <TableCell className="px-5 py-3.5 text-right tabular-nums text-text-secondary">
-        {batch.scheduleCount ?? 0}
+      <TableCell className="tabular-nums text-text-secondary">{batch.studentCount}</TableCell>
+      <TableCell>
+        <Badge variant={status.variant}>{status.label}</Badge>
       </TableCell>
-      <TableCell className="px-5 py-3.5">
-        <Badge variant={isActive ? "success" : "danger"} className="rounded-full px-2 py-0">
-          <span className="text-[10px] leading-[14px] font-medium">{isActive ? "Active" : "Inactive"}</span>
-        </Badge>
-      </TableCell>
-      <TableCell className="px-5 py-3.5">
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          className="text-text-secondary hover:text-brand"
-          render={<Link href={`/batches/${batch.id}`} />}
-          nativeButton={false}
-          aria-label={`View batch ${batch.name}`}
-        >
-          <Eye className="size-4" aria-hidden="true" />
-        </Button>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="text-brand hover:bg-brand/10 hover:text-brand"
+            aria-label={`View batch ${batch.name}`}
+            render={<Link href={`/batches/${batch.id}`} />}
+            nativeButton={false}
+          >
+            <Eye className="size-4" aria-hidden="true" />
+          </Button>
+          <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} />
+        </div>
       </TableCell>
     </TableRow>
   );

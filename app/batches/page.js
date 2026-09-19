@@ -1,19 +1,29 @@
 import Link from "next/link";
-import { Layers, Plus } from "lucide-react";
+import { CalendarCheck, CircleCheck, Clock, Layers, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
+import EmptyState from "@/components/ui/empty-state";
+import Pagination from "@/components/ui/pagination";
+import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import { KpiStrip, KpiToggle } from "@/components/ui/kpi-visibility";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { listBatches } from "@/lib/batches/data";
+import { DEFAULT_BATCH_SORT, getBatchSummaryCounts, listBatches } from "@/lib/batches/data";
+import { formatShare } from "@/lib/format";
 import { buildListHref } from "@/lib/url-params";
 import BatchFilters from "@/app/batches/batch-filters";
 import BatchList from "@/app/batches/batch-list";
 
 const PAGE_SIZE = 10;
-const STATUSES = ["active", "inactive"];
+const STATUSES = ["active", "upcoming", "completed", "inactive"];
 
-function batchesHref(searchParams, overrides) {
-  return buildListHref("/batches", searchParams, overrides);
-}
+// Labels for the "Sort by" control. Every `value` must be a key of
+// `BATCH_SORTS` (lib/batches/data.js), which owns the column and direction.
+const SORT_OPTIONS = [
+  { value: "name-asc", label: "Name (A–Z)" },
+  { value: "name-desc", label: "Name (Z–A)" },
+  { value: "newest", label: "Newest First" },
+  { value: "oldest", label: "Oldest First" },
+];
 
 export default async function BatchesPage({ searchParams }) {
   // Authorization boundary. app/batches/layout.js also calls requireRole,
@@ -26,13 +36,17 @@ export default async function BatchesPage({ searchParams }) {
   const status = STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
   const view = rawParams.view === "table" ? "table" : "cards";
+  const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort)
+    ? rawParams.sort
+    : DEFAULT_BATCH_SORT;
 
-  const { batches, total } = await listBatches({ q, status, page, pageSize: PAGE_SIZE });
+  const [{ batches, total }, counts] = await Promise.all([
+    listBatches({ q, status, sort, page, pageSize: PAGE_SIZE }),
+    getBatchSummaryCounts(),
+  ]);
 
   const isFiltered = Boolean(q) || status !== "all";
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(total, page * PAGE_SIZE);
 
   return (
     <>
@@ -41,83 +55,89 @@ export default async function BatchesPage({ searchParams }) {
         description="Manage yoga batches and their active status."
         icon={<Layers className="size-6" />}
         actions={
-          <Button render={<Link href="/batches/new" />} nativeButton={false}>
-            <Plus className="size-4" aria-hidden="true" />
-            Add Batch
-          </Button>
+          <>
+            <KpiToggle pageKey="batches" />
+            <Button render={<Link href="/batches/new" />} nativeButton={false}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add Batch
+            </Button>
+          </>
         }
       />
 
-      <BatchFilters key={`${q}:${status}`} defaultQuery={q} defaultStatus={status} />
+      {/* Center-wide counts, independent of the search/filters below, from the
+          same derived statuses as the badge and the Status filter (Active /
+          Upcoming / Completed come from each batch's schedules). Shares are
+          derived from the counts. */}
+      <KpiStrip pageKey="batches">
+        <StatTileGroup className="mb-6" ariaLabel="Batch summary">
+          <StatTile valueFirst decorativeChart icon={Layers} label="Total Batches" value={counts.total} tone="brand" />
+          <StatTile
+            valueFirst
+            decorativeChart
+            icon={CircleCheck}
+            label="Active Batches"
+            value={counts.active}
+            aside={formatShare(counts.active, counts.total)}
+            tone="success"
+          />
+          <StatTile
+            valueFirst
+            decorativeChart
+            icon={Clock}
+            label="Upcoming"
+            value={counts.upcoming}
+            aside={formatShare(counts.upcoming, counts.total)}
+            tone="warning"
+          />
+          <StatTile
+            valueFirst
+            decorativeChart
+            icon={CalendarCheck}
+            label="Completed"
+            value={counts.completed}
+            aside={formatShare(counts.completed, counts.total)}
+            tone="info"
+          />
+        </StatTileGroup>
+      </KpiStrip>
+
+      <BatchFilters key={`${q}:${status}`} defaultQuery={q} defaultStatus={status} view={view} />
 
       {batches.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
-          {isFiltered ? (
-            <>
-              <p className="text-body max-w-sm text-text-secondary">
-                No batches match your search or filters.
-              </p>
+        <EmptyState
+          className="mt-6"
+          title={isFiltered ? undefined : "No batches yet"}
+          description={
+            isFiltered ? "No batches match your search or filters." : "Add your first batch to get started."
+          }
+          action={
+            isFiltered ? (
               <Button variant="outline" render={<Link href="/batches" />} nativeButton={false}>
                 Clear Filters
               </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-body max-w-sm text-text-secondary">
-                No batches yet. Add your first batch to get started.
-              </p>
+            ) : (
               <Button render={<Link href="/batches/new" />} nativeButton={false}>
                 <Plus className="size-4" aria-hidden="true" />
                 Add Batch
               </Button>
-            </>
-          )}
-        </div>
+            )
+          }
+        />
       ) : (
         <>
-          <BatchList batches={batches} view={view} searchParams={rawParams} total={total} />
+          <BatchList batches={batches} view={view} total={total} sort={sort} sortOptions={SORT_OPTIONS} />
 
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-small text-text-secondary">
-              Showing {rangeStart}–{rangeEnd} of {total} batches
-            </p>
-
-            <nav aria-label="Batch list pagination" className="flex items-center gap-2">
-              {page > 1 ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={batchesHref(rawParams, { page: page - 1 })} />}
-                  nativeButton={false}
-                >
-                  Previous
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
-              )}
-
-              <span className="text-small px-1 text-text-secondary">
-                Page {page} of {totalPages}
-              </span>
-
-              {page < totalPages ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={batchesHref(rawParams, { page: page + 1 })} />}
-                  nativeButton={false}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Next
-                </Button>
-              )}
-            </nav>
-          </div>
+          <Pagination
+            className="mt-4"
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            itemLabel="batches"
+            ariaLabel="Batch list pagination"
+            getHref={(targetPage) => buildListHref("/batches", rawParams, { page: targetPage })}
+          />
         </>
       )}
     </>
