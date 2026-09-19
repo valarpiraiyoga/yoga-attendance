@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import FormField from "@/components/ui/form-field";
 import { validateReportDateRange } from "@/lib/reports/validation";
+import ReportFormPanel from "@/app/reports/report-form-panel";
 
 /**
  * Attendance Summary report filters (approved wireframe p.37: DATE FROM,
@@ -17,7 +19,8 @@ import { validateReportDateRange } from "@/lib/reports/validation";
  * required-before-generating rule. Duplicated rather than shared, matching
  * how each Reports filter bar (and `app/attendance-history/
  * attendance-history-filters.js`, `app/attendance/attendance-filters.js`)
- * already keeps its own despite the structural overlap.
+ * already keeps its own despite the structural overlap. The panel layout
+ * itself is the shared `ReportFormPanel`.
  */
 export default function AttendanceSummaryFilters({ defaultDateFrom, defaultDateTo }) {
   const router = useRouter();
@@ -58,58 +61,26 @@ export default function AttendanceSummaryFilters({ defaultDateFrom, defaultDateT
   }
 
   return (
-    <form
+    <ReportFormPanel
+      icon={ClipboardList}
+      title="Attendance Summary"
+      description="View attendance totals for a selected date or date range."
       onSubmit={generateReport}
-      className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-background/60 p-4"
+      onClear={clearFilters}
+      isPending={isPending}
+      error={error}
     >
-      <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="report-summary-date-from"
-            className="text-small font-medium tracking-wide text-text-secondary uppercase"
-          >
-            Date From
-          </label>
-          <Input
-            id="report-summary-date-from"
-            type="date"
-            value={dateFrom}
-            onChange={(event) => setDateFrom(event.target.value)}
-            className="w-full sm:w-44"
-          />
-        </div>
+      <FormField id="report-summary-date-from" label="Date From" required>
+        {(field) => (
+          <Input {...field} type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+        )}
+      </FormField>
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="report-summary-date-to"
-            className="text-small font-medium tracking-wide text-text-secondary uppercase"
-          >
-            Date To
-          </label>
-          <Input
-            id="report-summary-date-to"
-            type="date"
-            value={dateTo}
-            onChange={(event) => setDateTo(event.target.value)}
-            className="w-full sm:w-44"
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="outline" onClick={clearFilters} disabled={isPending}>
-            Clear
-          </Button>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Generating…" : "Generate Report"}
-          </Button>
-        </div>
-      </div>
-
-      {error ? (
-        <p role="alert" className="text-body text-danger">
-          {error}
-        </p>
-      ) : null}
-    </form>
+      <FormField id="report-summary-date-to" label="Date To" required>
+        {(field) => (
+          <Input {...field} type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+        )}
+      </FormField>
+    </ReportFormPanel>
   );
 }

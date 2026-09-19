@@ -33,12 +33,12 @@ export default function ExportLinks({ type, params }) {
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <Button variant="outline" size="sm" render={<a href={hrefFor("csv")} />} nativeButton={false}>
+    <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <Button variant="outline" render={<a href={hrefFor("csv")} />} nativeButton={false}>
         <Download aria-hidden="true" />
         Export CSV
       </Button>
-      <Button variant="outline" size="sm" render={<a href={hrefFor("xlsx")} />} nativeButton={false}>
+      <Button variant="outline" render={<a href={hrefFor("xlsx")} />} nativeButton={false}>
         <Download aria-hidden="true" />
         Export Excel
       </Button>

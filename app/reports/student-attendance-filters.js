@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import FormField from "@/components/ui/form-field";
 import {
   Select,
   SelectContent,
@@ -12,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { validateReportDateRange } from "@/lib/reports/validation";
+import ReportFormPanel from "@/app/reports/report-form-panel";
 
 /**
  * Student Attendance report filters (approved wireframe p.35: STUDENT,
@@ -35,6 +37,9 @@ import { validateReportDateRange } from "@/lib/reports/validation";
  * From must not follow To is stated once. The server re-validates anyway
  * (`app/reports/page.js`) — this is the fast, friendly half of that pair,
  * never the authority.
+ *
+ * The panel layout (heading, field grid, Clear / Generate Report) is the
+ * shared `ReportFormPanel`; this file owns only the state and the rules.
  */
 export default function StudentAttendanceFilters({
   defaultStudentId,
@@ -93,20 +98,20 @@ export default function StudentAttendanceFilters({
   }
 
   return (
-    <form
+    <ReportFormPanel
+      icon={Users}
+      title="Student Attendance"
+      description="View attendance history for a student over a selected date range."
+      hasPicker
       onSubmit={generateReport}
-      className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-background/60 p-4"
+      onClear={clearFilters}
+      isPending={isPending}
+      error={error}
     >
-      <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
-        <div className="flex flex-1 flex-col gap-1.5 lg:min-w-[260px]">
-          <span
-            id="report-student-label"
-            className="text-small font-medium tracking-wide text-text-secondary uppercase"
-          >
-            Student
-          </span>
+      <FormField id="report-student" label="Student" required className="sm:col-span-2">
+        {(field) => (
           <Select items={studentSelectOptions} value={studentId} onValueChange={setStudentId}>
-            <SelectTrigger aria-labelledby="report-student-label" className="w-full">
+            <SelectTrigger id={field.id} className="w-full">
               <SelectValue placeholder="Select a student" />
             </SelectTrigger>
             <SelectContent>
@@ -117,55 +122,20 @@ export default function StudentAttendanceFilters({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        )}
+      </FormField>
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="report-date-from"
-            className="text-small font-medium tracking-wide text-text-secondary uppercase"
-          >
-            Date From
-          </label>
-          <Input
-            id="report-date-from"
-            type="date"
-            value={dateFrom}
-            onChange={(event) => setDateFrom(event.target.value)}
-            className="w-full sm:w-44"
-          />
-        </div>
+      <FormField id="report-date-from" label="Date From" required>
+        {(field) => (
+          <Input {...field} type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+        )}
+      </FormField>
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="report-date-to"
-            className="text-small font-medium tracking-wide text-text-secondary uppercase"
-          >
-            Date To
-          </label>
-          <Input
-            id="report-date-to"
-            type="date"
-            value={dateTo}
-            onChange={(event) => setDateTo(event.target.value)}
-            className="w-full sm:w-44"
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="outline" onClick={clearFilters} disabled={isPending}>
-            Clear
-          </Button>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Generating…" : "Generate Report"}
-          </Button>
-        </div>
-      </div>
-
-      {error ? (
-        <p role="alert" className="text-body text-danger">
-          {error}
-        </p>
-      ) : null}
-    </form>
+      <FormField id="report-date-to" label="Date To" required>
+        {(field) => (
+          <Input {...field} type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+        )}
+      </FormField>
+    </ReportFormPanel>
   );
 }

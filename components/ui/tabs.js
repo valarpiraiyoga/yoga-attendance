@@ -90,7 +90,7 @@ export default function Tabs({
             const Icon = item.icon;
 
             const tabClassName = cn(
-              "-mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 pb-3 text-body transition-colors",
+              "-mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 pb-3 text-body whitespace-nowrap transition-colors",
               isSmall && "pb-2 text-small",
               isActive
                 ? "border-brand font-semibold text-brand"
@@ -117,7 +117,7 @@ export default function Tabs({
 
             if (as === "link") {
               return (
-                <li key={item.key}>
+                <li key={item.key} className="shrink-0">
                   {item.disabled ? (
                     <span
                       aria-disabled="true"
@@ -140,7 +140,7 @@ export default function Tabs({
             }
 
             return (
-              <li key={item.key} role="presentation">
+              <li key={item.key} role="presentation" className="shrink-0">
                 <button
                   type="button"
                   role="tab"
