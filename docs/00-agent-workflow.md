@@ -175,6 +175,9 @@ Before treating agent work as done (still **before** user Browser QA):
 - Visual tokens from `docs/03-visual-tokens.md` are used; no ad-hoc palette.
 - Responsive and accessibility checks in `CLAUDE.md` considered for UI work.
 - No invented requirements.
+- For an unexplained visual mismatch, use the rendered browser DOM and
+  computed styles as runtime evidence before modifying implementation —
+  do not fix from re-reading the source alone.
 - `npm run lint`
 - `npm run build` when appropriate for the stage of work.
 

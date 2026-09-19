@@ -64,6 +64,23 @@ Use Inter as the single application typeface.
 - Keep typography clean and readable.
 - Avoid unnecessary font families or decorative typefaces.
 
+### Component Typography Ownership
+
+Most text takes its size from context (a heading, a paragraph, a table
+cell). Some shared components instead **own** their typography, because a
+fixed size is part of their visual identity, not something the surrounding
+layout should decide.
+
+A shared component owns its typography when a different size would make it
+a different component — a status pill that inherited its parent's heading
+size would no longer read as a compact status pill.
+
+**Badge is the canonical example: always 12px / 18px (Small / Caption),
+regardless of where it is placed.** It must not inherit font size or line
+height from a parent wrapper. If a Badge instance ever renders at another
+size, the fault is that instance losing its own typography, not a missing
+size on the surrounding layout.
+
 ---
 
 ## 3. Spacing
