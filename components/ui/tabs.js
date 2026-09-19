@@ -77,7 +77,13 @@ export default function Tabs({
           ref={listRef}
           role={as === "button" ? "tablist" : undefined}
           aria-label={as === "button" ? ariaLabel : undefined}
-          className={cn("flex items-end gap-6 overflow-x-auto", isSmall && "gap-4")}
+          // `overflow-x-auto` also makes the list a vertical scroll container, and each
+          // tab's `-mb-px` (below) pokes 1px past its bottom edge — enough for the
+          // browser to draw a vertical scrollbar (up/down arrows) at the right end of
+          // the row. `pb-px` gives that pixel room inside the list; `-mb-px` on the
+          // list moves the shared baseline up to match, so the underline still sits
+          // over the border exactly as before.
+          className={cn("-mb-px flex items-end gap-6 overflow-x-auto pb-px", isSmall && "gap-4")}
         >
           {items.map((item, index) => {
             const isActive = item.key === active;

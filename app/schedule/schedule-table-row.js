@@ -5,88 +5,76 @@ import Link from "next/link";
 import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Avatar from "@/components/ui/avatar";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { formatDate, formatTimeRange } from "@/lib/format";
+import { ENTITY_STATUS } from "@/lib/status";
 import { DAY_LABELS } from "@/lib/schedules/validation";
 import { cn } from "@/lib/utils";
+import ScheduleCardMenu from "@/app/schedule/schedule-card-menu";
 
-function formatTime(value) {
-  if (!value) return "—";
-  const [hours, minutes] = value.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
-}
-
-function formatDate(value) {
-  if (!value) return "—";
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
+/**
+ * Schedule table row (`13 schedule table view.png`, columns per
+ * `02-ux.md`): Batch (avatar + name + code), Day, Time, Instructor,
+ * Effective From, Effective Until, Status, Action (finalized eye + overflow
+ * menu).
+ */
 export default function ScheduleTableRow({ schedule }) {
-  const [focused, setFocused] = useState(false);
-  const isActive = schedule.status === "active";
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const status = ENTITY_STATUS[schedule.status] ?? ENTITY_STATUS.inactive;
+  const batchName = schedule.batches?.name ?? "—";
 
   return (
     <TableRow
       className={cn(
-        "border-border/40 transition-colors",
-        focused ? "bg-brand/10" : "hover:bg-brand/5"
+        "border-border/30 bg-surface/40 transition-colors hover:bg-surface/70",
+        menuOpen && "bg-brand/10 hover:bg-brand/10"
       )}
-      onFocusCapture={() => setFocused(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setFocused(false);
-        }
-      }}
     >
-      <TableCell className="px-5 py-3.5">
-        {schedule.batches ? (
-          <>
-            <p className="font-semibold text-text-primary">{schedule.batches.name}</p>
-            <p className="text-small text-text-secondary">{schedule.batches.code}</p>
-          </>
-        ) : (
-          <span className="text-text-secondary">—</span>
-        )}
+      <TableCell>
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={batchName} shape="square" />
+          <div className="min-w-0">
+            <p className="font-semibold text-text-primary">{batchName}</p>
+            {schedule.batches?.code ? (
+              <p className="text-small text-text-secondary">{schedule.batches.code}</p>
+            ) : null}
+          </div>
+        </div>
       </TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">
+      <TableCell className="text-text-secondary">
         {DAY_LABELS[schedule.day_of_week] ?? schedule.day_of_week}
       </TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">
-        {formatTime(schedule.start_time)} – {formatTime(schedule.end_time)}
+      <TableCell className="whitespace-nowrap text-text-secondary">
+        {formatTimeRange(schedule.start_time, schedule.end_time)}
       </TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">
-        {schedule.instructors?.full_name ?? "—"}
+      <TableCell className="text-text-secondary">{schedule.instructors?.full_name ?? "—"}</TableCell>
+      <TableCell className="whitespace-nowrap text-text-secondary">{formatDate(schedule.effective_from)}</TableCell>
+      <TableCell className="whitespace-nowrap text-text-secondary">{formatDate(schedule.effective_until)}</TableCell>
+      <TableCell>
+        <Badge variant={status.variant}>{status.label}</Badge>
       </TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">
-        {formatDate(schedule.effective_from)}
-      </TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">
-        {schedule.effective_until ? formatDate(schedule.effective_until) : "—"}
-      </TableCell>
-      <TableCell className="px-5 py-3.5">
-        <Badge variant={isActive ? "success" : "danger"} className="rounded-full px-2 py-0">
-          <span className="text-[10px] leading-[14px] font-medium">
-            {isActive ? "Active" : "Inactive"}
-          </span>
-        </Badge>
-      </TableCell>
-      <TableCell className="px-5 py-3.5">
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          className="text-text-secondary hover:text-brand"
-          render={<Link href={`/schedule/${schedule.id}`} />}
-          nativeButton={false}
-          aria-label={`View schedule for ${schedule.batches?.name ?? "batch"}`}
-        >
-          <Eye className="size-4" aria-hidden="true" />
-        </Button>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="text-brand hover:bg-brand/10 hover:text-brand"
+            aria-label={`View schedule for ${batchName}`}
+            render={<Link href={`/schedule/${schedule.id}`} />}
+            nativeButton={false}
+          >
+            <Eye className="size-4" aria-hidden="true" />
+          </Button>
+          <ScheduleCardMenu
+            scheduleId={schedule.id}
+            batchId={schedule.batches?.id}
+            batchName={batchName}
+            onOpenChange={setMenuOpen}
+          />
+        </div>
       </TableCell>
     </TableRow>
   );

@@ -2,22 +2,45 @@ import Link from "next/link";
 import { Calendar, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
+import EmptyState from "@/components/ui/empty-state";
+import Pagination from "@/components/ui/pagination";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { listSchedules, listSchedulesForWeek } from "@/lib/schedules/data";
+import { DEFAULT_SCHEDULE_SORT, listSchedules, listSchedulesForWeek } from "@/lib/schedules/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { buildListHref } from "@/lib/url-params";
 import { isValidDateString, getMondayOfWeek, addDaysUTC, todayDateString } from "@/lib/schedules/validation";
 import ScheduleFilters from "@/app/schedule/schedule-filters";
 import ScheduleList from "@/app/schedule/schedule-list";
-import ScheduleViewToggle from "@/app/schedule/schedule-view-toggle";
+import ScheduleTabs from "@/app/schedule/schedule-tabs";
 import WeeklySchedule from "@/app/schedule/weekly-schedule";
 
 const PAGE_SIZE = 10;
 const STATUSES = ["active", "inactive"];
 
-function scheduleHref(searchParams, overrides) {
-  return buildListHref("/schedule", searchParams, overrides);
+// Labels for the "Sort by" control. Every `value` must be a key of
+// `SCHEDULE_SORTS` (lib/schedules/data.js), which owns the column and direction.
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest First" },
+  { value: "oldest", label: "Oldest First" },
+];
+
+// The page heading, description and Add Schedule action stay the same across
+// Weekly Schedule and List View (02-ux.md "Schedule screens").
+function ScheduleHeader() {
+  return (
+    <PageHeader
+      title="Schedule"
+      description="View and manage recurring weekly schedules."
+      icon={<Calendar className="size-6" />}
+      actions={
+        <Button render={<Link href="/schedule/new" />} nativeButton={false}>
+          <Plus className="size-4" aria-hidden="true" />
+          Add Schedule
+        </Button>
+      }
+    />
+  );
 }
 
 export default async function SchedulePage({ searchParams }) {
@@ -44,19 +67,9 @@ export default async function SchedulePage({ searchParams }) {
 
     return (
       <>
-        <PageHeader
-          title="Schedule"
-          description="View and manage recurring weekly schedules."
-          icon={<Calendar className="size-6" />}
-          actions={
-            <Button render={<Link href="/schedule/new" />} nativeButton={false}>
-              <Plus className="size-4" aria-hidden="true" />
-              Add Schedule
-            </Button>
-          }
-        />
+        <ScheduleHeader />
 
-        <ScheduleViewToggle active="weekly" />
+        <ScheduleTabs active="weekly" />
 
         <WeeklySchedule weekStart={weekStart} schedules={schedules} />
       </>
@@ -69,33 +82,24 @@ export default async function SchedulePage({ searchParams }) {
   const status = STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
   const layout = rawParams.layout === "table" ? "table" : "cards";
+  const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort)
+    ? rawParams.sort
+    : DEFAULT_SCHEDULE_SORT;
 
   const [{ schedules, total }, batchOptions, instructorOptions] = await Promise.all([
-    listSchedules({ q, batchId, instructorId, status, page, pageSize: PAGE_SIZE }),
+    listSchedules({ q, batchId, instructorId, status, sort, page, pageSize: PAGE_SIZE }),
     listBatchOptions(),
     listInstructorOptions(),
   ]);
 
   const isFiltered = Boolean(q) || Boolean(batchId) || Boolean(instructorId) || status !== "all";
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(total, page * PAGE_SIZE);
 
   return (
     <>
-      <PageHeader
-        title="Schedule"
-        description="View and manage recurring weekly schedules."
-        icon={<Calendar className="size-6" />}
-        actions={
-          <Button render={<Link href="/schedule/new" />} nativeButton={false}>
-            <Plus className="size-4" aria-hidden="true" />
-            Add Schedule
-          </Button>
-        }
-      />
+      <ScheduleHeader />
 
-      <ScheduleViewToggle active="list" />
+      <ScheduleTabs active="list" />
 
       <ScheduleFilters
         key={`${q}:${batchId}:${instructorId}:${status}`}
@@ -103,83 +107,53 @@ export default async function SchedulePage({ searchParams }) {
         defaultBatchId={batchId || "all"}
         defaultInstructorId={instructorId || "all"}
         defaultStatus={status}
+        layout={layout}
         batchOptions={batchOptions}
         instructorOptions={instructorOptions}
       />
 
       {schedules.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
-          {isFiltered ? (
-            <>
-              <p className="text-body max-w-sm text-text-secondary">
-                No schedules match your search or filters.
-              </p>
+        <EmptyState
+          className="mt-6"
+          title={isFiltered ? undefined : "No schedules yet"}
+          description={
+            isFiltered
+              ? "No schedules match your search or filters."
+              : "Add the first schedule to get started."
+          }
+          action={
+            isFiltered ? (
               <Button variant="outline" render={<Link href="/schedule?view=list" />} nativeButton={false}>
                 Clear Filters
               </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-body max-w-sm text-text-secondary">
-                No schedules yet. Add the first schedule to get started.
-              </p>
+            ) : (
               <Button render={<Link href="/schedule/new" />} nativeButton={false}>
                 <Plus className="size-4" aria-hidden="true" />
                 Add Schedule
               </Button>
-            </>
-          )}
-        </div>
+            )
+          }
+        />
       ) : (
         <>
           <ScheduleList
             schedules={schedules}
             layout={layout}
-            searchParams={rawParams}
             total={total}
+            sort={sort}
+            sortOptions={SORT_OPTIONS}
           />
 
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-small text-text-secondary">
-              Showing {rangeStart}–{rangeEnd} of {total} schedules
-            </p>
-
-            <nav aria-label="Schedule list pagination" className="flex items-center gap-2">
-              {page > 1 ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={scheduleHref(rawParams, { page: page - 1 })} />}
-                  nativeButton={false}
-                >
-                  Previous
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
-              )}
-
-              <span className="text-small px-1 text-text-secondary">
-                Page {page} of {totalPages}
-              </span>
-
-              {page < totalPages ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={scheduleHref(rawParams, { page: page + 1 })} />}
-                  nativeButton={false}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Next
-                </Button>
-              )}
-            </nav>
-          </div>
+          <Pagination
+            className="mt-4"
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            itemLabel="schedules"
+            ariaLabel="Schedule list pagination"
+            getHref={(targetPage) => buildListHref("/schedule", rawParams, { page: targetPage })}
+          />
         </>
       )}
     </>

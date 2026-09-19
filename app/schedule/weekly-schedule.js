@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { ListToolbar } from "@/components/layout/list-page";
+import { formatTime } from "@/lib/format";
 import { DAYS_OF_WEEK, DAY_LABELS, addDaysUTC, timeToMinutes } from "@/lib/schedules/validation";
 
 // Fixed 6:00 AM – 10:00 PM axis (02-ux.md D14 — an explicit decision, not
@@ -8,15 +10,26 @@ import { DAYS_OF_WEEK, DAY_LABELS, addDaysUTC, timeToMinutes } from "@/lib/sched
 // This must never expand or contract to fit whatever schedules exist.
 const GRID_START_MINUTES = 6 * 60;
 const GRID_END_MINUTES = 22 * 60;
-const HOUR_HEIGHT_PX = 64;
+// Tall enough that a one-hour card fits its three lines (batch code, time
+// range, instructor) at the 12px/18px card type without clipping.
+const HOUR_HEIGHT_PX = 72;
 
-// A small buffer above the 6:00 AM line — not part of the 6 AM–10 PM range
-// itself (D14 is unchanged: still 16 one-hour rows), just empty space so the
-// earliest hour label has room to sit centered on its line without clipping
-// against the day-header row above, and a 6:00 AM card starts with visible
-// separation from that same border instead of touching it.
+// Small buffers above the 6:00 AM line and below the 10:00 PM line — not part
+// of the 6 AM–10 PM range itself (D14 is unchanged: still 16 one-hour rows),
+// just empty space so the first and last hour labels have room to sit
+// centered on their lines without clipping against the day-header row above
+// or the grid's bottom edge.
 const TOP_OFFSET_PX = 16;
-const GRID_HEIGHT_PX = ((GRID_END_MINUTES - GRID_START_MINUTES) / 60) * HOUR_HEIGHT_PX + TOP_OFFSET_PX;
+const BOTTOM_OFFSET_PX = 16;
+const GRID_HEIGHT_PX =
+  ((GRID_END_MINUTES - GRID_START_MINUTES) / 60) * HOUR_HEIGHT_PX + TOP_OFFSET_PX + BOTTOM_OFFSET_PX;
+
+// Card content tiers by rendered height (line = 18px at the card type size,
+// plus 12px of vertical padding): a card shows as many of code / time range /
+// instructor as fit. Nothing is ever clipped mid-line, and the full details
+// stay available on the card's tooltip.
+const CARD_HEIGHT_FOR_TIME_PX = 44;
+const CARD_HEIGHT_FOR_INSTRUCTOR_PX = 62;
 
 // A day column's cards must never be narrower than this, regardless of how
 // many overlap — batch code, time range and instructor all need to stay
@@ -24,7 +37,7 @@ const GRID_HEIGHT_PX = ((GRID_END_MINUTES - GRID_START_MINUTES) / 60) * HOUR_HEI
 // hidden/collapsed — that only works if "side by side" doesn't mean
 // "crushed"). The gap is the visible seam between adjacent overlapping
 // cards in the same weekday/time slot.
-const MIN_CARD_WIDTH_PX = 130;
+const MIN_CARD_WIDTH_PX = 144;
 const CARD_GAP_PX = 4;
 
 // Maps a clock-time (in minutes since midnight) to its pixel offset from the
@@ -34,37 +47,26 @@ function minutesToGridOffsetPx(minutes) {
   return TOP_OFFSET_PX + (minutes - GRID_START_MINUTES) * (HOUR_HEIGHT_PX / 60);
 }
 
-function formatTime(value) {
-  if (!value) return "—";
-  const [hours, minutes] = value.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
+function formatHourLabel(hour) {
+  return formatTime(`${String(hour).padStart(2, "0")}:00`);
 }
 
-function formatHourLabel(hour) {
-  const period = hour >= 12 ? "PM" : "AM";
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  return `${hour12} ${period}`;
+function formatDayDate(date) {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function formatWeekRange(weekStart, weekEnd) {
   const start = new Date(`${weekStart}T00:00:00Z`);
   const end = new Date(`${weekEnd}T00:00:00Z`);
-  const startMonth = start.getUTCMonth();
-  const endMonth = end.getUTCMonth();
   const startYear = start.getUTCFullYear();
   const endYear = end.getUTCFullYear();
-  const startDay = start.getUTCDate();
-  const endDay = end.getUTCDate();
 
-  // Compact when the week stays in one month/year: "Sep 14–20, 2026".
-  // Cross-month / cross-year keep both sides clear without repeating noise.
-  if (startYear === endYear && startMonth === endMonth) {
-    const month = start.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
-    return `${month} ${startDay}–${endDay}, ${endYear}`;
-  }
-
+  // Same year: "Sep 14 – Sep 20, 2026" (both ends named, year once). A week that
+  // crosses a year keeps the year on both sides.
   if (startYear === endYear) {
     const startLabel = start.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
     const endLabel = end.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -189,7 +191,7 @@ export default function WeeklySchedule({ weekStart, schedules }) {
   });
 
   const hourMarks = [];
-  for (let hour = GRID_START_MINUTES / 60; hour < GRID_END_MINUTES / 60; hour += 1) {
+  for (let hour = GRID_START_MINUTES / 60; hour <= GRID_END_MINUTES / 60; hour += 1) {
     hourMarks.push(hour);
   }
 
@@ -203,115 +205,138 @@ export default function WeeklySchedule({ weekStart, schedules }) {
   const columnsTemplate = `64px ${days.map((day) => `minmax(${day.minWidthPx}px, 1fr)`).join(" ")}`;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-xs">
-      <div className="flex flex-col gap-3 border-b border-border/70 bg-background/40 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" render={<Link href={todayHref} />} nativeButton={false}>
+    <>
+      {/* Week navigation: the same toolbar card and control heights as the
+          finalized list pages. Navigation changes only which week is shown. */}
+      <ListToolbar className="mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="outline" render={<Link href={todayHref} />} nativeButton={false}>
             Today
           </Button>
-          <Button variant="outline" size="sm" render={<Link href={previousWeekHref} />} nativeButton={false}>
-            Previous
-          </Button>
-          <Button variant="outline" size="sm" render={<Link href={nextWeekHref} />} nativeButton={false}>
-            Next
-          </Button>
-        </div>
-        <span className="text-body font-medium text-text-primary">{formatWeekRange(weekStart, weekEnd)}</span>
-      </div>
-
-      {/* Horizontal scroll only when day columns need more width than the
-          viewport (overlap floors). The full 6 AM–10 PM grid uses auto
-          height and relies on the page scroll — no nested vertical scroller.
-          The day-header row is `position: sticky` inside this same container
-          so it scrolls horizontally with the body grid (same
-          gridTemplateColumns, same parent) while staying pinned at the top
-          of this horizontal viewport. */}
-      <div className="overflow-x-auto">
-        <div className="relative grid" style={{ gridTemplateColumns: columnsTemplate }}>
-          <div className="sticky top-0 z-10 border-b border-border bg-surface" />
-          {days.map((day) => (
-            <div
-              key={day.date}
-              className={
-                day.isToday
-                  ? "sticky top-0 z-10 border-b border-l border-border bg-brand/5 px-2 py-2 text-center"
-                  : "sticky top-0 z-10 border-b border-l border-border bg-surface px-2 py-2 text-center"
-              }
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Previous week"
+              render={<Link href={previousWeekHref} />}
+              nativeButton={false}
             >
-              <p className="text-small font-medium tracking-wide text-text-secondary uppercase">
-                {DAY_LABELS[day.dayOfWeek].slice(0, 3)}
-              </p>
-              <p className={day.isToday ? "text-body font-semibold text-brand" : "text-body font-semibold text-text-primary"}>
-                {Number(day.date.slice(8, 10))}
-              </p>
-            </div>
-          ))}
+              <ChevronLeft className="size-4" aria-hidden="true" />
+            </Button>
+            <span className="text-body min-w-44 px-1 text-center font-medium text-text-primary">
+              {formatWeekRange(weekStart, weekEnd)}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Next week"
+              render={<Link href={nextWeekHref} />}
+              nativeButton={false}
+            >
+              <ChevronRight className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+      </ListToolbar>
 
-          <div className="relative" style={{ height: `${GRID_HEIGHT_PX}px` }}>
-            {hourMarks.map((hour) => (
+      <div className="overflow-hidden rounded-card border border-border bg-surface shadow-xs">
+        {/* Horizontal scroll only when day columns need more width than the
+            viewport (overlap floors). The full 6 AM–10 PM grid uses auto
+            height and relies on the page scroll — no nested vertical scroller.
+            The day-header row is `position: sticky` inside this same container
+            so it scrolls horizontally with the body grid (same
+            gridTemplateColumns, same parent) while staying pinned at the top
+            of this horizontal viewport. */}
+        <div className="overflow-x-auto">
+          <div className="relative grid" style={{ gridTemplateColumns: columnsTemplate }}>
+            <div className="sticky top-0 z-10 border-b border-border bg-surface" />
+            {days.map((day) => (
               <div
-                key={hour}
-                className="absolute right-2 -translate-y-1/2 text-small text-text-secondary"
-                style={{ top: `${minutesToGridOffsetPx(hour * 60)}px` }}
+                key={day.date}
+                className={
+                  day.isToday
+                    ? "sticky top-0 z-10 border-b border-l border-border bg-brand/5 px-2 py-2 text-center"
+                    : "sticky top-0 z-10 border-b border-l border-border bg-surface px-2 py-2 text-center"
+                }
               >
-                {formatHourLabel(hour)}
+                <p className={day.isToday ? "text-body font-semibold text-brand" : "text-body font-semibold text-text-primary"}>
+                  {DAY_LABELS[day.dayOfWeek].slice(0, 3)}
+                </p>
+                <p className={day.isToday ? "text-small text-brand" : "text-small text-text-secondary"}>
+                  {formatDayDate(day.date)}
+                </p>
               </div>
             ))}
-          </div>
 
-          {days.map((day) => (
-            <div
-              key={day.date}
-              className="relative border-l border-border"
-              style={{ height: `${GRID_HEIGHT_PX}px` }}
-            >
+            <div className="relative" style={{ height: `${GRID_HEIGHT_PX}px` }}>
               {hourMarks.map((hour) => (
                 <div
                   key={hour}
-                  className="absolute w-full border-t border-border"
+                  className="absolute right-2 -translate-y-1/2 text-small text-text-secondary"
                   style={{ top: `${minutesToGridOffsetPx(hour * 60)}px` }}
-                />
+                >
+                  {formatHourLabel(hour)}
+                </div>
               ))}
-
-              {day.cards.map((card) => {
-                const top = minutesToGridOffsetPx(card.startMinutes);
-                const height = (card.endMinutes - card.startMinutes) * (HOUR_HEIGHT_PX / 60);
-                // Equal-gap column math: each card's share of the day
-                // column's width, minus its fair portion of the gaps
-                // between cards, with `calc()` resolving the percentage
-                // against the day column's actual rendered width — which
-                // MIN_CARD_WIDTH_PX above already guarantees is enough
-                // for `card.totalColumns` cards at CARD_GAP_PX apart.
-                const widthPercent = 100 / card.totalColumns;
-                const gapPerCard = (CARD_GAP_PX * (card.totalColumns - 1)) / card.totalColumns;
-                const leftGap = (CARD_GAP_PX * card.column) / card.totalColumns;
-
-                return (
-                  <div
-                    key={card.schedule.id}
-                    className="absolute overflow-hidden rounded-md border border-brand/30 bg-brand/10 p-1 text-small"
-                    style={{
-                      top: `${top}px`,
-                      height: `${height}px`,
-                      left: `calc(${card.column * widthPercent}% + ${leftGap}px)`,
-                      width: `calc(${widthPercent}% - ${gapPerCard}px)`,
-                    }}
-                    title={`${card.schedule.batches?.name ?? ""} · ${formatTime(card.schedule.start_time)} – ${formatTime(card.schedule.end_time)} · ${card.schedule.instructors?.full_name ?? ""}`}
-                  >
-                    <Badge variant="outline" className="max-w-full truncate">
-                      {card.schedule.batches?.code ?? "—"}
-                    </Badge>
-                    <p className="mt-0.5 truncate text-text-primary">
-                      {formatTime(card.schedule.start_time)} – {formatTime(card.schedule.end_time)}
-                    </p>
-                    <p className="truncate text-text-secondary">{card.schedule.instructors?.full_name ?? "—"}</p>
-                  </div>
-                );
-              })}
             </div>
-          ))}
+
+            {days.map((day) => (
+              <div
+                key={day.date}
+                className="relative border-l border-border"
+                style={{ height: `${GRID_HEIGHT_PX}px` }}
+              >
+                {hourMarks.map((hour) => (
+                  <div
+                    key={hour}
+                    className="absolute w-full border-t border-border"
+                    style={{ top: `${minutesToGridOffsetPx(hour * 60)}px` }}
+                  />
+                ))}
+
+                {day.cards.map((card) => {
+                  const top = minutesToGridOffsetPx(card.startMinutes);
+                  const height = (card.endMinutes - card.startMinutes) * (HOUR_HEIGHT_PX / 60);
+                  // Equal-gap column math: each card's share of the day
+                  // column's width, minus its fair portion of the gaps
+                  // between cards, with `calc()` resolving the percentage
+                  // against the day column's actual rendered width — which
+                  // MIN_CARD_WIDTH_PX above already guarantees is enough
+                  // for `card.totalColumns` cards at CARD_GAP_PX apart.
+                  const widthPercent = 100 / card.totalColumns;
+                  const gapPerCard = (CARD_GAP_PX * (card.totalColumns - 1)) / card.totalColumns;
+                  const leftGap = (CARD_GAP_PX * card.column) / card.totalColumns;
+
+                  const timeRange = `${formatTime(card.schedule.start_time)} – ${formatTime(card.schedule.end_time)}`;
+                  const instructor = card.schedule.instructors?.full_name ?? "—";
+
+                  return (
+                    <div
+                      key={card.schedule.id}
+                      className="absolute overflow-hidden rounded-md border border-l-4 border-brand/30 border-l-brand bg-brand/10 px-2 py-1.5 text-small"
+                      style={{
+                        top: `${top}px`,
+                        height: `${height}px`,
+                        left: `calc(${card.column * widthPercent}% + ${leftGap}px)`,
+                        width: `calc(${widthPercent}% - ${gapPerCard}px)`,
+                      }}
+                      title={`${card.schedule.batches?.name ?? ""} · ${timeRange} · ${instructor}`}
+                    >
+                      <p className="truncate font-semibold text-text-primary">{card.schedule.batches?.code ?? "—"}</p>
+                      {height >= CARD_HEIGHT_FOR_TIME_PX ? (
+                        <p className="truncate text-text-primary">{timeRange}</p>
+                      ) : null}
+                      {height >= CARD_HEIGHT_FOR_INSTRUCTOR_PX ? (
+                        <p className="truncate text-text-secondary">{instructor}</p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
