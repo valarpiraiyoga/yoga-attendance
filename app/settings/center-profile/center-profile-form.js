@@ -1,17 +1,21 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { ImageIcon, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import FormField from "@/components/ui/form-field";
+import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { validateCenterProfileInput } from "@/lib/center-profile/validation";
 
 const BLUR_VALIDATED_FIELDS = new Set(["name", "address", "phone", "email"]);
 
 /**
  * Center Profile form (Settings — Phase 19; `01-product.md` §11; wireframe
- * p.38: YOGA CENTER NAME, LOGO, ADDRESS, PHONE, EMAIL, Save Changes).
+ * p.38; `18 Settings center profile.png`): the center's details on the left
+ * (name, address, phone, email), the Logo panel on the right, and the
+ * Cancel / Save Changes actions below — stacked on narrow screens.
  *
  * Mirrors `app/batches/batch-form.js`'s shape exactly: `useActionState`,
  * blur-driven stale-error clearing using the same pure validator the
@@ -20,16 +24,18 @@ const BLUR_VALIDATED_FIELDS = new Set(["name", "address", "phone", "email"]);
  * uncontrolled field on each form-action submission, regardless of
  * outcome).
  *
- * Unlike every other form in this codebase, there is no `cancelHref` and no
- * separate view mode: the wireframe shows the fields directly editable with
- * a single Save Changes action, so this form always renders the current
- * center profile pre-filled — there is nothing to "cancel back" to.
+ * Cancel is the form's native reset: it discards unsaved edits back to the
+ * values the form was rendered with (and clears any shown field errors). It
+ * navigates nowhere and saves nothing — there is no separate view mode to
+ * return to.
  *
  * No Logo upload control: no upload mechanism exists yet (no Storage
  * bucket, no upload UI) — deferred, matching how Instructor Photo and
- * Student Profile Photo were both explicitly deferred.
- * `center_profile.logo_url` exists in the schema for forward compatibility
- * only (0018_center_profile.sql).
+ * Student Profile Photo were both explicitly deferred. The Logo panel keeps
+ * the reference's position and says so plainly. `center_profile.logo_url`
+ * exists in the schema for forward compatibility only
+ * (0018_center_profile.sql). The reference's Website and Time Zone fields
+ * have no column in that schema either and are not shown.
  */
 export default function CenterProfileForm({ action, profile }) {
   const [state, formAction, isPending] = useActionState(action, {});
@@ -64,7 +70,13 @@ export default function CenterProfileForm({ action, profile }) {
   }
 
   return (
-    <form action={formAction} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
+    <form
+      action={formAction}
+      onBlur={handleBlur}
+      onReset={() => setFieldErrors({})}
+      className="flex flex-col gap-6"
+      noValidate
+    >
       {state?.error ? (
         <p
           role="alert"
@@ -74,99 +86,94 @@ export default function CenterProfileForm({ action, profile }) {
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Yoga Center Name</Label>
-        <Input
-          id="name"
-          name="name"
-          autoComplete="off"
-          required
-          disabled={isPending}
-          defaultValue={state?.values?.name ?? profile?.name ?? ""}
-          placeholder="Enter the center's name"
-          aria-invalid={Boolean(fieldErrors.name)}
-          aria-describedby={fieldErrors.name ? "name-error" : undefined}
-        />
-        {fieldErrors.name ? (
-          <p id="name-error" role="alert" className="text-small text-danger">
-            {fieldErrors.name}
-          </p>
-        ) : null}
+      <div className="grid gap-6 lg:grid-cols-5">
+        <Panel className="flex flex-col gap-5 lg:col-span-3">
+          <FormField id="name" label="Yoga Center Name" required error={fieldErrors.name}>
+            {(field) => (
+              <Input
+                {...field}
+                name="name"
+                autoComplete="off"
+                required
+                disabled={isPending}
+                defaultValue={state?.values?.name ?? profile?.name ?? ""}
+                placeholder="Enter the center's name"
+              />
+            )}
+          </FormField>
+
+          <FormField id="address" label="Address" error={fieldErrors.address}>
+            {(field) => (
+              <Textarea
+                {...field}
+                name="address"
+                rows={4}
+                disabled={isPending}
+                defaultValue={state?.values?.address ?? profile?.address ?? ""}
+                placeholder="Enter the center's address (optional)"
+              />
+            )}
+          </FormField>
+
+          <FormField id="phone" label="Phone" error={fieldErrors.phone}>
+            {(field) => (
+              <Input
+                {...field}
+                name="phone"
+                type="tel"
+                autoComplete="off"
+                disabled={isPending}
+                defaultValue={state?.values?.phone ?? profile?.phone ?? ""}
+                placeholder="Enter phone number (optional)"
+              />
+            )}
+          </FormField>
+
+          <FormField id="email" label="Email" error={fieldErrors.email}>
+            {(field) => (
+              <Input
+                {...field}
+                name="email"
+                type="email"
+                autoComplete="off"
+                disabled={isPending}
+                defaultValue={state?.values?.email ?? profile?.email ?? ""}
+                placeholder="Enter email address (optional)"
+              />
+            )}
+          </FormField>
+        </Panel>
+
+        <Panel className="self-start lg:col-span-2">
+          <PanelHeader title="Logo" description="This logo will be used in the application and exported reports." />
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-8 text-center">
+            <span
+              aria-hidden="true"
+              className="flex size-10 items-center justify-center rounded-lg bg-brand/10 text-brand"
+            >
+              <ImageIcon className="size-5" aria-hidden="true" />
+            </span>
+            <p className="text-body text-text-secondary">
+              Not available yet — logo upload is part of a later phase.
+            </p>
+          </div>
+        </Panel>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label>Logo</Label>
-        <p className="text-body text-text-secondary">
-          Not available yet — logo upload is part of a later phase.
+      <div className="flex flex-col gap-4 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-small inline-flex items-start gap-2 text-text-secondary">
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          Center information may appear in exported attendance reports.
         </p>
-      </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="address">Address</Label>
-        <Textarea
-          id="address"
-          name="address"
-          disabled={isPending}
-          defaultValue={state?.values?.address ?? profile?.address ?? ""}
-          placeholder="Enter the center's address (optional)"
-          aria-invalid={Boolean(fieldErrors.address)}
-          aria-describedby={fieldErrors.address ? "address-error" : undefined}
-        />
-        {fieldErrors.address ? (
-          <p id="address-error" role="alert" className="text-small text-danger">
-            {fieldErrors.address}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="phone">Phone</Label>
-        <Input
-          id="phone"
-          name="phone"
-          type="tel"
-          autoComplete="off"
-          disabled={isPending}
-          defaultValue={state?.values?.phone ?? profile?.phone ?? ""}
-          placeholder="Enter phone number (optional)"
-          aria-invalid={Boolean(fieldErrors.phone)}
-          aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
-        />
-        {fieldErrors.phone ? (
-          <p id="phone-error" role="alert" className="text-small text-danger">
-            {fieldErrors.phone}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="off"
-          disabled={isPending}
-          defaultValue={state?.values?.email ?? profile?.email ?? ""}
-          placeholder="Enter email address (optional)"
-          aria-invalid={Boolean(fieldErrors.email)}
-          aria-describedby={fieldErrors.email ? "email-error" : undefined}
-        />
-        {fieldErrors.email ? (
-          <p id="email-error" role="alert" className="text-small text-danger">
-            {fieldErrors.email}
-          </p>
-        ) : null}
-      </div>
-
-      <p className="text-small text-text-secondary">
-        Center information may appear in exported attendance reports.
-      </p>
-
-      <div className="mt-2 flex justify-end border-t border-border pt-5">
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving…" : "Save Changes"}
-        </Button>
+        <div className="flex justify-end gap-3">
+          <Button type="reset" variant="outline" disabled={isPending}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Saving…" : "Save Changes"}
+          </Button>
+        </div>
       </div>
     </form>
   );

@@ -32,7 +32,7 @@ export default async function CenterProfilePage({ searchParams }) {
   const profile = await getCenterProfile();
 
   return (
-    <div className="max-w-2xl">
+    <div>
       <div className="mb-6">
         <TabContentHeading
           icon={Building2}

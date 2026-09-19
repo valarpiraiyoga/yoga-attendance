@@ -1,19 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { X } from "lucide-react";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import DataTableShell from "@/components/ui/data-table-shell";
-import { Badge } from "@/components/ui/badge";
+import { Panel } from "@/components/layout/Panel";
+import { CardGrid, ResultsHeader } from "@/components/layout/list-page";
+import SortSelect from "@/components/ui/sort-select";
 import { setInstructorStatus } from "@/lib/instructors/actions";
+import InstructorCardItem from "@/app/settings/instructors/instructor-card-item";
+import InstructorTableRow from "@/app/settings/instructors/instructor-table-row";
 
 /**
  * The Instructor table plus the success banner and the Activate/Deactivate
@@ -25,9 +26,22 @@ import { setInstructorStatus } from "@/lib/instructors/actions";
  * `setInstructorStatus` is called directly (per Next.js's own guidance for
  * invoking a Server Action outside a form: from an event handler wrapped in
  * `startTransition`), not through a `<form>`/`useActionState` — there is no
- * separate submission to model, just one action per click.
+ * separate submission to model, just one action per click. It is triggered
+ * from each card's / row's overflow menu.
+ *
+ * Cards / Table is the `view` URL param decided by `InstructorFilters`'
+ * `ViewSwitcher` (cards by default, as on every finalized list page); both
+ * layouts show the same instructors and offer the same actions.
  */
-export default function InstructorList({ instructors, initialMessage }) {
+export default function InstructorList({
+  instructors,
+  total,
+  view = "cards",
+  sort,
+  sortOptions,
+  defaultSort,
+  initialMessage,
+}) {
   const [feedback, setFeedback] = useState(
     initialMessage ? { type: "success", text: initialMessage } : null
   );
@@ -75,57 +89,51 @@ export default function InstructorList({ instructors, initialMessage }) {
         </div>
       ) : null}
 
-      <DataTableShell>
-      <Table aria-label="Instructors">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Instructor</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+      <ResultsHeader
+        count={total}
+        label={total === 1 ? "Instructor" : "Instructors"}
+        viewLabel={view === "table" ? "Table view" : "Card list view"}
+        aside={<SortSelect id="instructor-sort" options={sortOptions} value={sort} defaultValue={defaultSort} />}
+      />
+
+      {view === "table" ? (
+        <Panel className="overflow-hidden p-0 sm:p-0">
+          <Table aria-label="Instructors">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Instructor</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {instructors.map((instructor) => (
+                <InstructorTableRow
+                  key={instructor.id}
+                  instructor={instructor}
+                  isUpdating={isPending && pendingId === instructor.id}
+                  disabled={isPending}
+                  onToggleStatus={() => handleToggleStatus(instructor)}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </Panel>
+      ) : (
+        <CardGrid ariaLabel="Instructors">
           {instructors.map((instructor) => (
-            <TableRow key={instructor.id}>
-              <TableCell className="font-medium text-text-primary">
-                {instructor.full_name}
-              </TableCell>
-              <TableCell>{instructor.phone || "—"}</TableCell>
-              <TableCell>{instructor.email || "—"}</TableCell>
-              <TableCell>
-                <Badge variant={instructor.status === "active" ? "success" : "danger"}>
-                  {instructor.status === "active" ? "Active" : "Inactive"}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-4">
-                  <Link
-                    href={`/settings/instructors/${instructor.id}/edit`}
-                    className="font-medium text-brand hover:underline"
-                  >
-                    Edit
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleStatus(instructor)}
-                    disabled={isPending}
-                    className="font-medium text-text-secondary hover:text-text-primary disabled:opacity-50"
-                  >
-                    {isPending && pendingId === instructor.id
-                      ? "Updating…"
-                      : instructor.status === "active"
-                        ? "Deactivate"
-                        : "Activate"}
-                  </button>
-                </div>
-              </TableCell>
-            </TableRow>
+            <InstructorCardItem
+              key={instructor.id}
+              instructor={instructor}
+              isUpdating={isPending && pendingId === instructor.id}
+              disabled={isPending}
+              onToggleStatus={() => handleToggleStatus(instructor)}
+            />
           ))}
-        </TableBody>
-      </Table>
-    </DataTableShell>
+        </CardGrid>
+      )}
     </div>
   );
 }

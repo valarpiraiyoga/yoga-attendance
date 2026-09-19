@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { LayoutGrid, Table2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,105 +10,151 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import SearchInput from "@/components/ui/search-input";
+import ViewSwitcher from "@/components/ui/view-switcher";
+import { FilterBar, FilterChips, FilterSheet, FilterSection } from "@/components/ui/filter-bar";
+import { ListToolbar } from "@/components/layout/list-page";
+import { buildListHref } from "@/lib/url-params";
 
 const STATUS_OPTIONS = [
-  { value: "all", label: "Status: All" },
-  { value: "active", label: "Status: Active" },
-  { value: "inactive", label: "Status: Inactive" },
+  { value: "all", label: "All Statuses" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
 ];
 
+const VIEWS = [
+  { key: "cards", label: "Cards", icon: LayoutGrid },
+  { key: "table", label: "Table", icon: Table2 },
+];
+
+function optionLabel(options, value) {
+  return options.find((option) => option.value === value)?.label ?? value;
+}
+
 /**
- * Search + status filter bar for the Instructor list (wireframe p39).
- *
- * Filters only take effect on "Apply Filters" (not as-you-type), matching
- * the wireframe. Filtering resets pagination to page 1. The parent page
- * keys this component by the current `q`/`status`, so it remounts — and its
- * local draft state re-initializes from the URL — whenever those change by
- * any means other than this form (e.g. the empty-state "Clear Filters" link).
+ * Search + Filters + Cards/Table toggle in one toolbar row (the finalized
+ * list-page composition shared with Students / Memberships / Batches /
+ * Schedule / Attendance), for the Instructor list (wireframe p39). Search is
+ * independent of the filter drawer; view switching is a plain URL change;
+ * Apply Filters writes the same `q` / `status` URL params as before, and any
+ * change resets pagination to page 1. The parent page keys this component by
+ * the current `q`/`status`, so it remounts — and its local draft state
+ * re-initializes from the URL — whenever those change by any means other
+ * than this form (e.g. the empty-state "Clear Filters" link).
  */
-export default function InstructorFilters({ defaultQuery, defaultStatus }) {
+export default function InstructorFilters({ defaultQuery, defaultStatus, view }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(defaultQuery);
   const [status, setStatus] = useState(defaultStatus);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  function applyFilters(event) {
-    event.preventDefault();
+  const appliedStatus = defaultStatus;
+  const activeFilterCount = [appliedStatus !== "all"].filter(Boolean).length;
 
+  const viewItems = VIEWS.map((item) => ({
+    ...item,
+    href: buildListHref("/settings/instructors", searchParams, { view: item.key === "cards" ? "" : item.key }),
+  }));
+
+  function pushParams(mutate) {
     const params = new URLSearchParams(searchParams);
-    if (query.trim()) {
-      params.set("q", query.trim());
-    } else {
-      params.delete("q");
-    }
-    if (status !== "all") {
-      params.set("status", status);
-    } else {
-      params.delete("status");
-    }
+    mutate(params);
     params.delete("page");
-
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
+  function applySearch(event) {
+    event.preventDefault();
+    pushParams((params) => {
+      if (query.trim()) params.set("q", query.trim());
+      else params.delete("q");
+    });
+  }
+
+  function applyFilters(event) {
+    event.preventDefault();
+    pushParams((params) => {
+      if (query.trim()) params.set("q", query.trim());
+      else params.delete("q");
+      if (status !== "all") params.set("status", status);
+      else params.delete("status");
+    });
+    setFiltersOpen(false);
+  }
+
   function clearFilters() {
+    setStatus("all");
+    pushParams((params) => {
+      params.delete("status");
+    });
+    setFiltersOpen(false);
+  }
+
+  function clearAllIncludingSearch() {
     setQuery("");
     setStatus("all");
     router.push(pathname);
+    setFiltersOpen(false);
+  }
+
+  function removeAppliedFilter(key) {
+    if (key === "status") setStatus("all");
+    pushParams((params) => {
+      params.delete(key);
+    });
+  }
+
+  const chips = [];
+  if (appliedStatus !== "all") {
+    chips.push({ key: "status", label: `Status: ${optionLabel(STATUS_OPTIONS, appliedStatus)}` });
   }
 
   return (
-    <form
-      onSubmit={applyFilters}
-      className="grid gap-4 rounded-lg border border-border bg-background/60 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-end"
-    >
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor="instructor-search"
-          className="text-small font-medium tracking-wide text-text-secondary uppercase"
-        >
-          Search
-        </label>
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-text-secondary"
-            aria-hidden="true"
-          />
-          <Input
+    <>
+      <ListToolbar
+        chips={
+          <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
+        }
+      >
+        <form onSubmit={applySearch} className="min-w-0 flex-1">
+          <SearchInput
             id="instructor-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by instructor name"
-            className="pl-8"
           />
-        </div>
-      </div>
+        </form>
 
-      <div className="flex flex-col gap-1.5">
-        <span id="instructor-status-label" className="text-small font-medium tracking-wide text-text-secondary uppercase">
-          Status
-        </span>
-        <Select items={STATUS_OPTIONS} value={status} onValueChange={setStatus}>
-          <SelectTrigger aria-labelledby="instructor-status-label" className="w-full sm:w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
 
-      <Button type="submit">Apply Filters</Button>
+        <ViewSwitcher items={viewItems} active={view} ariaLabel="Instructor list views" />
+      </ListToolbar>
 
-      <Button type="button" variant="ghost" onClick={clearFilters}>
-        Clear
-      </Button>
-    </form>
+      <FilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        description="Refine your instructor list"
+        onSubmit={applyFilters}
+        onClearAll={clearAllIncludingSearch}
+      >
+        <FilterSection id="instructor-status" label="Status">
+          <Select items={STATUS_OPTIONS} value={status} onValueChange={setStatus}>
+            <SelectTrigger aria-labelledby="instructor-status-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSection>
+      </FilterSheet>
+    </>
   );
 }
