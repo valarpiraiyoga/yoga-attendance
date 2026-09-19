@@ -2,19 +2,41 @@ import Link from "next/link";
 import { CalendarDays, CircleCheck, ClipboardCheck, Users, UserRoundX } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import PageHeader from "@/components/layout/PageHeader";
-import { listSessionsForDate, listSessions } from "@/lib/class-sessions/data";
+import EmptyState from "@/components/ui/empty-state";
+import Pagination from "@/components/ui/pagination";
+import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import { KpiStrip, KpiToggle } from "@/components/ui/kpi-visibility";
+import {
+  DEFAULT_SESSION_SORT,
+  filterSessions,
+  listSessionsForDate,
+  listSessions,
+  sortSessions,
+} from "@/lib/class-sessions/data";
 import { todayInCentreTimezone, DISPLAY_STATUSES } from "@/lib/class-sessions/validation";
 import { getAttendanceSummaries } from "@/lib/attendance/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
+import { formatShare } from "@/lib/format";
 import { buildListHref } from "@/lib/url-params";
 import { Button } from "@/components/ui/button";
 import AttendanceViewToggle from "@/app/attendance/attendance-view-toggle";
 import AttendanceFilters from "@/app/attendance/attendance-filters";
-import TodaySessionsList from "@/app/attendance/today-sessions-list";
-import AllSessionsList from "@/app/attendance/all-sessions-list";
+import SessionList from "@/app/attendance/session-list";
 
 const PAGE_SIZE = 10;
+
+// Labels for the "Sort by" control. Every `value` must be a key of
+// `SESSION_SORTS` (lib/class-sessions/data.js), which owns the direction.
+// Today's Sessions shares one date, so its sort reads as a sort by time.
+const TODAY_SORT_OPTIONS = [
+  { value: "earliest", label: "Time (Earliest)" },
+  { value: "latest", label: "Time (Latest)" },
+];
+const ALL_SORT_OPTIONS = [
+  { value: "earliest", label: "Date (Earliest)" },
+  { value: "latest", label: "Date (Latest)" },
+];
 
 function formatHeadingDate(value) {
   return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -26,37 +48,10 @@ function formatHeadingDate(value) {
   });
 }
 
-function attendanceHref(searchParams, overrides) {
-  return buildListHref("/attendance", searchParams, overrides);
-}
-
-/** Compact KPI tile for the Today's Sessions summary strip, beside the view toggle. */
-function AttendanceStatTile({ icon: Icon, value, label, tone }) {
-  const tones = {
-    info: "border-info/20 bg-info/10 text-info",
-    success: "border-success/20 bg-success/10 text-success",
-    danger: "border-danger/20 bg-danger/10 text-danger",
-  };
-
-  return (
-    <div
-      className={`flex min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2 shadow-xs ${tones[tone] ?? tones.info}`}
-    >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface/80 shadow-xs">
-        <Icon className="size-4" aria-hidden="true" />
-      </span>
-      <div className="min-w-0">
-        <p className="truncate text-body leading-tight font-semibold text-text-primary">{value}</p>
-        <p className="truncate text-[11px] leading-[14px] text-text-secondary">{label}</p>
-      </div>
-    </div>
-  );
-}
-
 /**
  * Sums each already-fetched session's attendance summary
  * (`withAttendanceSummaries`, `lib/attendance/data.js`) into the Today's
- * Sessions page-level totals shown by `AttendanceStatTile`. No new query:
+ * Sessions page-level totals shown by the KPI strip. No new query:
  * every count here is a presentation-only aggregation of numbers each
  * session row already carries and already displays individually.
  */
@@ -111,13 +106,19 @@ async function withAttendanceSummaries(sessions) {
  * Attendance (docs/02-ux.md's approved IA: Today's Sessions ← Default, All
  * Sessions, Session Details). Today's Sessions is the bare `/attendance`
  * route; `?view=all` switches to All Sessions — same URL-addressable
- * toggle pattern as /schedule (app/schedule/page.js).
+ * switch pattern as /schedule (app/schedule/page.js), with Cards/Table on
+ * the separate `layout` param.
  *
  * Both views list materialized and projected occurrences together
  * (approved Phase 14 decision) — neither `listSessionsForDate` nor
  * `listSessions` writes anything, so `class_sessions` can be, and often
  * will be, empty while these screens still show a full day or date range
  * of sessions.
+ *
+ * Today's Sessions is fixed to today's date (02-ux.md): its search, filters,
+ * sort and pagination narrow that one day's sessions in memory with the same
+ * `filterSessions` / `sortSessions` All Sessions uses; its KPI strip totals
+ * the whole day, independent of them.
  */
 export default async function AttendancePage({ searchParams }) {
   // Authorization boundary. app/attendance/layout.js also calls
@@ -133,9 +134,32 @@ export default async function AttendancePage({ searchParams }) {
   const rawParams = await searchParams;
   const today = todayInCentreTimezone();
 
+  const q = typeof rawParams.q === "string" ? rawParams.q : "";
+  const batchId = typeof rawParams.batch === "string" ? rawParams.batch : "";
+  const instructorId = typeof rawParams.instructor === "string" ? rawParams.instructor : "";
+  const status = DISPLAY_STATUSES.includes(rawParams.status) ? rawParams.status : "all";
+  const page = Math.max(1, Number(rawParams.page) || 1);
+  const layout = rawParams.layout === "table" ? "table" : "cards";
+
   if (rawParams.view !== "all") {
-    const sessions = await withAttendanceSummaries(await listSessionsForDate(today));
-    const totals = summarizeTodaysSessions(sessions);
+    const sort = TODAY_SORT_OPTIONS.some((option) => option.value === rawParams.sort)
+      ? rawParams.sort
+      : DEFAULT_SESSION_SORT;
+
+    const [todaysSessions, batchOptions, instructorOptions] = await Promise.all([
+      listSessionsForDate(today),
+      listBatchOptions(),
+      listInstructorOptions(),
+    ]);
+    const allToday = await withAttendanceSummaries(todaysSessions);
+    const totals = summarizeTodaysSessions(allToday);
+
+    const matching = sortSessions(filterSessions(allToday, { q, batchId, instructorId, status }), sort);
+    const total = matching.length;
+    const sessions = matching.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+    const isFiltered = Boolean(q) || Boolean(batchId) || Boolean(instructorId) || status !== "all";
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
     return (
       <>
@@ -144,51 +168,110 @@ export default async function AttendancePage({ searchParams }) {
           description="View today's class sessions."
           icon={<ClipboardCheck className="size-6" />}
           actions={
-            <p className="rounded-lg border border-border bg-surface px-3 py-2 text-small font-medium text-text-primary shadow-xs">
-              {formatHeadingDate(today)}
-            </p>
+            <>
+              <KpiToggle pageKey="attendance" />
+              <p className="text-small flex h-9 items-center rounded-lg border border-border bg-surface px-3 font-medium text-text-primary shadow-xs">
+                {formatHeadingDate(today)}
+              </p>
+            </>
           }
         />
 
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <AttendanceViewToggle active="today" />
+        <AttendanceViewToggle active="today" />
 
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-            <AttendanceStatTile icon={CalendarDays} value={sessions.length} label="Sessions Today" tone="info" />
-            <AttendanceStatTile icon={Users} value={totals.eligible} label="Total Eligible" tone="success" />
-            <AttendanceStatTile icon={CircleCheck} value={totals.present} label="Marked Present" tone="success" />
-            <AttendanceStatTile icon={UserRoundX} value={totals.absent} label="Marked Absent" tone="danger" />
-          </div>
-        </div>
+        {/* Whole-day totals, independent of the search/filters below — the
+            sum of each session's own attendance summary. Present / Absent
+            are shares of the day's eligible students. */}
+        <KpiStrip pageKey="attendance">
+          <StatTileGroup className="mb-6" ariaLabel="Today's attendance summary">
+            <StatTile valueFirst decorativeChart icon={CalendarDays} label="Sessions Today" value={allToday.length} tone="brand" />
+            <StatTile valueFirst decorativeChart icon={Users} label="Total Eligible" value={totals.eligible} tone="info" />
+            <StatTile
+              valueFirst
+              decorativeChart
+              icon={CircleCheck}
+              label="Marked Present"
+              value={totals.present}
+              aside={formatShare(totals.present, totals.eligible)}
+              tone="success"
+            />
+            <StatTile
+              valueFirst
+              decorativeChart
+              icon={UserRoundX}
+              label="Marked Absent"
+              value={totals.absent}
+              aside={formatShare(totals.absent, totals.eligible)}
+              tone="danger"
+            />
+          </StatTileGroup>
+        </KpiStrip>
 
-        {sessions.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
-            <p className="text-body max-w-sm text-text-secondary">
-              No class sessions are scheduled for today.
-            </p>
-          </div>
+        {allToday.length === 0 ? (
+          <EmptyState description="No class sessions are scheduled for today." />
         ) : (
-          <TodaySessionsList
-            sessions={sessions}
-            layout={rawParams.layout === "table" ? "table" : "cards"}
-            searchParams={rawParams}
-          />
+          <>
+            <AttendanceFilters
+              key={`today:${q}:${batchId}:${instructorId}:${status}`}
+              mode="today"
+              defaultQuery={q}
+              defaultBatchId={batchId || "all"}
+              defaultInstructorId={instructorId || "all"}
+              defaultStatus={status}
+              layout={layout}
+              batchOptions={batchOptions}
+              instructorOptions={instructorOptions}
+            />
+
+            {sessions.length === 0 ? (
+              <EmptyState
+                className="mt-6"
+                description="No sessions match your search or filters."
+                action={
+                  isFiltered ? (
+                    <Button variant="outline" render={<Link href="/attendance" />} nativeButton={false}>
+                      Clear Filters
+                    </Button>
+                  ) : undefined
+                }
+              />
+            ) : (
+              <>
+                <SessionList
+                  mode="today"
+                  sessions={sessions}
+                  layout={layout}
+                  total={total}
+                  sort={sort}
+                  sortOptions={TODAY_SORT_OPTIONS}
+                />
+
+                <Pagination
+                  className="mt-4"
+                  page={page}
+                  totalPages={totalPages}
+                  total={total}
+                  pageSize={PAGE_SIZE}
+                  itemLabel="sessions"
+                  ariaLabel="Today's Sessions pagination"
+                  getHref={(targetPage) => buildListHref("/attendance", rawParams, { page: targetPage })}
+                />
+              </>
+            )}
+          </>
         )}
       </>
     );
   }
 
-  const q = typeof rawParams.q === "string" ? rawParams.q : "";
   const dateFrom = typeof rawParams.from === "string" ? rawParams.from : "";
   const dateTo = typeof rawParams.to === "string" ? rawParams.to : "";
-  const batchId = typeof rawParams.batch === "string" ? rawParams.batch : "";
-  const instructorId = typeof rawParams.instructor === "string" ? rawParams.instructor : "";
-  const status = DISPLAY_STATUSES.includes(rawParams.status) ? rawParams.status : "all";
-  const page = Math.max(1, Number(rawParams.page) || 1);
-  const layout = rawParams.layout === "table" ? "table" : "cards";
+  const sort = ALL_SORT_OPTIONS.some((option) => option.value === rawParams.sort)
+    ? rawParams.sort
+    : DEFAULT_SESSION_SORT;
 
   const [{ sessions: rawSessions, total }, batchOptions, instructorOptions] = await Promise.all([
-    listSessions({ q, dateFrom, dateTo, batchId, instructorId, status, page, pageSize: PAGE_SIZE }),
+    listSessions({ q, dateFrom, dateTo, batchId, instructorId, status, sort, page, pageSize: PAGE_SIZE }),
     listBatchOptions(),
     listInstructorOptions(),
   ]);
@@ -197,8 +280,6 @@ export default async function AttendancePage({ searchParams }) {
   const isFiltered =
     Boolean(q) || Boolean(dateFrom) || Boolean(dateTo) || Boolean(batchId) || Boolean(instructorId) || status !== "all";
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(total, page * PAGE_SIZE);
 
   return (
     <>
@@ -208,89 +289,57 @@ export default async function AttendancePage({ searchParams }) {
         icon={<ClipboardCheck className="size-6" />}
       />
 
-      <div className="mb-6">
-        <AttendanceViewToggle active="all" />
-      </div>
+      <AttendanceViewToggle active="all" />
 
       <AttendanceFilters
-        key={`${q}:${dateFrom}:${dateTo}:${batchId}:${instructorId}:${status}`}
+        key={`all:${q}:${dateFrom}:${dateTo}:${batchId}:${instructorId}:${status}`}
+        mode="all"
         defaultQuery={q}
         defaultDateFrom={dateFrom}
         defaultDateTo={dateTo}
         defaultBatchId={batchId || "all"}
         defaultInstructorId={instructorId || "all"}
         defaultStatus={status}
+        layout={layout}
         batchOptions={batchOptions}
         instructorOptions={instructorOptions}
       />
 
       {sessions.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
-          {isFiltered ? (
-            <>
-              <p className="text-body max-w-sm text-text-secondary">
-                No sessions match your search or filters.
-              </p>
+        <EmptyState
+          className="mt-6"
+          description={
+            isFiltered ? "No sessions match your search or filters." : "No class sessions fall in this date range."
+          }
+          action={
+            isFiltered ? (
               <Button variant="outline" render={<Link href="/attendance?view=all" />} nativeButton={false}>
                 Clear Filters
               </Button>
-            </>
-          ) : (
-            <p className="text-body max-w-sm text-text-secondary">
-              No class sessions fall in this date range.
-            </p>
-          )}
-        </div>
+            ) : undefined
+          }
+        />
       ) : (
         <>
-          <AllSessionsList
+          <SessionList
+            mode="all"
             sessions={sessions}
-            total={total}
             layout={layout}
-            searchParams={rawParams}
+            total={total}
+            sort={sort}
+            sortOptions={ALL_SORT_OPTIONS}
           />
 
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-small text-text-secondary">
-              Showing {rangeStart}–{rangeEnd} of {total} sessions
-            </p>
-
-            <nav aria-label="All Sessions pagination" className="flex items-center gap-2">
-              {page > 1 ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={attendanceHref(rawParams, { page: page - 1 })} />}
-                  nativeButton={false}
-                >
-                  Previous
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
-              )}
-
-              <span className="text-small px-1 text-text-secondary">
-                Page {page} of {totalPages}
-              </span>
-
-              {page < totalPages ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={attendanceHref(rawParams, { page: page + 1 })} />}
-                  nativeButton={false}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  Next
-                </Button>
-              )}
-            </nav>
-          </div>
+          <Pagination
+            className="mt-4"
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            itemLabel="sessions"
+            ariaLabel="All Sessions pagination"
+            getHref={(targetPage) => buildListHref("/attendance", rawParams, { page: targetPage })}
+          />
         </>
       )}
     </>
