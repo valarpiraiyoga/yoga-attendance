@@ -1,14 +1,24 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { setStudentStatus } from "@/lib/students/actions";
 
 /**
- * Deactivate / Activate Student (wireframe p10; 02-ux.md Flow 11:
- * "Students → Select Student → Deactivate Student → Review → Confirm →
- * Save → Student Inactive").
+ * The Student Details header's overflow menu: Deactivate / Activate Student
+ * (wireframe p10; 02-ux.md Flow 11: "Students → Select Student → Deactivate
+ * Student → Review → Confirm → Save → Student Inactive"). The actions and
+ * their rules are exactly the former Deactivate / Activate button's — only
+ * the trigger changed, from a text button to the finalized overflow (⋮)
+ * button beside Edit Student.
  *
  * Only deactivation goes through the Review → Confirm gate — Flow 11 exists
  * specifically for deactivation, and no equivalent flow documents
@@ -18,7 +28,8 @@ import { setStudentStatus } from "@/lib/students/actions";
  * `setStudentStatus` is called directly (per Next.js's own guidance for
  * invoking a Server Action outside a form: from an event handler wrapped in
  * `startTransition`), matching lib/instructors/actions.js's
- * `setInstructorStatus` usage pattern.
+ * `setInstructorStatus` usage pattern. The result message shows under the
+ * header actions, as before.
  */
 export default function DeactivateStudent({ studentId, studentName, status }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -38,31 +49,42 @@ export default function DeactivateStudent({ studentId, studentName, status }) {
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      {status === "active" ? (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setConfirmOpen(true)}
-          disabled={isPending}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              disabled={isPending}
+              aria-label={`More actions for ${studentName}`}
+            />
+          }
         >
-          Deactivate Student
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => runStatusChange("active")}
-          disabled={isPending}
-        >
-          {isPending ? "Activating…" : "Activate Student"}
-        </Button>
-      )}
+          <MoreVertical className="size-4" aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-44">
+          {status === "active" ? (
+            <DropdownMenuItem variant="destructive" onClick={() => setConfirmOpen(true)}>
+              Deactivate Student
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={() => runStatusChange("active")}>
+              {isPending ? "Activating…" : "Activate Student"}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {feedback ? (
         <p
           role="status"
-          className={feedback.type === "success" ? "text-small text-success" : "text-small text-danger"}
+          className={
+            feedback.type === "success"
+              ? "text-small w-full text-right text-success"
+              : "text-small w-full text-right text-danger"
+          }
         >
           {feedback.text}
         </p>
@@ -78,6 +100,6 @@ export default function DeactivateStudent({ studentId, studentName, status }) {
         isPending={isPending}
         onConfirm={() => runStatusChange("inactive")}
       />
-    </div>
+    </>
   );
 }
