@@ -4,7 +4,7 @@ import { signOut } from "@/lib/auth/actions";
 
 export default function Sidebar({ role }) {
   return (
-    <aside className="sidebar-surface hidden h-full lg:flex lg:w-64 lg:shrink-0 lg:flex-col lg:border-r lg:border-border/70 lg:bg-background">
+    <aside className="sidebar-surface print:hidden hidden h-full lg:flex lg:w-64 lg:shrink-0 lg:flex-col lg:border-r lg:border-border/70 lg:bg-background">
       <div className="flex h-16 shrink-0 items-center border-b border-border/70 px-6">
         <div className="flex flex-col leading-tight">
           <span className="text-base font-semibold text-text-primary">Yoga Center</span>

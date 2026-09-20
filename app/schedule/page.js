@@ -102,7 +102,7 @@ export default async function SchedulePage({ searchParams }) {
       <ScheduleTabs active="list" />
 
       <ScheduleFilters
-        key={`${q}:${batchId}:${instructorId}:${status}`}
+        key={`${batchId}:${instructorId}:${status}`}
         defaultQuery={q}
         defaultBatchId={batchId || "all"}
         defaultInstructorId={instructorId || "all"}

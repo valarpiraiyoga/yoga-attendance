@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import SearchInput from "@/components/ui/search-input";
+import { useLiveSearch } from "@/components/ui/use-live-search";
 import ViewSwitcher from "@/components/ui/view-switcher";
 import { FilterBar, FilterChips, FilterSheet, FilterSection } from "@/components/ui/filter-bar";
 import { ListToolbar } from "@/components/layout/list-page";
@@ -65,7 +66,11 @@ export default function AttendanceFilters({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isAll = mode === "all";
-  const [query, setQuery] = useState(defaultQuery);
+  const { query, setQuery, searchFor } = useLiveSearch(defaultQuery, {
+    prepare: (params) => {
+      if (isAll) params.set("view", "all");
+    },
+  });
   const [dateFrom, setDateFrom] = useState(defaultDateFrom);
   const [dateTo, setDateTo] = useState(defaultDateTo);
   const [batchId, setBatchId] = useState(defaultBatchId);
@@ -118,11 +123,9 @@ export default function AttendanceFilters({
   }
 
   function applySearch(event) {
+    // Results already follow the field as it is typed; Enter only must not
+    // submit the form natively.
     event.preventDefault();
-    pushParams((params) => {
-      if (query.trim()) params.set("q", query.trim());
-      else params.delete("q");
-    });
   }
 
   function applyFilters(event) {
@@ -211,7 +214,8 @@ export default function AttendanceFilters({
           <SearchInput
             id="attendance-search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => searchFor(event.target.value)}
+            onClear={() => searchFor("")}
             placeholder="Search by batch or instructor"
           />
         </form>

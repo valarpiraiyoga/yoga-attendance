@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Users } from "lucide-react";
 import DataTableShell from "@/components/ui/data-table-shell";
+import EmptyState from "@/components/ui/empty-state";
 import { PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getBatch } from "@/lib/batches/data";
@@ -64,9 +65,7 @@ export default async function BatchStudentsPage({ params }) {
         />
 
         {enrollments.length === 0 ? (
-          <p className="text-body text-text-secondary">
-            No students are enrolled in this batch yet.
-          </p>
+          <EmptyState size="sm" description="No students are enrolled in this batch yet." />
         ) : (
           <DataTableShell>
             <Table aria-label={`Students in ${batch.name}`}>

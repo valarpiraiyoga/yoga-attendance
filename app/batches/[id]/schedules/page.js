@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import DataTableShell from "@/components/ui/data-table-shell";
+import EmptyState from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
@@ -54,9 +55,7 @@ export default async function BatchSchedulesPage({ params }) {
         />
 
         {schedules.length === 0 ? (
-          <p className="text-body text-text-secondary">
-            No schedules yet. Add one to define when this batch takes place.
-          </p>
+          <EmptyState size="sm" description="No schedules yet. Add one to define when this batch takes place." />
         ) : (
           <DataTableShell>
             <Table aria-label={`Schedules for ${batch.name}`}>

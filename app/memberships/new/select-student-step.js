@@ -2,14 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import EmptyState from "@/components/ui/empty-state";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import StudentCombobox from "@/app/memberships/new/student-combobox";
 
 /**
  * Select Student — the first step of the standalone Add Membership flow
@@ -18,31 +13,29 @@ import {
  * submitting navigates to `?student=<id>`, which the parent page
  * (app/memberships/new/page.js) reads to render MembershipForm — no client
  * state needs to survive the navigation.
+ *
+ * The picker is a searchable combobox (`student-combobox.js`) over the loaded
+ * student options, so the list stays usable as it grows; it still submits the
+ * chosen student's id as `student`.
  */
 export default function SelectStudentStep({ studentOptions }) {
   const [studentId, setStudentId] = useState("");
-
-  const options = studentOptions.map((student) => ({
-    value: student.id,
-    label: `${student.full_name} (${student.student_code})`,
-  }));
 
   return (
     <form method="get" className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
         <Label htmlFor="student">Student</Label>
-        <Select name="student" items={options} value={studentId} onValueChange={setStudentId}>
-          <SelectTrigger id="student">
-            <SelectValue placeholder="Select a student…" />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {studentOptions.length === 0 ? (
+          <EmptyState size="sm" description="No active students are available." />
+        ) : (
+          <StudentCombobox
+            id="student"
+            name="student"
+            students={studentOptions}
+            value={studentId}
+            onValueChange={setStudentId}
+          />
+        )}
       </div>
 
       <div className="mt-2 flex justify-end gap-3 border-t border-border pt-5">

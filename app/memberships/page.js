@@ -136,7 +136,7 @@ export default async function MembershipsPage({ searchParams }) {
       </KpiStrip>
 
       <MembershipFilters
-        key={`${q}:${plan}:${paymentStatus}:${membershipStatus}:${fromDate}:${toDate}`}
+        key={`${plan}:${paymentStatus}:${membershipStatus}:${fromDate}:${toDate}`}
         defaultQuery={q}
         defaultPlan={plan}
         defaultPaymentStatus={paymentStatus}

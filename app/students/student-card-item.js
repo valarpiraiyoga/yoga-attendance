@@ -21,7 +21,7 @@ export default function StudentCardItem({ student }) {
     <EntityCard
       className={cn(menuOpen && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
-      avatar={<Avatar name={student.full_name} bordered />}
+      avatar={<Avatar name={student.full_name} src={student.photo_url} bordered />}
       title={student.full_name}
       subtitle={`ID: ${student.student_code}`}
       status={<Badge variant={entityStatus.variant}>{entityStatus.label}</Badge>}

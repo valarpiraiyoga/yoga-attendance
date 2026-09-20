@@ -37,7 +37,7 @@ function FieldValue({ children }) {
 }
 
 /** Date + time rows of the read-only upcoming-sessions projection. */
-function UpcomingTable({ sessions, batchName, instructorName, detailed = false }) {
+function UpcomingTable({ sessions, batchName, instructorName, instructorPhotoUrl = null, detailed = false }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <Table aria-label="Upcoming sessions">
@@ -62,7 +62,7 @@ function UpcomingTable({ sessions, batchName, instructorName, detailed = false }
               {detailed ? (
                 <TableCell>
                   <span className="inline-flex items-center gap-2 whitespace-nowrap">
-                    <Avatar name={instructorName === "—" ? "" : instructorName} size="sm" />
+                    <Avatar name={instructorName === "—" ? "" : instructorName} src={instructorPhotoUrl} size="sm" />
                     <span className="text-text-secondary">{instructorName}</span>
                   </span>
                 </TableCell>
@@ -102,6 +102,7 @@ export default function ScheduleDetailsTabs({ schedule, upcomingSessions }) {
   const batchName = schedule.batches?.name ?? "—";
   const batchCode = schedule.batches?.code ?? null;
   const instructorName = schedule.instructors?.full_name ?? "—";
+  const instructorPhotoUrl = schedule.instructors?.photo_url ?? null;
   const durationLabel = formatDuration(schedule.start_time, schedule.end_time);
   const effectiveUntil = schedule.effective_until ? formatDate(schedule.effective_until) : "Open-ended";
 
@@ -260,7 +261,13 @@ export default function ScheduleDetailsTabs({ schedule, upcomingSessions }) {
               <EmptyState size="sm" title="No upcoming sessions" description={NO_UPCOMING_DESCRIPTION} />
             ) : (
               <>
-                <UpcomingTable sessions={upcomingSessions} batchName={batchName} instructorName={instructorName} detailed />
+                <UpcomingTable
+                  sessions={upcomingSessions}
+                  batchName={batchName}
+                  instructorName={instructorName}
+                  instructorPhotoUrl={instructorPhotoUrl}
+                  detailed
+                />
                 <p className="text-small mt-3 text-text-secondary">
                   Showing {upcomingSessions.length} upcoming session
                   {upcomingSessions.length === 1 ? "" : "s"}.

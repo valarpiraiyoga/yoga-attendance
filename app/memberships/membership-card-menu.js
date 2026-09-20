@@ -13,7 +13,7 @@ import {
 
 /**
  * Memberships card / row overflow — links only to routes that already
- * exist (Membership Details, Edit, Renew, and the student's own page).
+ * exist (Membership Details, Edit, Renew, Receipt, and the student's own page).
  * Cancel is deliberately not here: it needs its confirmation dialog, which
  * lives on Membership Details. Mirrors `StudentCardMenu`.
  */
@@ -42,6 +42,9 @@ export default function MembershipCardMenu({ membershipId, studentId, onOpenChan
         </DropdownMenuItem>
         <DropdownMenuItem render={<Link href={`/memberships/${membershipId}/renew`} />} nativeButton={false}>
           Renew Membership
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href={`/memberships/${membershipId}/receipt`} />} nativeButton={false}>
+          View Receipt
         </DropdownMenuItem>
 
         {studentId ? (

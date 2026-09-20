@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Eye, IndianRupee, Layers, Tag } from "lucide-react";
+import { CalendarDays, Receipt, IndianRupee, Layers, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -51,7 +51,7 @@ export default function MembershipCardItem({ membership, today }) {
         menuOpen && "border-brand/40 bg-brand/5"
       )}
       iconClassName="text-brand"
-      avatar={<Avatar name={student?.full_name} bordered />}
+      avatar={<Avatar name={student?.full_name} src={student?.photo_url} bordered />}
       title={student?.full_name ?? "—"}
       status={<Badge variant={status.variant}>{status.label}</Badge>}
       actions={
@@ -61,11 +61,11 @@ export default function MembershipCardItem({ membership, today }) {
             variant="ghost"
             size="icon-sm"
             className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`View membership ${membership.membership_code}`}
-            render={<Link href={`/memberships/${membership.id}`} />}
+            aria-label={`View receipt for ${membership.membership_code}`}
+            render={<Link href={`/memberships/${membership.id}/receipt`} />}
             nativeButton={false}
           >
-            <Eye className="size-4" aria-hidden="true" />
+            <Receipt className="size-4" aria-hidden="true" />
           </Button>
           <MembershipCardMenu
             membershipId={membership.id}

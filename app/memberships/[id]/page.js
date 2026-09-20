@@ -194,7 +194,7 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
       <div className="flex flex-col gap-4">
         <EntityDetailHeader
           className="mb-0"
-          avatar={<Avatar name={student?.full_name} size="lg" />}
+          avatar={<Avatar name={student?.full_name} src={student?.photo_url} size="lg" />}
           title={student?.full_name ?? "—"}
           status={<Badge variant={status.variant}>{status.label}</Badge>}
           subMeta={

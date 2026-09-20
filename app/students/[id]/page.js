@@ -301,7 +301,7 @@ export default async function StudentDetailsPage({ params, searchParams }) {
                 </div>
               </div>
             ) : (
-              <p className="text-body text-text-secondary">No membership yet for this student.</p>
+              <EmptyState size="sm" description="No membership yet for this student." />
             )}
           </Panel>
         </div>
@@ -320,9 +320,10 @@ export default async function StudentDetailsPage({ params, searchParams }) {
               }
             />
             {enrollments.length === 0 ? (
-              <p className="text-body text-text-secondary">
-                No batch enrollments yet. Add one to make this student eligible for attendance.
-              </p>
+              <EmptyState
+                size="sm"
+                description="No batch enrollments yet. Add one to make this student eligible for attendance."
+              />
             ) : (
               <ul className="flex flex-col gap-4">
                 {enrollments.map((enrollment) => {

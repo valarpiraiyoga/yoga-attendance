@@ -33,7 +33,7 @@ export default function InstructorTableRow({ instructor, isUpdating, disabled, o
     >
       <TableCell>
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={instructor.full_name} />
+          <Avatar name={instructor.full_name} src={instructor.photo_url} />
           <p className="truncate font-semibold text-text-primary">{instructor.full_name}</p>
         </div>
       </TableCell>

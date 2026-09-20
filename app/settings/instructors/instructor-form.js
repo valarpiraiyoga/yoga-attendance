@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import ProfilePhotoField, { useProfilePhoto } from "@/components/ui/profile-photo-field";
 import { Switch } from "@/components/ui/switch";
 import { validateInstructorInput } from "@/lib/instructors/validation";
 
@@ -41,6 +42,8 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
   const [state, formAction, isPending] = useActionState(action, {});
   const [fieldErrors, setFieldErrors] = useState(state?.fieldErrors ?? {});
   const [isActive, setIsActive] = useState(instructor?.status === "active");
+  const [fullName, setFullName] = useState(instructor?.full_name ?? "");
+  const { photo, setPhoto, appendTo } = useProfilePhoto();
 
   // The server's verdict is authoritative and wins on every submission — this
   // only resyncs to it, it never overrides it. Adjusted during render (React's
@@ -51,6 +54,14 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
   if (state !== prevState) {
     setPrevState(state);
     setFieldErrors(state?.fieldErrors ?? {});
+  }
+
+  // React resets the form's DOM inputs when an action runs, so the profile
+  // photo (kept in state, not in a named input) is added to the submission
+  // here. It is uploaded by the server action, and only when the form saves.
+  function submitForm(formData) {
+    appendTo(formData);
+    formAction(formData);
   }
 
   // Strips anything but digits from the Phone field as it changes — typed,
@@ -92,7 +103,7 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
   }
 
   return (
-    <form action={formAction} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
+    <form action={submitForm} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
       {state?.error ? (
         <p
           role="alert"
@@ -101,6 +112,15 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
           {state.error}
         </p>
       ) : null}
+
+      <ProfilePhotoField
+        name={fullName}
+        currentUrl={instructor?.photo_url ?? null}
+        photo={photo}
+        onChange={setPhoto}
+        error={fieldErrors.photo}
+        disabled={isPending}
+      />
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="full_name">Full Name</Label>
@@ -111,6 +131,7 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
           required
           disabled={isPending}
           defaultValue={state?.values?.full_name ?? instructor?.full_name ?? ""}
+          onChange={(event) => setFullName(event.target.value)}
           placeholder="Enter instructor's full name"
           aria-invalid={Boolean(fieldErrors.full_name)}
           aria-describedby={fieldErrors.full_name ? "full_name-error" : undefined}

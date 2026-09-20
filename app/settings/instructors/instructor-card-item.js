@@ -31,7 +31,7 @@ export default function InstructorCardItem({ instructor, isUpdating, disabled, o
     <EntityCard
       className={cn((menuOpen || isUpdating) && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
-      avatar={<Avatar name={instructor.full_name} bordered />}
+      avatar={<Avatar name={instructor.full_name} src={instructor.photo_url} bordered />}
       title={instructor.full_name}
       status={<Badge variant={status.variant}>{status.label}</Badge>}
       actions={

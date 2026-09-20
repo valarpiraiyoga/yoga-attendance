@@ -25,7 +25,7 @@ export default function StudentTableRow({ student }) {
     >
       <TableCell>
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={student.full_name} />
+          <Avatar name={student.full_name} src={student.photo_url} />
           <div className="min-w-0">
             <p className="truncate font-semibold text-text-primary">{student.full_name}</p>
             <p className="text-small text-text-secondary">{student.student_code}</p>

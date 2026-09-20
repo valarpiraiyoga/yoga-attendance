@@ -77,7 +77,7 @@ export default function SessionOverview({ session, displayStatus, scheduleId, da
           <FieldRow icon={Users} label="Absent">
             <FieldValue className="text-body font-medium text-danger">{summary.absentCount ?? 0}</FieldValue>
           </FieldRow>
-          <FieldRow icon={Users} label="Not Taken">
+          <FieldRow icon={Users} label="Unmarked">
             <FieldValue>{summary.unmarkedCount ?? 0}</FieldValue>
           </FieldRow>
           <FieldRow icon={ClipboardCheck} label="Attendance">

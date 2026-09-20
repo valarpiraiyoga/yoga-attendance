@@ -73,7 +73,7 @@ export default async function BatchAttendancePage({ params, searchParams }) {
     <BatchHeader batch={batch} active="attendance">
       <div>
         <AttendanceHistoryFilters
-          key={`${q}:${dateFrom}:${dateTo}:${instructorId}:${attendanceStatus}`}
+          key={`${dateFrom}:${dateTo}:${instructorId}:${attendanceStatus}`}
           variant="admin"
           layout={layout}
           basePath={basePath}

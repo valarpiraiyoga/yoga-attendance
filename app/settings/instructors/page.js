@@ -76,7 +76,7 @@ export default async function InstructorsPage({ searchParams }) {
         </Button>
       </div>
 
-      <InstructorFilters key={`${q}:${status}`} defaultQuery={q} defaultStatus={status} view={view} />
+      <InstructorFilters key={status} defaultQuery={q} defaultStatus={status} view={view} />
 
       {instructors.length === 0 ? (
         <EmptyState

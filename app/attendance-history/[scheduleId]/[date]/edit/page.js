@@ -1,67 +1,28 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Calendar, ClipboardCheck, Clock, Layers, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleCheck, CircleX, ClipboardCheck, Clock, Layers, Percent, UserRound, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import FieldRow from "@/components/layout/FieldRow";
+import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getSessionOccurrence } from "@/lib/class-sessions/data";
 import { isValidDateString } from "@/lib/schedules/validation";
 import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_BADGE_VARIANTS } from "@/lib/class-sessions/validation";
 import { listEligibleStudents, getAttendanceForSession } from "@/lib/attendance/data";
 import { computeAttendanceSummary } from "@/lib/attendance/validation";
+import { formatDateWithWeekday, formatTimeRange } from "@/lib/format";
 import EditAttendanceForm from "@/app/attendance-history/[scheduleId]/[date]/edit/edit-attendance-form";
 
-function formatTime(value) {
-  if (!value) return "—";
-  const [hours, minutes] = value.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
-}
-
-function formatDate(value) {
-  if (!value) return "—";
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function SummaryTile({ label, value, tone }) {
-  const tones = {
-    brand: "border-brand/20 bg-brand/10",
-    success: "border-success/20 bg-success/10",
-    danger: "border-danger/20 bg-danger/10",
-    info: "border-info/20 bg-info/10",
-  };
-
-  return (
-    <div className={`rounded-xl border px-3 py-2.5 ${tones[tone] ?? tones.brand}`}>
-      <p className="text-[10px] leading-[14px] font-medium tracking-wide text-text-secondary uppercase">
-        {label}
-      </p>
-      <p className="mt-0.5 text-body font-semibold tracking-tight text-text-primary">{value}</p>
-    </div>
-  );
-}
-
-function FieldRow({ icon: Icon, label, children }) {
-  return (
-    <div className="min-w-0">
-      <div className="flex items-center gap-1.5">
-        <Icon className="size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
-        <p className="text-small text-text-secondary">{label}</p>
-      </div>
-      <div className="mt-1">{children}</div>
-    </div>
-  );
+function FieldValue({ children }) {
+  return <p className="text-body font-medium break-words text-text-primary">{children}</p>;
 }
 
 /**
- * Edit Attendance — same data/workflow; presentation aligned with Attendance
- * marking and Attendance Details.
+ * Edit Attendance — same data/workflow. Presentation follows the finalized
+ * detail-page system (as Attendance Details does): back link and title, the
+ * saved-summary `StatTile`s, a Session Details panel of `FieldRow`s, and the
+ * Attendance panel that hosts the roster form.
  */
 export default async function EditAttendancePage({ params }) {
   await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
@@ -84,88 +45,67 @@ export default async function EditAttendancePage({ params }) {
   ]);
 
   const summary = computeAttendanceSummary(eligibleStudents.length, marks);
-  const batchCode = session.batches?.code || "—";
+  const batchCode = session.batches?.code || null;
   const batchName = session.batches?.name ?? "Session";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <Link
         href={`/attendance-history/${scheduleId}/${date}`}
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+        className="text-body inline-flex w-fit items-center gap-1.5 text-text-secondary hover:text-text-primary"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
         Back to Attendance Details
       </Link>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-page-title font-semibold text-text-primary">Edit Attendance</h1>
-        <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS.completed} className="px-1.5 py-0">
-          <span className="text-[10px] leading-[14px] font-medium">{DISPLAY_STATUS_LABELS.completed}</span>
-        </Badge>
-      </div>
-      <p className="text-small -mt-2 text-text-secondary">Correct attendance for this class session.</p>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
-          <h2 className="mb-3 flex items-center gap-2 text-body font-semibold text-text-primary">
-            <Layers className="size-4 text-text-secondary" aria-hidden="true" />
-            Session Details
-          </h2>
-          <div className="overflow-hidden rounded-xl border border-info/20 bg-info/5">
-            <div className="flex items-start gap-3 bg-info/10 px-3.5 py-3.5">
-              <span
-                aria-hidden="true"
-                className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-info/15 text-small font-semibold text-info"
-              >
-                {batchCode}
-              </span>
-              <div className="min-w-0">
-                <p className="text-body font-semibold text-text-primary">{batchName}</p>
-                <p className="text-small mt-1 text-text-secondary">Code: {batchCode}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 border-t border-info/15 px-3.5 py-3">
-              <FieldRow icon={UserRound} label="Instructor">
-                <p className="truncate text-body font-semibold text-text-primary">
-                  {session.instructors?.full_name ?? "—"}
-                </p>
-              </FieldRow>
-              <FieldRow icon={Calendar} label="Date">
-                <p className="truncate text-body font-semibold text-text-primary">
-                  {formatDate(session.session_date)}
-                </p>
-              </FieldRow>
-              <FieldRow icon={Clock} label="Time">
-                <p className="truncate text-body font-semibold text-text-primary">
-                  {formatTime(session.start_time)} – {formatTime(session.end_time)}
-                </p>
-              </FieldRow>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
-          <h2 className="mb-3 flex items-center gap-2 text-body font-semibold text-text-primary">
-            <ClipboardCheck className="size-4 text-text-secondary" aria-hidden="true" />
-            Saved Summary
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            <SummaryTile label="Eligible" value={summary.eligibleCount} tone="info" />
-            <SummaryTile label="Present" value={summary.presentCount} tone="success" />
-            <SummaryTile label="Absent" value={summary.absentCount} tone="danger" />
-            <SummaryTile label="Attendance" value={`${summary.percentage}%`} tone="brand" />
-          </div>
-          <p className="text-small mt-3 text-text-secondary">
-            This is the currently saved summary. Updated totals appear on Review Changes.
-          </p>
-        </section>
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-page-title font-semibold text-text-primary">Edit Attendance</h1>
+          <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS.completed}>{DISPLAY_STATUS_LABELS.completed}</Badge>
+        </div>
+        <p className="text-body mt-1 text-text-secondary">Correct attendance for this class session.</p>
       </div>
 
-      <section className="rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
-        <h2 className="text-body font-semibold text-text-primary">Attendance</h2>
-        <p className="text-small mt-1 mb-4 text-text-secondary">Change attendance for eligible students.</p>
+      <div className="flex flex-col gap-3">
+        <StatTileGroup ariaLabel="Saved attendance summary">
+          <StatTile icon={Users} label="Eligible" value={summary.eligibleCount} tone="brand" />
+          <StatTile icon={CircleCheck} label="Present" value={summary.presentCount} tone="success" />
+          <StatTile icon={CircleX} label="Absent" value={summary.absentCount} tone="danger" />
+          <StatTile icon={Percent} label="Attendance" value={`${summary.percentage}%`} tone="info" />
+        </StatTileGroup>
+        <p className="text-small text-text-secondary">
+          This is the currently saved summary. Updated totals appear on Review Changes.
+        </p>
+      </div>
+
+      <Panel>
+        <PanelHeader icon={Layers} title="Session Details" className="mb-4 min-h-8" />
+        <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+          <FieldRow icon={Layers} label="Batch">
+            <FieldValue>{batchName}</FieldValue>
+            {batchCode ? <p className="text-small text-text-secondary">Code: {batchCode}</p> : null}
+          </FieldRow>
+          <FieldRow icon={UserRound} label="Instructor">
+            <FieldValue>{session.instructors?.full_name ?? "—"}</FieldValue>
+          </FieldRow>
+          <FieldRow icon={CalendarDays} label="Date">
+            <FieldValue>{formatDateWithWeekday(session.session_date)}</FieldValue>
+          </FieldRow>
+          <FieldRow icon={Clock} label="Time">
+            <FieldValue>{formatTimeRange(session.start_time, session.end_time)}</FieldValue>
+          </FieldRow>
+        </div>
+      </Panel>
+
+      <Panel>
+        <PanelHeader
+          icon={ClipboardCheck}
+          title="Attendance"
+          description="Change attendance for eligible students."
+          className="mb-4 min-h-8"
+        />
         <EditAttendanceForm scheduleId={scheduleId} date={date} students={eligibleStudents} initialMarks={marks} />
-      </section>
+      </Panel>
     </div>
   );
 }

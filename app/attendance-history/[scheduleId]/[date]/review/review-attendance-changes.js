@@ -3,30 +3,30 @@
 import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock, ClipboardCheck, History, Layers, Repeat2, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import EmptyState from "@/components/ui/empty-state";
+import FieldRow from "@/components/layout/FieldRow";
+import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { saveSessionAttendance } from "@/lib/attendance/actions";
 import { validateAttendanceMarks, computeAttendanceSummary } from "@/lib/attendance/validation";
+import { formatDateWithWeekday, formatTimeRange } from "@/lib/format";
 import { pendingReviewStorageKey } from "@/app/attendance-history/[scheduleId]/[date]/edit/edit-attendance-form";
 
-function formatTime(value) {
-  if (!value) return "—";
-  const [hours, minutes] = value.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
+function FieldValue({ children }) {
+  return <p className="text-body font-medium break-words text-text-primary">{children}</p>;
 }
 
-function formatDate(value) {
-  if (!value) return "—";
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+/** "9 Present · 3 Absent · 75%" — the same three figures for the current and the proposed summary. */
+function SummaryLine({ summary }) {
+  return (
+    <p className="text-body text-text-primary">
+      <span className="font-semibold text-success">{summary.presentCount}</span> Present ·{" "}
+      <span className="font-semibold text-danger">{summary.absentCount}</span> Absent ·{" "}
+      <span className="font-semibold text-brand">{summary.percentage}%</span>
+    </p>
+  );
 }
 
 function statusLabel(status) {
@@ -207,11 +207,13 @@ export default function ReviewAttendanceChanges({
     });
   }
 
+  const editHref = `/attendance-history/${scheduleId}/${date}/edit`;
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <Link
-        href={`/attendance-history/${scheduleId}/${date}/edit`}
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+        href={editHref}
+        className="text-body inline-flex w-fit items-center gap-1.5 text-text-secondary hover:text-text-primary"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
         Back to Edit Attendance
@@ -219,30 +221,26 @@ export default function ReviewAttendanceChanges({
 
       <div>
         <h1 className="text-page-title font-semibold text-text-primary">Review Attendance Changes</h1>
-        <p className="text-small mt-1 text-text-secondary">Review the changes before saving.</p>
+        <p className="text-body mt-1 text-text-secondary">Review the changes before saving.</p>
       </div>
 
-      <section className="rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
-        <h2 className="text-body font-semibold text-text-primary">Session Details</h2>
-        <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2.5">
-            <dt className="text-[10px] font-medium tracking-wide text-text-secondary uppercase">Batch</dt>
-            <dd className="mt-0.5 text-body font-semibold text-text-primary">{session.batches?.name ?? "—"}</dd>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2.5">
-            <dt className="text-[10px] font-medium tracking-wide text-text-secondary uppercase">Instructor</dt>
-            <dd className="mt-0.5 text-body font-semibold text-text-primary">
-              {session.instructors?.full_name ?? "—"}
-            </dd>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-background/40 px-3 py-2.5">
-            <dt className="text-[10px] font-medium tracking-wide text-text-secondary uppercase">Date &amp; Time</dt>
-            <dd className="mt-0.5 text-body font-semibold text-text-primary">
-              {formatDate(session.session_date)}, {formatTime(session.start_time)} – {formatTime(session.end_time)}
-            </dd>
-          </div>
-        </dl>
-      </section>
+      <Panel>
+        <PanelHeader icon={Layers} title="Session Details" className="mb-4 min-h-8" />
+        <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+          <FieldRow icon={Layers} label="Batch">
+            <FieldValue>{session.batches?.name ?? "—"}</FieldValue>
+          </FieldRow>
+          <FieldRow icon={UserRound} label="Instructor">
+            <FieldValue>{session.instructors?.full_name ?? "—"}</FieldValue>
+          </FieldRow>
+          <FieldRow icon={CalendarDays} label="Date">
+            <FieldValue>{formatDateWithWeekday(session.session_date)}</FieldValue>
+          </FieldRow>
+          <FieldRow icon={Clock} label="Time">
+            <FieldValue>{formatTimeRange(session.start_time, session.end_time)}</FieldValue>
+          </FieldRow>
+        </div>
+      </Panel>
 
       {feedback ? (
         <p role="alert" className="rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-body text-danger">
@@ -252,54 +250,42 @@ export default function ReviewAttendanceChanges({
 
       {hasChanges ? (
         <>
-          <section className="rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
-            <h2 className="text-body font-semibold text-text-primary">
-              Changes to Review ({changes.length})
-            </h2>
-            <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl border border-border">
+          <Panel>
+            <PanelHeader
+              icon={ClipboardCheck}
+              title={`Changes to Review (${changes.length})`}
+              className="mb-4 min-h-8"
+            />
+            <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
               {changes.map(({ student, before, after }) => (
                 <li
                   key={student.id}
-                  className="flex flex-col gap-2 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                  className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                 >
-                  <p className="text-body font-semibold text-text-primary">{student.full_name}</p>
+                  <p className="text-body font-semibold break-words text-text-primary">{student.full_name}</p>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={statusBadgeVariant(before)} className="rounded-full px-2 py-0">
-                      <span className="text-[10px] leading-[14px] font-medium">{statusLabel(before)}</span>
-                    </Badge>
+                    <Badge variant={statusBadgeVariant(before)}>{statusLabel(before)}</Badge>
                     <span className="text-small text-text-secondary" aria-hidden="true">
                       →
                     </span>
-                    <Badge variant={statusBadgeVariant(after)} className="rounded-full px-2 py-0">
-                      <span className="text-[10px] leading-[14px] font-medium">{statusLabel(after)}</span>
-                    </Badge>
+                    <Badge variant={statusBadgeVariant(after)}>{statusLabel(after)}</Badge>
                   </div>
                 </li>
               ))}
             </ul>
-          </section>
+          </Panel>
 
-          <section className="rounded-2xl border border-border/70 bg-surface p-4 shadow-xs sm:p-5">
-            <h2 className="text-body font-semibold text-text-primary">Comparative View</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-border/60 bg-background/40 px-3.5 py-3">
-                <p className="text-[10px] font-medium tracking-wide text-text-secondary uppercase">Current</p>
-                <p className="mt-1 text-body text-text-primary">
-                  <span className="font-semibold text-success">{originalSummary.presentCount}</span> Present ·{" "}
-                  <span className="font-semibold text-danger">{originalSummary.absentCount}</span> Absent ·{" "}
-                  <span className="font-semibold text-brand">{originalSummary.percentage}%</span>
-                </p>
-              </div>
-              <div className="rounded-xl border border-brand/20 bg-brand/5 px-3.5 py-3">
-                <p className="text-[10px] font-medium tracking-wide text-text-secondary uppercase">After Changes</p>
-                <p className="mt-1 text-body text-text-primary">
-                  <span className="font-semibold text-success">{afterSummary.presentCount}</span> Present ·{" "}
-                  <span className="font-semibold text-danger">{afterSummary.absentCount}</span> Absent ·{" "}
-                  <span className="font-semibold text-brand">{afterSummary.percentage}%</span>
-                </p>
-              </div>
+          <Panel>
+            <PanelHeader icon={Repeat2} title="Comparative View" className="mb-4 min-h-8" />
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+              <FieldRow icon={History} label="Current">
+                <SummaryLine summary={originalSummary} />
+              </FieldRow>
+              <FieldRow icon={ClipboardCheck} label="After Changes">
+                <SummaryLine summary={afterSummary} />
+              </FieldRow>
             </div>
-          </section>
+          </Panel>
 
           <p className="text-small max-w-2xl text-text-secondary">
             This change updates attendance for this class session only. Historical session and schedule
@@ -307,12 +293,7 @@ export default function ReviewAttendanceChanges({
           </p>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-            <Button
-              variant="outline"
-              disabled={isPending}
-              render={<Link href={`/attendance-history/${scheduleId}/${date}/edit`} />}
-              nativeButton={false}
-            >
+            <Button variant="outline" disabled={isPending} render={<Link href={editHref} />} nativeButton={false}>
               Back to Edit Attendance
             </Button>
             <Button type="button" disabled={isPending} onClick={handleConfirmSave}>
@@ -321,14 +302,14 @@ export default function ReviewAttendanceChanges({
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center gap-4 rounded-card border border-dashed border-border bg-surface px-6 py-16 text-center">
-          <p className="text-body max-w-sm text-text-secondary">
-            No attendance changes to review. Nothing will be saved.
-          </p>
-          <Button variant="outline" render={<Link href={`/attendance-history/${scheduleId}/${date}/edit`} />} nativeButton={false}>
-            Back to Edit Attendance
-          </Button>
-        </div>
+        <EmptyState
+          description="No attendance changes to review. Nothing will be saved."
+          action={
+            <Button variant="outline" render={<Link href={editHref} />} nativeButton={false}>
+              Back to Edit Attendance
+            </Button>
+          }
+        />
       )}
     </div>
   );

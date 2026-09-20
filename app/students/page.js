@@ -115,7 +115,7 @@ export default async function StudentsPage({ searchParams }) {
       </KpiStrip>
 
       <StudentFilters
-        key={`${q}:${status}:${batchId}:${membershipFilter}`}
+        key={`${status}:${batchId}:${membershipFilter}`}
         defaultQuery={q}
         defaultStatus={status}
         defaultBatchId={batchId || "all"}

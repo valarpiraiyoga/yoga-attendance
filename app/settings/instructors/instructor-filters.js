@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import SearchInput from "@/components/ui/search-input";
+import { useLiveSearch } from "@/components/ui/use-live-search";
 import ViewSwitcher from "@/components/ui/view-switcher";
 import { FilterBar, FilterChips, FilterSheet, FilterSection } from "@/components/ui/filter-bar";
 import { ListToolbar } from "@/components/layout/list-page";
@@ -46,7 +47,7 @@ export default function InstructorFilters({ defaultQuery, defaultStatus, view })
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(defaultQuery);
+  const { query, setQuery, searchFor } = useLiveSearch(defaultQuery);
   const [status, setStatus] = useState(defaultStatus);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -67,11 +68,9 @@ export default function InstructorFilters({ defaultQuery, defaultStatus, view })
   }
 
   function applySearch(event) {
+    // Results already follow the field as it is typed; Enter only must not
+    // submit the form natively.
     event.preventDefault();
-    pushParams((params) => {
-      if (query.trim()) params.set("q", query.trim());
-      else params.delete("q");
-    });
   }
 
   function applyFilters(event) {
@@ -123,7 +122,8 @@ export default function InstructorFilters({ defaultQuery, defaultStatus, view })
           <SearchInput
             id="instructor-search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => searchFor(event.target.value)}
+            onClear={() => searchFor("")}
             placeholder="Search by instructor name"
           />
         </form>

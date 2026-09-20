@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Eye } from "lucide-react";
+import Avatar from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -55,6 +56,7 @@ export default function HistoryTableRow({ session, variant = "admin", hideBatch 
 
   const summary = session.attendanceSummary;
   const instructorName = session.instructors?.full_name ?? null;
+  const instructorPhotoUrl = session.instructors?.photo_url ?? null;
   const batchName = session.batches?.name ?? "—";
   const detailsHref = `/attendance-history/${session.schedule_id}/${session.session_date}`;
 
@@ -81,12 +83,16 @@ export default function HistoryTableRow({ session, variant = "admin", hideBatch 
       {variant === "admin" ? (
         <TableCell className="px-5 py-3.5">
           <span className="inline-flex min-w-0 items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-[10px] font-semibold leading-none text-brand"
-            >
-              {instructorName ? getInitials(instructorName) : "?"}
-            </span>
+            {instructorPhotoUrl ? (
+              <Avatar name={instructorName} src={instructorPhotoUrl} className="size-7" />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-[10px] font-semibold leading-none text-brand"
+              >
+                {instructorName ? getInitials(instructorName) : "?"}
+              </span>
+            )}
             <span className="truncate text-text-secondary">{instructorName || "—"}</span>
           </span>
         </TableCell>

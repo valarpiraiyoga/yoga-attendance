@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Eye } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -49,7 +49,7 @@ export default function MembershipTableRow({ membership, today }) {
       <TableCell>
         {student ? (
           <div className="flex min-w-0 items-center gap-3">
-            <Avatar name={student.full_name} />
+            <Avatar name={student.full_name} src={student.photo_url} />
             <div className="min-w-0">
               <p className="font-medium text-text-primary">{student.full_name}</p>
               <p className="text-small text-text-secondary">{student.student_code}</p>
@@ -78,11 +78,11 @@ export default function MembershipTableRow({ membership, today }) {
             variant="ghost"
             size="icon-sm"
             className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`View membership ${membership.membership_code}`}
-            render={<Link href={`/memberships/${membership.id}`} />}
+            aria-label={`View receipt for ${membership.membership_code}`}
+            render={<Link href={`/memberships/${membership.id}/receipt`} />}
             nativeButton={false}
           >
-            <Eye className="size-4" aria-hidden="true" />
+            <Receipt className="size-4" aria-hidden="true" />
           </Button>
           <MembershipCardMenu
             membershipId={membership.id}

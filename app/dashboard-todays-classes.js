@@ -147,9 +147,7 @@ function MetaDivider() {
 
 function StatusPill({ status }) {
   return (
-    <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS[status]} className="px-1.5 py-0">
-      <span className="text-[10px] leading-[14px] font-medium">{DISPLAY_STATUS_LABELS[status]}</span>
-    </Badge>
+    <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS[status]}>{DISPLAY_STATUS_LABELS[status]}</Badge>
   );
 }
 

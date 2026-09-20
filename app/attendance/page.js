@@ -212,7 +212,7 @@ export default async function AttendancePage({ searchParams }) {
         ) : (
           <>
             <AttendanceFilters
-              key={`today:${q}:${batchId}:${instructorId}:${status}`}
+              key={`today:${batchId}:${instructorId}:${status}`}
               mode="today"
               defaultQuery={q}
               defaultBatchId={batchId || "all"}
@@ -292,7 +292,7 @@ export default async function AttendancePage({ searchParams }) {
       <AttendanceViewToggle active="all" />
 
       <AttendanceFilters
-        key={`all:${q}:${dateFrom}:${dateTo}:${batchId}:${instructorId}:${status}`}
+        key={`all:${dateFrom}:${dateTo}:${batchId}:${instructorId}:${status}`}
         mode="all"
         defaultQuery={q}
         defaultDateFrom={dateFrom}

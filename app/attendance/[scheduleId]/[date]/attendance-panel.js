@@ -2,12 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, CircleCheck, CircleMinus, CircleX, Users, X } from "lucide-react";
+import { CircleCheck, CircleMinus, CircleX, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import EmptyState from "@/components/ui/empty-state";
+import MarkButton from "@/components/ui/mark-button";
 import SearchInput from "@/components/ui/search-input";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import {
@@ -39,39 +40,6 @@ const STATUS_BADGE = {
 };
 
 const ROW_TONE = { present: "bg-success/5 hover:bg-success/5", absent: "bg-danger/5 hover:bg-danger/5" };
-
-/**
- * One Present / Absent toggle. Selection is never colour-only: the selected
- * button is filled, carries a check / cross icon and `aria-pressed`.
- */
-function MarkButton({ status, selected, studentName, disabled, onSelect }) {
-  const isPresent = status === "present";
-  const Icon = isPresent ? Check : X;
-
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      aria-pressed={selected}
-      aria-label={`${isPresent ? "Present" : "Absent"}: ${studentName}`}
-      onClick={onSelect}
-      disabled={disabled}
-      className={cn(
-        "h-9 px-2.5 sm:min-w-24 sm:px-3",
-        selected
-          ? isPresent
-            ? "border-success bg-success text-surface hover:bg-success/90 hover:text-surface"
-            : "border-danger bg-danger text-surface hover:bg-danger/90 hover:text-surface"
-          : isPresent
-            ? "border-border bg-surface text-text-secondary hover:border-success/40 hover:text-success"
-            : "border-border bg-surface text-text-secondary hover:border-danger/40 hover:text-danger"
-      )}
-    >
-      {selected ? <Icon className="size-4" aria-hidden="true" /> : null}
-      {isPresent ? "Present" : "Absent"}
-    </Button>
-  );
-}
 
 /**
  * Session Details' Attendance tab — the Take / View / Edit Attendance view:
@@ -184,7 +152,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
         <StatTile icon={Users} label="Eligible" value={summary.eligibleCount} tone="brand" />
         <StatTile icon={CircleCheck} label="Present" value={summary.presentCount} tone="success" />
         <StatTile icon={CircleX} label="Absent" value={summary.absentCount} tone="danger" />
-        <StatTile icon={CircleMinus} label="Not Taken" value={summary.unmarkedCount} tone="warning" />
+        <StatTile icon={CircleMinus} label="Unmarked" value={summary.unmarkedCount} tone="warning" />
       </StatTileGroup>
 
       {savedMessage ? (
@@ -222,6 +190,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
                 placeholder="Search students"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onClear={() => setQuery("")}
                 className="sm:max-w-xs"
               />
               <div className="flex flex-wrap gap-2">
@@ -262,7 +231,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
                   <TableBody>
                     {visibleStudents.map(({ student, position }) => {
                       const status = marks[student.id];
-                      const badge = STATUS_BADGE[status] ?? { label: "Not Taken", variant: "neutral" };
+                      const badge = STATUS_BADGE[status] ?? { label: "Unmarked", variant: "neutral" };
 
                       return (
                         <TableRow key={student.id} className={cn(ROW_TONE[status])}>
@@ -369,7 +338,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
             <dd className="text-body font-medium text-danger">{summary.absentCount}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-body text-text-secondary">Not Taken</dt>
+            <dt className="text-body text-text-secondary">Unmarked</dt>
             <dd className="text-body font-medium text-warning">{summary.unmarkedCount}</dd>
           </div>
         </dl>

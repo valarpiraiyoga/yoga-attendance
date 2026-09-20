@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowRight, Calendar, CircleCheck, Clock, Layers, Users } from "lucide-react";
+import { Calendar, CircleCheck, Clock, Layers, Users } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import Container from "@/components/layout/Container";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import { requireUser, ROLES } from "@/lib/auth/dal";
 import { listSessionsForDate, listSessions } from "@/lib/class-sessions/data";
 import { todayInCentreTimezone, CENTRE_TIMEZONE } from "@/lib/class-sessions/validation";
@@ -116,56 +117,6 @@ async function withAttendanceSummaries(sessions) {
   return sessions.map((session, index) => ({ ...session, attendanceSummary: summaries[index] }));
 }
 
-const STAT_TONES = {
-  brand: {
-    card: "bg-gradient-to-br from-brand to-brand/70",
-    icon: "text-brand",
-  },
-  warning: {
-    card: "bg-gradient-to-br from-warning to-warning/70",
-    icon: "text-warning",
-  },
-  info: {
-    card: "bg-gradient-to-br from-info to-info/70",
-    icon: "text-info",
-  },
-  success: {
-    card: "bg-gradient-to-br from-success to-success/70",
-    icon: "text-success",
-  },
-};
-
-function StatTile({ label, value, caption, icon: Icon, tone = "brand" }) {
-  const palette = STAT_TONES[tone] ?? STAT_TONES.brand;
-
-  return (
-    <div
-      className={`relative flex h-full min-h-36 flex-col overflow-hidden rounded-2xl p-4 shadow-sm ${palette.card}`}
-    >
-      <svg
-        className="pointer-events-none absolute -right-6 -bottom-8 size-36 text-white/20"
-        viewBox="0 0 120 120"
-        aria-hidden="true"
-      >
-        <path fill="currentColor" d="M0 120c18-28 38-22 58-38 22-18 28-42 62-52v90H0Z" />
-      </svg>
-
-      <div className="relative flex items-start justify-between">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface shadow-xs">
-          <Icon className={`size-4 ${palette.icon}`} aria-hidden="true" />
-        </span>
-        <ArrowRight className="size-4 text-white/80" aria-hidden="true" />
-      </div>
-
-      <div className="relative mt-auto min-w-0 pt-6">
-        <dt className="text-small font-medium tracking-wider text-white/85 uppercase">{label}</dt>
-        <dd className="text-page-title mt-1 font-semibold tracking-tight text-white">{value}</dd>
-        {caption ? <p className="text-small mt-1 text-white/80">{caption}</p> : null}
-      </div>
-    </div>
-  );
-}
-
 const SECTION_FRAME = "rounded-card border border-border bg-surface p-4 shadow-xs sm:p-6";
 
 function DashboardSection({ children, className, ...props }) {
@@ -188,18 +139,21 @@ function EmptyState({ children }) {
 function DashboardSkeleton({ isAdmin }) {
   return (
     <div className="flex flex-col gap-8" aria-busy="true" aria-label="Loading dashboard" role="status">
-        <dl className={`grid grid-cols-2 gap-3 ${isAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
-          {(isAdmin ? [0, 1, 2, 3] : [0, 1, 2]).map((tile) => (
-            <div key={tile} className="relative min-h-36 overflow-hidden rounded-2xl bg-neutral/20 p-4 shadow-sm">
-              <Skeleton className="size-9 rounded-lg" />
-              <div className="mt-8 min-w-0">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="mt-2 h-7 w-12" />
-                <Skeleton className="mt-2 h-3 w-28" />
-              </div>
+      <StatTileGroup columns={isAdmin ? 4 : 3} ariaLabel="Loading summary" className="grid-cols-1 sm:grid-cols-2">
+        {(isAdmin ? [0, 1, 2, 3] : [0, 1, 2]).map((tile) => (
+          <div
+            key={tile}
+            className="flex min-w-0 items-center gap-3 rounded-card border border-border bg-surface p-4 shadow-xs"
+          >
+            <Skeleton className="size-10 shrink-0 rounded-lg" />
+            <div className="min-w-0">
+              <Skeleton className="h-4.5 w-24" />
+              <Skeleton className="h-8 w-12" />
+              <Skeleton className="h-4.5 w-28" />
             </div>
-          ))}
-        </dl>
+          </div>
+        ))}
+      </StatTileGroup>
 
       <DashboardSection>
         <Skeleton className="h-5 w-40" />
@@ -269,8 +223,9 @@ async function DashboardContent({ isAdmin, today }) {
   return (
     <div className="flex flex-col gap-8">
       {isAdmin ? (
-        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Summary">
+        <StatTileGroup ariaLabel="Summary" className="grid-cols-1 sm:grid-cols-2">
           <StatTile
+            decorativeChart
             label="Active Students"
             value={activeStudentCount}
             caption="Currently enrolled"
@@ -278,6 +233,7 @@ async function DashboardContent({ isAdmin, today }) {
             tone="brand"
           />
           <StatTile
+            decorativeChart
             label="Active Batches"
             value={activeBatchCount}
             caption="Ongoing batches"
@@ -285,6 +241,7 @@ async function DashboardContent({ isAdmin, today }) {
             tone="info"
           />
           <StatTile
+            decorativeChart
             label="Today's Classes"
             value={totalToday}
             caption="Scheduled for today"
@@ -292,16 +249,18 @@ async function DashboardContent({ isAdmin, today }) {
             tone="warning"
           />
           <StatTile
+            decorativeChart
             label="Attendance Marked"
             value={`${attendanceMarkedCount} / ${totalToday}`}
             caption="Marked today"
             icon={CircleCheck}
             tone="success"
           />
-        </dl>
+        </StatTileGroup>
       ) : (
-        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-3" aria-label="Summary">
+        <StatTileGroup columns={3} ariaLabel="Summary" className="grid-cols-1 sm:grid-cols-2">
           <StatTile
+            decorativeChart
             label="Today's Classes"
             value={totalToday}
             caption="Scheduled for today"
@@ -309,6 +268,7 @@ async function DashboardContent({ isAdmin, today }) {
             tone="warning"
           />
           <StatTile
+            decorativeChart
             label="Completed"
             value={attendanceMarkedCount}
             caption="Marked today"
@@ -316,13 +276,14 @@ async function DashboardContent({ isAdmin, today }) {
             tone="success"
           />
           <StatTile
+            decorativeChart
             label="Remaining"
             value={totalToday - attendanceMarkedCount}
             caption="Still scheduled"
             icon={Clock}
             tone="info"
           />
-        </dl>
+        </StatTileGroup>
       )}
 
       <DashboardTodaysClasses

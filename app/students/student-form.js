@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import ProfilePhotoField, { useProfilePhoto } from "@/components/ui/profile-photo-field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -42,20 +43,29 @@ const BLUR_VALIDATED_FIELDS = new Set([
  * from Student Details, not a field on this form — see
  * app/students/[id]/deactivate-student.js.
  *
- * No Profile Photo control: no upload mechanism exists yet (no Storage
- * bucket, no upload UI) — deferred, matching how Instructor Photo was
- * explicitly deferred in Phase 9. `students.photo_url` exists in the schema
- * for forward compatibility only.
+ * The Profile Photo (optional) is the shared `ProfilePhotoField`. The chosen
+ * file rides in the same form action as the other fields
+ * (`useProfilePhoto().appendTo`), is only uploaded when the form is saved, and
+ * a failed save keeps the selection.
  */
 export default function StudentForm({ action, student, submitLabel, pendingLabel }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const [fieldErrors, setFieldErrors] = useState(state?.fieldErrors ?? {});
   const [gender, setGender] = useState(student?.gender ?? "");
+  const [fullName, setFullName] = useState(student?.full_name ?? "");
+  const { photo, setPhoto, appendTo } = useProfilePhoto();
 
   const [prevState, setPrevState] = useState(state);
   if (state !== prevState) {
     setPrevState(state);
     setFieldErrors(state?.fieldErrors ?? {});
+  }
+
+  // React resets the form's DOM inputs when an action runs, so the photo
+  // (kept in state, not in a named input) is added to the submission here.
+  function submitForm(formData) {
+    appendTo(formData);
+    formAction(formData);
   }
 
   function handlePhoneInput(event) {
@@ -90,7 +100,7 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
   const cancelHref = student ? `/students/${student.id}` : "/students";
 
   return (
-    <form action={formAction} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
+    <form action={submitForm} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
       {state?.error ? (
         <p
           role="alert"
@@ -99,6 +109,15 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
           {state.error}
         </p>
       ) : null}
+
+      <ProfilePhotoField
+        name={fullName}
+        currentUrl={student?.photo_url ?? null}
+        photo={photo}
+        onChange={setPhoto}
+        error={fieldErrors.photo}
+        disabled={isPending}
+      />
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
@@ -110,6 +129,7 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
             required
             disabled={isPending}
             defaultValue={state?.values?.full_name ?? student?.full_name ?? ""}
+            onChange={(event) => setFullName(event.target.value)}
             placeholder="Enter student's full name"
             aria-invalid={Boolean(fieldErrors.full_name)}
             aria-describedby={fieldErrors.full_name ? "full_name-error" : undefined}

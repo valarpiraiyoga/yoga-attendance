@@ -5,7 +5,7 @@ import UserMenu from "@/components/global/UserMenu";
 
 export default function Header({ role, user }) {
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-4 md:px-6">
+    <header className="flex h-12 shrink-0 print:hidden items-center justify-between border-b border-border bg-surface px-4 md:px-6">
       <div className="flex items-center gap-3">
         <MobileMenu role={role} />
       </div>

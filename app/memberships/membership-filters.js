@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import SearchInput from "@/components/ui/search-input";
+import { useLiveSearch } from "@/components/ui/use-live-search";
 import ViewSwitcher from "@/components/ui/view-switcher";
 import { FilterBar, FilterChips, FilterSheet, FilterSection } from "@/components/ui/filter-bar";
 import { ListToolbar } from "@/components/layout/list-page";
@@ -51,9 +52,13 @@ function optionLabel(options, value) {
 /**
  * Search + Filters + Cards/Table toggle in one toolbar row (the same
  * composition as `StudentFilters`). Search is independent of the filter
- * drawer. Filter apply/clear still writes the same `q` / `plan` / `payment`
- * / `status` / `from` / `to` URL params as before (keyed remount from the
- * page); view switching is a plain URL change.
+ * drawer and live: every keystroke writes the `q` URL param (replacing the
+ * history entry, so typing does not pile up back-button steps), and the
+ * server re-runs the same `listMemberships` search, so filtering, sorting and
+ * pagination stay server-side. The X clears only `q`. Filter apply/clear still
+ * writes the same `plan` / `payment` / `status` / `from` / `to` URL params
+ * (keyed remount from the page, which no longer includes `q` so the field
+ * keeps its focus while results update); view switching is a plain URL change.
  *
  * From Date / To Date both filter Membership Start Date (02-ux.md
  * "Memberships list filters"), not End Date.
@@ -70,7 +75,7 @@ export default function MembershipFilters({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(defaultQuery);
+  const { query, setQuery, searchFor } = useLiveSearch(defaultQuery);
   const [plan, setPlan] = useState(defaultPlan);
   const [paymentStatus, setPaymentStatus] = useState(defaultPaymentStatus);
   const [membershipStatus, setMembershipStatus] = useState(defaultMembershipStatus);
@@ -106,14 +111,9 @@ export default function MembershipFilters({
   }
 
   function applySearch(event) {
+    // Results already follow the field as it is typed; Enter only must not
+    // submit the form natively.
     event.preventDefault();
-    pushParams((params) => {
-      if (query.trim()) {
-        params.set("q", query.trim());
-      } else {
-        params.delete("q");
-      }
-    });
   }
 
   function applyFilters(event) {
@@ -211,7 +211,8 @@ export default function MembershipFilters({
           <SearchInput
             id="membership-search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => searchFor(event.target.value)}
+            onClear={() => searchFor("")}
             placeholder="Search student or membership ID"
           />
         </form>

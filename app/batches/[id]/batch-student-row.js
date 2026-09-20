@@ -39,7 +39,7 @@ export default function BatchStudentRow({ enrollment }) {
     >
       <TableCell>
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={name} />
+          <Avatar name={name} src={student?.photo_url} />
           <div className="min-w-0">
             <p className="font-semibold text-text-primary">{name}</p>
             {student?.student_code ? <p className="text-small text-text-secondary">{student.student_code}</p> : null}

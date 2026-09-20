@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import Avatar from "@/components/ui/avatar";
+import MarkButton from "@/components/ui/mark-button";
 import { validateAttendanceMarks } from "@/lib/attendance/validation";
 import { cn } from "@/lib/utils";
 
@@ -11,16 +13,6 @@ const PAGE_SIZE = 10;
 
 export function pendingReviewStorageKey(scheduleId, date) {
   return `attendance-history:pending-review:${scheduleId}:${date}`;
-}
-
-function getInitials(name) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 }
 
 function marksToMap(marks) {
@@ -32,8 +24,8 @@ function marksToMap(marks) {
 }
 
 /**
- * Edit Attendance roster — Present/Absent controls match Attendance marking
- * screen. Nothing is saved here; Review Changes hands off via sessionStorage.
+ * Edit Attendance roster — the shared `MarkButton` Present/Absent controls
+ * (the same ones Take Attendance uses) and the shared `Avatar`. Nothing is saved here; Review Changes hands off via sessionStorage.
  */
 export default function EditAttendanceForm({ scheduleId, date, students, initialMarks }) {
   const router = useRouter();
@@ -114,12 +106,7 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
               )}
             >
               <div className="flex min-w-0 items-center gap-3">
-                <span
-                  aria-hidden="true"
-                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-small font-semibold text-brand"
-                >
-                  {getInitials(student.full_name)}
-                </span>
+                <Avatar name={student.full_name} />
                 <div className="min-w-0">
                   <p className="truncate text-body font-semibold text-text-primary">{student.full_name}</p>
                   <p className="text-small truncate text-text-secondary">
@@ -130,36 +117,20 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
               </div>
 
               <div role="group" aria-label={`Attendance for ${student.full_name}`} className="flex w-full gap-2 sm:w-auto">
-                <Button
-                  type="button"
-                  size="sm"
-                  aria-pressed={status === "present"}
-                  onClick={() => setMark(student.id, "present")}
-                  variant="outline"
-                  className={cn(
-                    "h-10 flex-1 sm:min-w-24 sm:flex-none",
-                    status === "present"
-                      ? "border-success bg-success text-surface hover:bg-success/90 hover:text-surface"
-                      : "border-border bg-surface text-text-secondary hover:border-success/40 hover:text-success"
-                  )}
-                >
-                  Present
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  aria-pressed={status === "absent"}
-                  onClick={() => setMark(student.id, "absent")}
-                  variant="outline"
-                  className={cn(
-                    "h-10 flex-1 sm:min-w-24 sm:flex-none",
-                    status === "absent"
-                      ? "border-danger bg-danger text-surface hover:bg-danger/90 hover:text-surface"
-                      : "border-border bg-surface text-text-secondary hover:border-danger/40 hover:text-danger"
-                  )}
-                >
-                  Absent
-                </Button>
+                <MarkButton
+                  status="present"
+                  selected={status === "present"}
+                  studentName={student.full_name}
+                  onSelect={() => setMark(student.id, "present")}
+                  className="flex-1 sm:flex-none"
+                />
+                <MarkButton
+                  status="absent"
+                  selected={status === "absent"}
+                  studentName={student.full_name}
+                  onSelect={() => setMark(student.id, "absent")}
+                  className="flex-1 sm:flex-none"
+                />
               </div>
             </li>
           );

@@ -644,9 +644,14 @@ Plus `app/schedule/schedule-view-toggle.js`, which becomes underline `Tabs`
 
 ### 16.2 Search
 
-One `SearchInput`: leading `Search` icon, `sr-only` label, submit-on-enter
-writes `q` to the URL. Search is **independent of the filter drawer** — this
-existing behaviour is preserved.
+One `SearchInput`: leading `Search` icon, `sr-only` label, and — when the
+caller passes `onClear` — an X "Clear search" button inside the field on the
+right while it has text. Search is **live**: on the URL-driven list pages
+`useLiveSearch` (`components/ui/use-live-search.js`) writes `q` to the URL on
+every keystroke (history entry replaced, `page` reset, other params kept) and
+the server re-runs the same list query; the filters component's page key must
+not include `q`. The X clears only the search text, keeps the filters and keeps
+focus in the field. Search is **independent of the filter drawer**.
 
 ### 16.3 Filters
 

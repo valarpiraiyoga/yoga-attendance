@@ -72,7 +72,7 @@ export default async function AttendanceHistoryPage({ searchParams }) {
       />
 
       <AttendanceHistoryFilters
-        key={`${q}:${dateFrom}:${dateTo}:${batchId}:${instructorId}:${attendanceStatus}`}
+        key={`${dateFrom}:${dateTo}:${batchId}:${instructorId}:${attendanceStatus}`}
         variant={isAdmin ? "admin" : "instructor"}
         layout={layout}
         defaultQuery={q}

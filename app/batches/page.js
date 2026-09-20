@@ -102,7 +102,7 @@ export default async function BatchesPage({ searchParams }) {
         </StatTileGroup>
       </KpiStrip>
 
-      <BatchFilters key={`${q}:${status}`} defaultQuery={q} defaultStatus={status} view={view} />
+      <BatchFilters key={status} defaultQuery={q} defaultStatus={status} view={view} />
 
       {batches.length === 0 ? (
         <EmptyState
