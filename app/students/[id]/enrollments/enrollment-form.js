@@ -59,6 +59,10 @@ function scheduleLabel(schedule) {
  * no date and shows no add/remove summary — this is the no-op path, and
  * the server (`updateEnrollment`) writes nothing for it either.
  *
+ * `guided` (Add Student flow, step 3) only adds a hidden `guided=1` field so
+ * `createEnrollment` can send the admin to the flow's completion screen; the
+ * form's fields, validation and Review step are the same either way.
+ *
  * Status is edit-only, mirroring Instructor/Batch forms: `enrollment`
  * being present signals edit mode and gates both the Status field and the
  * schedule-change-date field.
@@ -70,6 +74,7 @@ export default function EnrollmentForm({
   currentSchedules,
   assignedSchedules,
   todayDate,
+  guided = false,
   submitLabel,
   pendingLabel,
   cancelHref,
@@ -228,6 +233,8 @@ export default function EnrollmentForm({
         className="flex flex-col gap-5"
         noValidate
       >
+        {guided ? <input type="hidden" name="guided" value="1" /> : null}
+
         {state?.error ? (
           <p
             role="alert"

@@ -38,7 +38,7 @@ export default async function NewStudentMembershipPage({ params, searchParams })
   const createMembershipForStudent = createMembership.bind(null, id, isGuided ? "guided" : "student");
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={isGuided ? "mx-auto max-w-4xl" : "mx-auto max-w-3xl"}>
       <Link
         href={`/students/${id}`}
         className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
@@ -55,7 +55,9 @@ export default async function NewStudentMembershipPage({ params, searchParams })
 
       {isGuided ? <GuidedSteps current={2} /> : null}
 
-      <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
+      <div
+        className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8" : "mt-6"}`}
+      >
         <MembershipForm
           action={createMembershipForStudent}
           student={student}

@@ -38,6 +38,7 @@ import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
 import { formatAmount, formatDate, formatTimeRange } from "@/lib/format";
 import { ENTITY_STATUS, MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import DeactivateStudent from "@/app/students/[id]/deactivate-student";
+import GuidedComplete from "@/app/students/guided-complete";
 
 const SUCCESS_MESSAGES = {
   updated: "Student updated successfully.",
@@ -105,6 +106,18 @@ export default async function StudentDetailsPage({ params, searchParams }) {
   );
   const rawParams = await searchParams;
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
+
+  // The Add Student guided flow's finish (`createEnrollment` redirects here
+  // with `?guided=1`): show its completion screen instead of the details.
+  if (rawParams?.guided === "1" && rawParams?.success === "enrollment_added") {
+    return (
+      <GuidedComplete
+        student={student}
+        membership={currentMembership}
+        enrollment={enrollments.find((enrollment) => enrollment.status === "active") ?? enrollments[0]}
+      />
+    );
+  }
   const activeEnrollmentCount = enrollments.filter((enrollment) => enrollment.status === "active").length;
   const studentStatus = ENTITY_STATUS[student.status] ?? ENTITY_STATUS.inactive;
   const membershipStatus = currentMembership

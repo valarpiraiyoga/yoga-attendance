@@ -17,7 +17,7 @@ export default async function NewStudentPage() {
   await requireRole(ROLES.ADMIN);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-4xl">
       <Link
         href="/students"
         className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
@@ -33,7 +33,7 @@ export default async function NewStudentPage() {
 
       <GuidedSteps current={1} />
 
-      <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+      <div className="rounded-card border border-border bg-surface p-6 shadow-xs sm:p-8">
         <StudentForm action={createStudent} submitLabel="Save Student" pendingLabel="Saving…" />
       </div>
     </div>

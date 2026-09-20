@@ -69,7 +69,7 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
   const createEnrollmentForStudent = createEnrollment.bind(null, id);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={isGuided ? "mx-auto max-w-4xl" : "mx-auto max-w-3xl"}>
       <Link
         href={`/students/${id}`}
         className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
@@ -85,7 +85,9 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
 
       {isGuided ? <GuidedSteps current={3} /> : null}
 
-      <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
+      <div
+        className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8" : "mt-6"}`}
+      >
         <div className={isGuided ? "mb-6 grid gap-4 sm:grid-cols-2" : "mb-6"}>
           <div className="flex flex-col gap-1 rounded-lg border border-border bg-background/60 p-3">
             {isGuided ? (
@@ -131,6 +133,7 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
           batchOptions={batchOptions}
           currentSchedules={currentSchedules}
           todayDate={todayDateString()}
+          guided={isGuided}
           submitLabel="Save Enrollment"
           pendingLabel="Saving…"
           cancelHref={`/students/${id}`}
