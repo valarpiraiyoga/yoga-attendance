@@ -1,23 +1,29 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { Check, CircleCheck, CircleMinus, CircleX, Users, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Avatar from "@/components/ui/avatar";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import EmptyState from "@/components/ui/empty-state";
+import SearchInput from "@/components/ui/search-input";
+import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { saveSessionAttendance } from "@/lib/attendance/actions";
 import { computeAttendanceSummary } from "@/lib/attendance/validation";
 import { todayInCentreTimezone } from "@/lib/class-sessions/validation";
+import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-function getInitials(name) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
 
 function marksToMap(marks) {
   const map = {};
@@ -27,10 +33,57 @@ function marksToMap(marks) {
   return map;
 }
 
+const STATUS_BADGE = {
+  present: { label: "Present", variant: "success" },
+  absent: { label: "Absent", variant: "danger" },
+};
+
+const ROW_TONE = { present: "bg-success/5 hover:bg-success/5", absent: "bg-danger/5 hover:bg-danger/5" };
+
 /**
- * Session Details' Attendance tab — Take / View / Edit Attendance.
- * Behaviour unchanged; presentation prioritises fast scanning and clear
- * Present / Absent / Unmarked distinction.
+ * One Present / Absent toggle. Selection is never colour-only: the selected
+ * button is filled, carries a check / cross icon and `aria-pressed`.
+ */
+function MarkButton({ status, selected, studentName, disabled, onSelect }) {
+  const isPresent = status === "present";
+  const Icon = isPresent ? Check : X;
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      aria-pressed={selected}
+      aria-label={`${isPresent ? "Present" : "Absent"}: ${studentName}`}
+      onClick={onSelect}
+      disabled={disabled}
+      className={cn(
+        "h-9 px-2.5 sm:min-w-24 sm:px-3",
+        selected
+          ? isPresent
+            ? "border-success bg-success text-surface hover:bg-success/90 hover:text-surface"
+            : "border-danger bg-danger text-surface hover:bg-danger/90 hover:text-surface"
+          : isPresent
+            ? "border-border bg-surface text-text-secondary hover:border-success/40 hover:text-success"
+            : "border-border bg-surface text-text-secondary hover:border-danger/40 hover:text-danger"
+      )}
+    >
+      {selected ? <Icon className="size-4" aria-hidden="true" /> : null}
+      {isPresent ? "Present" : "Absent"}
+    </Button>
+  );
+}
+
+/**
+ * Session Details' Attendance tab — the Take / View / Edit Attendance view:
+ * the four attendance StatTiles, the students panel (search, Present / Absent
+ * per student) and the save area. Behaviour is unchanged — the same marks
+ * state, Mark All Present, `saveSessionAttendance`, and the review dialog
+ * before a completed session's marks are changed. The session's own header
+ * and summary panel are rendered above by `session-header.js`.
+ *
+ * The attendance data model stores only Present / Absent per student
+ * (0011_attendance.sql), so there is no per-student note field and no
+ * notification option here.
  */
 export default function AttendancePanel({ session, scheduleId, date, eligibleStudents, initialMarks }) {
   const today = todayInCentreTimezone();
@@ -41,6 +94,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
   const [marks, setMarks] = useState(() => marksToMap(initialMarks ?? []));
   const [editing, setEditing] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [feedback, setFeedback] = useState(null);
   const [savedMessage, setSavedMessage] = useState(null);
   const [isPending, startTransition] = useTransition();
@@ -54,28 +108,33 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
     [marks, eligibleStudents.length]
   );
 
-  if (isException) {
+  if (isException || isFuture) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-background/40 px-6 py-16 text-center">
-        <p className="text-body max-w-sm text-text-secondary">
-          This session is marked {session.status === "cancelled" ? "Cancelled" : "Holiday"}. Cancelled and
-          Holiday sessions do not have attendance.
-        </p>
-      </div>
-    );
-  }
-
-  if (isFuture) {
-    return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-background/40 px-6 py-16 text-center">
-        <p className="text-body max-w-sm text-text-secondary">
-          Attendance cannot be taken until this session&rsquo;s date.
-        </p>
-      </div>
+      <Panel>
+        <EmptyState
+          size="sm"
+          title={isException ? "No attendance for this session" : "Attendance is not open yet"}
+          description={
+            isException
+              ? `This session is marked ${session.status === "cancelled" ? "Cancelled" : "Holiday"}. Cancelled and Holiday sessions do not have attendance.`
+              : "Attendance cannot be taken until this session’s date."
+          }
+        />
+      </Panel>
     );
   }
 
   const showControls = !isCompleted || editing;
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleStudents = eligibleStudents
+    .map((student, index) => ({ student, position: index + 1 }))
+    .filter(
+      ({ student }) =>
+        !normalizedQuery ||
+        [student.full_name, student.student_code, student.phone].some((value) =>
+          String(value ?? "").toLowerCase().includes(normalizedQuery)
+        )
+    );
 
   function setMark(studentId, status) {
     setSavedMessage(null);
@@ -91,6 +150,13 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
       }
       return next;
     });
+  }
+
+  /** Cancel while editing a completed session: drop the unsaved changes. */
+  function cancelEditing() {
+    setMarks(marksToMap(initialMarks ?? []));
+    setFeedback(null);
+    setEditing(false);
   }
 
   function runSave() {
@@ -113,14 +179,13 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <SummaryStat label="Eligible" value={summary.eligibleCount} tone="info" />
-        <SummaryStat label="Present" value={summary.presentCount} tone="success" />
-        <SummaryStat label="Absent" value={summary.absentCount} tone="danger" />
-        <SummaryStat label="Unmarked" value={summary.unmarkedCount} tone="warning" />
-        <SummaryStat label="Attendance" value={`${summary.percentage}%`} tone="brand" />
-      </div>
+    <div className="flex flex-col gap-6">
+      <StatTileGroup ariaLabel="Attendance summary">
+        <StatTile icon={Users} label="Eligible" value={summary.eligibleCount} tone="brand" />
+        <StatTile icon={CircleCheck} label="Present" value={summary.presentCount} tone="success" />
+        <StatTile icon={CircleX} label="Absent" value={summary.absentCount} tone="danger" />
+        <StatTile icon={CircleMinus} label="Not Taken" value={summary.unmarkedCount} tone="warning" />
+      </StatTileGroup>
 
       {savedMessage ? (
         <p role="status" className="rounded-input border border-success/30 bg-success/5 px-3 py-2 text-body text-success">
@@ -133,145 +198,157 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-background/40 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-small text-text-secondary">
-          <span className="font-medium text-text-primary">{eligibleStudents.length}</span> student
-          {eligibleStudents.length === 1 ? "" : "s"} eligible for this session
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {isCompleted && !editing ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setSavedMessage(null);
-                setEditing(true);
-              }}
-              disabled={isPending}
-            >
-              Edit Attendance
-            </Button>
-          ) : null}
-          {showControls && eligibleStudents.length > 0 ? (
-            <Button type="button" size="sm" variant="outline" onClick={markAllPresent} disabled={isPending}>
-              Mark All Present
-            </Button>
-          ) : null}
-          {showControls ? (
-            isCompleted ? (
-              <Button type="button" size="sm" onClick={() => setReviewOpen(true)} disabled={isPending}>
+      <Panel>
+        <PanelHeader
+          icon={Users}
+          title={`Students (${eligibleStudents.length})`}
+          description={showControls ? "Mark each student as Present or Absent." : "Attendance recorded for each student."}
+          className="mb-4 min-h-8"
+        />
+
+        {eligibleStudents.length === 0 ? (
+          <EmptyState
+            size="sm"
+            title="No eligible students"
+            description="No students are eligible for this session. You can still save attendance to mark this session as completed."
+          />
+        ) : (
+          <>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <SearchInput
+                id="take-attendance-search"
+                label="Search students"
+                type="search"
+                placeholder="Search students"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="sm:max-w-xs"
+              />
+              <div className="flex flex-wrap gap-2">
+                {isCompleted && !editing ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSavedMessage(null);
+                      setEditing(true);
+                    }}
+                    disabled={isPending}
+                  >
+                    Edit Attendance
+                  </Button>
+                ) : null}
+                {showControls ? (
+                  <Button type="button" variant="outline" onClick={markAllPresent} disabled={isPending}>
+                    Mark All Present
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            {visibleStudents.length === 0 ? (
+              <EmptyState size="sm" title="No students found" description="No students match your search." />
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-border">
+                <Table aria-label="Student attendance">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="hidden w-12 sm:table-cell">#</TableHead>
+                      <TableHead className="px-3 whitespace-nowrap sm:px-5">Student</TableHead>
+                      <TableHead className="hidden whitespace-nowrap sm:table-cell">Membership</TableHead>
+                      <TableHead className="px-3 whitespace-nowrap sm:px-5">Attendance</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visibleStudents.map(({ student, position }) => {
+                      const status = marks[student.id];
+                      const badge = STATUS_BADGE[status] ?? { label: "Not Taken", variant: "neutral" };
+
+                      return (
+                        <TableRow key={student.id} className={cn(ROW_TONE[status])}>
+                          <TableCell className="hidden tabular-nums text-text-secondary sm:table-cell">{position}</TableCell>
+                          <TableCell className="px-3 sm:px-5">
+                            {/* Below `sm` the avatar and phone are dropped and the membership shows only its
+                                end date under the name, so the Present / Absent controls stay on screen
+                                without sideways scrolling. */}
+                            <div className="flex items-center gap-3 sm:whitespace-nowrap">
+                              <Avatar name={student.full_name} size="sm" className="hidden shrink-0 sm:flex" />
+                              <div className="min-w-0">
+                                <p className="font-semibold text-text-primary">{student.full_name}</p>
+                                <p className="text-small text-text-secondary sm:whitespace-nowrap">
+                                  {student.student_code}
+                                  {student.phone ? <span className="hidden sm:inline"> · {student.phone}</span> : null}
+                                </p>
+                                <p className="text-small text-text-secondary sm:hidden">
+                                  Until {formatDate(student.membership?.end_date)}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden whitespace-nowrap text-text-secondary sm:table-cell">
+                            {formatDate(student.membership?.start_date)} – {formatDate(student.membership?.end_date)}
+                          </TableCell>
+                          <TableCell className="px-3 sm:px-5">
+                            {showControls ? (
+                              <div role="group" aria-label={`Attendance for ${student.full_name}`} className="flex gap-2">
+                                <MarkButton
+                                  status="present"
+                                  selected={status === "present"}
+                                  studentName={student.full_name}
+                                  disabled={isPending}
+                                  onSelect={() => setMark(student.id, "present")}
+                                />
+                                <MarkButton
+                                  status="absent"
+                                  selected={status === "absent"}
+                                  studentName={student.full_name}
+                                  disabled={isPending}
+                                  onSelect={() => setMark(student.id, "absent")}
+                                />
+                              </div>
+                            ) : (
+                              <Badge variant={badge.variant}>{badge.label}</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </>
+        )}
+      </Panel>
+
+      {showControls ? (
+        <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <p className="text-small text-text-secondary">
+            <span className="font-medium text-text-primary">{summary.presentCount + summary.absentCount}</span> of{" "}
+            {summary.eligibleCount} students marked
+          </p>
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+            {isCompleted ? (
+              <Button type="button" variant="outline" onClick={cancelEditing} disabled={isPending}>
+                Cancel
+              </Button>
+            ) : (
+              <Button variant="outline" render={<Link href="/attendance" />} nativeButton={false}>
+                Cancel
+              </Button>
+            )}
+            {isCompleted ? (
+              <Button type="button" onClick={() => setReviewOpen(true)} disabled={isPending}>
                 Save Changes
               </Button>
             ) : (
-              <Button type="button" size="sm" onClick={runSave} disabled={isPending}>
+              <Button type="button" onClick={runSave} disabled={isPending}>
                 {isPending ? "Saving…" : "Save Attendance"}
               </Button>
-            )
-          ) : null}
+            )}
+          </div>
         </div>
-      </div>
-
-      {eligibleStudents.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-background/40 px-6 py-16 text-center">
-          <p className="text-body max-w-sm text-text-secondary">
-            No students are eligible for this session. You can still save attendance to mark this session
-            as completed.
-          </p>
-        </div>
-      ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border" aria-label="Attendance">
-          {eligibleStudents.map((student) => {
-            const status = marks[student.id];
-            const rowTone =
-              status === "present"
-                ? "bg-success/5"
-                : status === "absent"
-                  ? "bg-danger/5"
-                  : "bg-surface";
-
-            return (
-              <li
-                key={student.id}
-                className={cn(
-                  "flex flex-col gap-3 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
-                  rowTone
-                )}
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    aria-hidden="true"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-small font-semibold text-brand"
-                  >
-                    {getInitials(student.full_name)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-body font-semibold text-text-primary">{student.full_name}</p>
-                    <p className="text-small truncate text-text-secondary">
-                      {student.student_code}
-                      {student.phone ? ` · ${student.phone}` : ""}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2 sm:justify-end">
-                  {showControls ? (
-                    <div
-                      role="group"
-                      aria-label={`Attendance for ${student.full_name}`}
-                      className="flex w-full gap-2 sm:w-auto"
-                    >
-                      <Button
-                        type="button"
-                        size="sm"
-                        aria-pressed={status === "present"}
-                        onClick={() => setMark(student.id, "present")}
-                        disabled={isPending}
-                        className={cn(
-                          "h-10 flex-1 sm:min-w-24 sm:flex-none",
-                          status === "present"
-                            ? "border-success bg-success text-surface hover:bg-success/90 hover:text-surface"
-                            : "border-border bg-surface text-text-secondary hover:border-success/40 hover:text-success"
-                        )}
-                        variant="outline"
-                      >
-                        Present
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        aria-pressed={status === "absent"}
-                        onClick={() => setMark(student.id, "absent")}
-                        disabled={isPending}
-                        className={cn(
-                          "h-10 flex-1 sm:min-w-24 sm:flex-none",
-                          status === "absent"
-                            ? "border-danger bg-danger text-surface hover:bg-danger/90 hover:text-surface"
-                            : "border-border bg-surface text-text-secondary hover:border-danger/40 hover:text-danger"
-                        )}
-                        variant="outline"
-                      >
-                        Absent
-                      </Button>
-                    </div>
-                  ) : (
-                    <Badge
-                      variant={
-                        status === "present" ? "success" : status === "absent" ? "danger" : "neutral"
-                      }
-                      className="rounded-full px-2.5 py-0.5"
-                    >
-                      <span className="text-[11px] leading-[14px] font-medium">
-                        {status === "present" ? "Present" : status === "absent" ? "Absent" : "Unmarked"}
-                      </span>
-                    </Badge>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      ) : null}
 
       <ConfirmDialog
         open={reviewOpen}
@@ -292,30 +369,11 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
             <dd className="text-body font-medium text-danger">{summary.absentCount}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-body text-text-secondary">Unmarked</dt>
+            <dt className="text-body text-text-secondary">Not Taken</dt>
             <dd className="text-body font-medium text-warning">{summary.unmarkedCount}</dd>
           </div>
         </dl>
       </ConfirmDialog>
-    </div>
-  );
-}
-
-function SummaryStat({ label, value, tone }) {
-  const tones = {
-    brand: "border-brand/20 bg-brand/10",
-    success: "border-success/20 bg-success/10",
-    danger: "border-danger/20 bg-danger/10",
-    warning: "border-warning/20 bg-warning/10",
-    info: "border-info/20 bg-info/10",
-  };
-
-  return (
-    <div className={`rounded-xl border px-3 py-2.5 shadow-xs ${tones[tone] ?? tones.brand}`}>
-      <p className="text-[10px] leading-[14px] font-medium tracking-wide text-text-secondary uppercase">
-        {label}
-      </p>
-      <p className="mt-0.5 text-body font-semibold tracking-tight text-text-primary">{value}</p>
     </div>
   );
 }

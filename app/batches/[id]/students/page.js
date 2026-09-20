@@ -6,7 +6,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Users } from "lucide-react";
 import DataTableShell from "@/components/ui/data-table-shell";
+import { PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getBatch } from "@/lib/batches/data";
 import { listEnrollmentsForBatch, listScheduleAssignmentsForEnrollment, isScheduleAssignmentActive } from "@/lib/enrollments/data";
@@ -54,17 +56,19 @@ export default async function BatchStudentsPage({ params }) {
   return (
     <BatchHeader batch={batch} active="students">
       <div>
-        <h2 className="text-section-title font-semibold text-text-primary">Students</h2>
-        <p className="text-body mt-1 text-text-secondary">
-          Students enrolled in {batch.name} and their assigned schedules.
-        </p>
+        <PanelHeader
+          icon={Users}
+          title="Students"
+          description={`Students enrolled in ${batch.name} and their assigned schedules.`}
+          className="mb-4 min-h-8"
+        />
 
         {enrollments.length === 0 ? (
-          <p className="text-body mt-6 text-text-secondary">
+          <p className="text-body text-text-secondary">
             No students are enrolled in this batch yet.
           </p>
         ) : (
-          <DataTableShell className="mt-6">
+          <DataTableShell>
             <Table aria-label={`Students in ${batch.name}`}>
               <TableHeader>
                 <TableRow>

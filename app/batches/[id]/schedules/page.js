@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Calendar, Plus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import DataTableShell from "@/components/ui/data-table-shell";
 import { Button } from "@/components/ui/button";
+import { PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getBatch } from "@/lib/batches/data";
 import { listSchedulesForBatch } from "@/lib/schedules/data";
@@ -39,25 +40,25 @@ export default async function BatchSchedulesPage({ params }) {
   return (
     <BatchHeader batch={batch} active="schedules">
       <div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-section-title font-semibold text-text-primary">Schedules</h2>
-            <p className="text-body mt-1 text-text-secondary">
-              Manage recurring weekly schedules for this batch.
-            </p>
-          </div>
-          <Button render={<Link href={`/schedule/new?batch=${batch.id}`} />} nativeButton={false}>
-            <Plus className="size-4" aria-hidden="true" />
-            Add Schedule
-          </Button>
-        </div>
+        <PanelHeader
+          icon={Calendar}
+          title="Schedules"
+          description="Manage recurring weekly schedules for this batch."
+          className="mb-4 min-h-8 flex-col items-start sm:flex-row sm:items-center"
+          action={
+            <Button render={<Link href={`/schedule/new?batch=${batch.id}`} />} nativeButton={false}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add Schedule
+            </Button>
+          }
+        />
 
         {schedules.length === 0 ? (
-          <p className="text-body mt-6 text-text-secondary">
+          <p className="text-body text-text-secondary">
             No schedules yet. Add one to define when this batch takes place.
           </p>
         ) : (
-          <DataTableShell className="mt-6">
+          <DataTableShell>
             <Table aria-label={`Schedules for ${batch.name}`}>
               <TableHeader>
                 <TableRow>

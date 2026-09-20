@@ -4,8 +4,10 @@ import { getSessionOccurrence } from "@/lib/class-sessions/data";
 import { isValidDateString } from "@/lib/schedules/validation";
 import { deriveDisplayStatus } from "@/lib/class-sessions/validation";
 import { listEligibleStudents, getAttendanceForSession, getAttendanceSummary } from "@/lib/attendance/data";
-import SessionDetailsTabs from "@/app/attendance/[scheduleId]/[date]/session-details-tabs";
 import SessionHeader from "@/app/attendance/[scheduleId]/[date]/session-header";
+import SessionOverview from "@/app/attendance/[scheduleId]/[date]/session-overview";
+import EligibleStudentsList from "@/app/attendance/[scheduleId]/[date]/eligible-students-list";
+import AttendancePanel from "@/app/attendance/[scheduleId]/[date]/attendance-panel";
 
 const SUCCESS_MESSAGES = {
   updated: "Session updated successfully.",
@@ -20,9 +22,9 @@ const SUCCESS_MESSAGES = {
  * this is the only address that works for both a materialized and an
  * unmaterialized occurrence (approved Phase 14 decision).
  *
- * Visual language mirrors Schedule/Batch Detail: hero + KPIs, then folder
- * tabs with content inside the same card. Data fetching and tab routing
- * are unchanged.
+ * All three tabs share one header (`session-header.js`) and the finalized
+ * panels; the Attendance tab is the focused Take / View Attendance view. Data
+ * fetching and `?tab=` routing are unchanged.
  */
 export default async function SessionDetailsPage({ params, searchParams }) {
   const user = await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
@@ -59,13 +61,17 @@ export default async function SessionDetailsPage({ params, searchParams }) {
       ? await getAttendanceSummary(session.id, session.batch_id, session.schedule_id, session.session_date)
       : null;
 
+  const eligibleCount = activeTab === "overview" ? (attendanceSummary?.eligibleCount ?? 0) : eligibleStudents.length;
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <SessionHeader
         session={session}
         displayStatus={displayStatus}
         scheduleId={scheduleId}
         date={date}
+        activeTab={activeTab}
+        eligibleCount={eligibleCount}
         isAdmin={isAdmin}
         canEdit={displayStatus === "upcoming"}
         canMarkException={session.status === "scheduled"}
@@ -80,16 +86,27 @@ export default async function SessionDetailsPage({ params, searchParams }) {
         </div>
       ) : null}
 
-      <SessionDetailsTabs
-        session={session}
-        displayStatus={displayStatus}
-        scheduleId={scheduleId}
-        date={date}
-        activeTab={activeTab}
-        eligibleStudents={eligibleStudents}
-        initialAttendanceMarks={initialAttendanceMarks}
-        attendanceSummary={attendanceSummary}
-      />
+      {activeTab === "overview" ? (
+        <SessionOverview
+          session={session}
+          displayStatus={displayStatus}
+          scheduleId={scheduleId}
+          date={date}
+          attendanceSummary={attendanceSummary}
+        />
+      ) : null}
+
+      {activeTab === "eligible" ? <EligibleStudentsList students={eligibleStudents} batch={session.batches} /> : null}
+
+      {activeTab === "attendance" ? (
+        <AttendancePanel
+          session={session}
+          scheduleId={scheduleId}
+          date={date}
+          eligibleStudents={eligibleStudents}
+          initialMarks={initialAttendanceMarks}
+        />
+      ) : null}
     </div>
   );
 }
