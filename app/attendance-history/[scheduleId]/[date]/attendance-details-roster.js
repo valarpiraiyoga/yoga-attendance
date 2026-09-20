@@ -1,37 +1,93 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { Eye, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Avatar from "@/components/ui/avatar";
+import EmptyState from "@/components/ui/empty-state";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
 
-function getInitials(name) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+const STATUS_BADGE = {
+  present: { label: "Present", variant: "success" },
+  absent: { label: "Absent", variant: "danger" },
+};
+const ROW_TONE = { present: "bg-success/5 hover:bg-success/5", absent: "bg-danger/5 hover:bg-danger/5" };
+
+/** The row's overflow menu — links only to routes that already exist: the student and this session's Edit Attendance. */
+function RosterRowActions({ student, editHref }) {
+  const studentHref = `/students/${student.id}`;
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="text-brand hover:bg-brand/10 hover:text-brand"
+        aria-label={`View student ${student.full_name}`}
+        render={<Link href={studentHref} />}
+        nativeButton={false}
+      >
+        <Eye className="size-4" aria-hidden="true" />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
+              aria-label={`Attendance actions for ${student.full_name}`}
+            />
+          }
+        >
+          <MoreVertical className="size-4" aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-44">
+          <DropdownMenuItem render={<Link href={studentHref} />} nativeButton={false}>
+            View Student
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link href={editHref} />} nativeButton={false}>
+            Edit Attendance
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 }
 
 /**
- * Attendance Details roster — scannable list rows with semantic Present /
- * Absent / Unmarked states (same visual language as Attendance marking).
+ * Attendance Details roster — the recorded Present / Absent / Unmarked state of
+ * every student eligible for the session, in the finalized table pattern
+ * (shared `Avatar` and `Badge`, one-line cells that scroll inside the panel at
+ * narrow widths, Eye + overflow-menu row actions). Data, states and the
+ * client-side pagination are unchanged. Attendance stores no per-student note,
+ * so there is none to show.
  */
-export default function AttendanceDetailsRoster({ students, marksByStudentId }) {
+export default function AttendanceDetailsRoster({ students, marksByStudentId, editHref }) {
   const [page, setPage] = useState(1);
 
   if (students.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-background/40 px-6 py-16 text-center">
-        <p className="text-body max-w-sm text-text-secondary">
-          No students were eligible for this session.
-        </p>
-      </div>
-    );
+    return <EmptyState size="sm" title="No eligible students" description="No students were eligible for this session." />;
   }
 
   const totalPages = Math.max(1, Math.ceil(students.length / PAGE_SIZE));
@@ -43,51 +99,45 @@ export default function AttendanceDetailsRoster({ students, marksByStudentId }) 
 
   return (
     <div>
-      <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border" aria-label="Attendance">
-        {pageStudents.map((student) => {
-          const status = marksByStudentId[student.id];
-          const rowTone =
-            status === "present"
-              ? "bg-success/5"
-              : status === "absent"
-                ? "bg-danger/5"
-                : "bg-surface";
+      <div className="overflow-hidden rounded-lg border border-border">
+        <Table aria-label="Student attendance">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="whitespace-nowrap">Student</TableHead>
+              <TableHead className="whitespace-nowrap">Phone</TableHead>
+              <TableHead className="whitespace-nowrap">Attendance</TableHead>
+              <TableHead className="whitespace-nowrap">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pageStudents.map((student) => {
+              const status = marksByStudentId[student.id];
+              const badge = STATUS_BADGE[status] ?? { label: "Unmarked", variant: "neutral" };
 
-          return (
-            <li
-              key={student.id}
-              className={cn(
-                "flex flex-col gap-2 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
-                rowTone
-              )}
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <span
-                  aria-hidden="true"
-                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-small font-semibold text-brand"
-                >
-                  {getInitials(student.full_name)}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-body font-semibold text-text-primary">{student.full_name}</p>
-                  <p className="text-small truncate text-text-secondary">
-                    {student.student_code}
-                    {student.phone ? ` · ${student.phone}` : ""}
-                  </p>
-                </div>
-              </div>
-              <Badge
-                variant={status === "present" ? "success" : status === "absent" ? "danger" : "neutral"}
-                className="w-fit rounded-full px-2.5 py-0.5"
-              >
-                <span className="text-[11px] leading-[14px] font-medium">
-                  {status === "present" ? "Present" : status === "absent" ? "Absent" : "Unmarked"}
-                </span>
-              </Badge>
-            </li>
-          );
-        })}
-      </ul>
+              return (
+                <TableRow key={student.id} className={cn(ROW_TONE[status])}>
+                  <TableCell>
+                    <div className="flex items-center gap-3 whitespace-nowrap">
+                      <Avatar name={student.full_name} />
+                      <div>
+                        <p className="font-semibold text-text-primary">{student.full_name}</p>
+                        <p className="text-small text-text-secondary">{student.student_code}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-text-secondary">{student.phone || "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <RosterRowActions student={student} editHref={editHref} />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-small text-text-secondary">
@@ -110,6 +160,7 @@ export default function AttendanceDetailsRoster({ students, marksByStudentId }) 
               type="button"
               variant={pageNumber === currentPage ? "default" : "outline"}
               size="sm"
+              aria-current={pageNumber === currentPage ? "page" : undefined}
               onClick={() => setPage(pageNumber)}
             >
               {pageNumber}
