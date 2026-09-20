@@ -1,28 +1,17 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import DataTableShell from "@/components/ui/data-table-shell";
-import { Badge } from "@/components/ui/badge";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getBatch } from "@/lib/batches/data";
 import { listEnrollmentsForBatch, listScheduleAssignmentsForEnrollment, isScheduleAssignmentActive } from "@/lib/enrollments/data";
-import { DAY_LABELS } from "@/lib/schedules/validation";
 import BatchHeader from "@/app/batches/[id]/batch-header";
-
-function formatTime(value) {
-  if (!value) return "—";
-  const [hours, minutes] = value.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
-}
+import BatchEnrollmentRow from "@/app/batches/[id]/batch-enrollment-row";
 
 /**
  * Batch Details → Students tab (wireframe p17: batch's enrolled students).
@@ -87,62 +76,15 @@ export default async function BatchStudentsPage({ params }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {enrollments.map((enrollment) => {
-                  const activeAssignments = (assignmentsByEnrollmentId.get(enrollment.id) ?? []).filter(
-                    (assignment) => isScheduleAssignmentActive(assignment)
-                  );
-
-                  return (
-                    <TableRow key={enrollment.id}>
-                      <TableCell>
-                        <p className="font-medium text-text-primary">
-                          {enrollment.students?.full_name ?? "Unknown student"}
-                        </p>
-                        <p className="text-small text-text-secondary">{enrollment.students?.student_code}</p>
-                      </TableCell>
-                      <TableCell className="text-text-secondary">{enrollment.students?.phone ?? "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant={enrollment.status === "active" ? "success" : "danger"}>
-                          {enrollment.status === "active" ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-text-secondary">
-                        {activeAssignments.length === 0 ? (
-                          <span className="font-medium text-danger">No schedule assigned</span>
-                        ) : (
-                          <ul className="flex flex-col gap-0.5">
-                            {activeAssignments.map((assignment) => (
-                              <li key={assignment.id}>
-                                {assignment.schedule ? (
-                                  <>
-                                    {DAY_LABELS[assignment.schedule.day_of_week] ?? assignment.schedule.day_of_week}
-                                    {" · "}
-                                    {formatTime(assignment.schedule.start_time)} –{" "}
-                                    {formatTime(assignment.schedule.end_time)}
-                                  </>
-                                ) : (
-                                  <span className="text-danger">Assigned schedule could not be found</span>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {enrollment.students ? (
-                          <Link
-                            href={`/students/${enrollment.students.id}`}
-                            className="font-medium text-brand hover:underline"
-                          >
-                            View
-                          </Link>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {enrollments.map((enrollment) => (
+                  <BatchEnrollmentRow
+                    key={enrollment.id}
+                    enrollment={enrollment}
+                    activeAssignments={(assignmentsByEnrollmentId.get(enrollment.id) ?? []).filter((assignment) =>
+                      isScheduleAssignmentActive(assignment)
+                    )}
+                  />
+                ))}
               </TableBody>
             </Table>
           </DataTableShell>

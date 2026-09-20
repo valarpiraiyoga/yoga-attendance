@@ -46,9 +46,11 @@ function getInitials(name) {
  * shows the Completed status). Only the Action cell follows the finalized
  * pattern shared with the other list pages — eye icon (View Details) +
  * overflow menu (View Details, Edit Attendance), the same `HistoryCardMenu`
- * the Card View uses. The row tints while its menu is open.
+ * the Card View uses. The row tints while its menu is open. `hideBatch` omits
+ * the Batch cell (must match the table header) on batch-scoped pages, where
+ * the freed width goes to keeping Date and Time on one line.
  */
-export default function HistoryTableRow({ session, variant = "admin" }) {
+export default function HistoryTableRow({ session, variant = "admin", hideBatch = false }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const summary = session.attendanceSummary;
@@ -58,20 +60,24 @@ export default function HistoryTableRow({ session, variant = "admin" }) {
 
   return (
     <TableRow className={cn(menuOpen && "bg-brand/10 hover:bg-brand/10")}>
-      <TableCell className="px-5 py-3.5 font-medium text-text-primary">{formatDate(session.session_date)}</TableCell>
-      <TableCell className="px-5 py-3.5 text-text-secondary">
+      <TableCell className={cn("px-5 py-3.5 font-medium text-text-primary", hideBatch && "whitespace-nowrap")}>
+        {formatDate(session.session_date)}
+      </TableCell>
+      <TableCell className={cn("px-5 py-3.5 text-text-secondary", hideBatch && "whitespace-nowrap")}>
         {formatTime(session.start_time)} – {formatTime(session.end_time)}
       </TableCell>
-      <TableCell className="px-5 py-3.5">
-        {session.batches ? (
-          <>
-            <p className="font-semibold text-text-primary">{session.batches.name}</p>
-            <p className="text-small text-text-secondary">{session.batches.code}</p>
-          </>
-        ) : (
-          <span className="text-text-secondary">—</span>
-        )}
-      </TableCell>
+      {!hideBatch ? (
+        <TableCell className="px-5 py-3.5">
+          {session.batches ? (
+            <>
+              <p className="font-semibold text-text-primary">{session.batches.name}</p>
+              <p className="text-small text-text-secondary">{session.batches.code}</p>
+            </>
+          ) : (
+            <span className="text-text-secondary">—</span>
+          )}
+        </TableCell>
+      ) : null}
       {variant === "admin" ? (
         <TableCell className="px-5 py-3.5">
           <span className="inline-flex min-w-0 items-center gap-2">

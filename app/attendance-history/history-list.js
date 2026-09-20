@@ -12,7 +12,7 @@ import { DEFAULT_HISTORY_SORT } from "@/lib/attendance-history/data";
 import HistorySessionCard from "@/app/attendance-history/history-session-card";
 import HistoryTableRow from "@/app/attendance-history/history-table-row";
 
-function AdminTable({ sessions }) {
+function AdminTable({ sessions, hideBatch }) {
   return (
     <DataTableShell tone="info">
       <Table aria-label="Attendance History">
@@ -20,7 +20,7 @@ function AdminTable({ sessions }) {
           <TableRow className="hover:bg-transparent">
             <TableHead>Date</TableHead>
             <TableHead>Time</TableHead>
-            <TableHead>Batch</TableHead>
+            {!hideBatch ? <TableHead>Batch</TableHead> : null}
             <TableHead>Instructor</TableHead>
             <TableHead className="text-right">Eligible</TableHead>
             <TableHead className="text-right">Present</TableHead>
@@ -31,7 +31,7 @@ function AdminTable({ sessions }) {
         </TableHeader>
         <TableBody>
           {sessions.map((session) => (
-            <HistoryTableRow key={session.id} session={session} variant="admin" />
+            <HistoryTableRow key={session.id} session={session} variant="admin" hideBatch={hideBatch} />
           ))}
         </TableBody>
       </Table>
@@ -83,6 +83,9 @@ function HistoryCards({ sessions, variant }) {
  * (data-review screen). Cards remain available via `layout=cards`; the
  * Cards / Table switch itself lives in `AttendanceHistoryFilters`'
  * `ViewSwitcher`, beside search and Filters.
+ *
+ * `hideBatch` drops the admin table's Batch column for pages already scoped
+ * to one batch (Batch Details → Attendance); the default keeps it.
  */
 export default function HistoryList({
   sessions,
@@ -91,6 +94,7 @@ export default function HistoryList({
   layout = "table",
   sort,
   sortOptions,
+  hideBatch = false,
 }) {
   return (
     <div className="mt-6">
@@ -111,7 +115,7 @@ export default function HistoryList({
       {layout === "cards" ? (
         <HistoryCards sessions={sessions} variant={variant} />
       ) : variant === "admin" ? (
-        <AdminTable sessions={sessions} />
+        <AdminTable sessions={sessions} hideBatch={hideBatch} />
       ) : (
         <InstructorTable sessions={sessions} />
       )}

@@ -46,10 +46,19 @@ function optionLabel(options, value) {
  *
  * Admin gets the Instructor filter; an instructor does not, and their Batch
  * filter reads "Assigned Classes".
+ *
+ * The same toolbar also serves Batch Details' Attendance tab, where the batch
+ * is fixed by the page: `basePath` points the Cards / Table switch at that
+ * route, `hideBatchFilter` drops the (redundant) Batch filter and chip, and
+ * `searchPlaceholder` narrows the search hint. The defaults are Attendance
+ * History's own.
  */
 export default function AttendanceHistoryFilters({
   variant,
   layout,
+  basePath = "/attendance-history",
+  hideBatchFilter = false,
+  searchPlaceholder = "Search by student name or batch",
   defaultQuery,
   defaultDateFrom,
   defaultDateTo,
@@ -93,14 +102,14 @@ export default function AttendanceHistoryFilters({
   const activeFilterCount = [
     Boolean(appliedFrom),
     Boolean(appliedTo),
-    appliedBatchId !== "all",
+    !hideBatchFilter && appliedBatchId !== "all",
     !isInstructor && appliedInstructorId !== "all",
     appliedStatus !== "all",
   ].filter(Boolean).length;
 
   const layoutItems = LAYOUTS.map((item) => ({
     ...item,
-    href: buildListHref("/attendance-history", searchParams, {
+    href: buildListHref(basePath, searchParams, {
       layout: item.key === "table" ? "" : item.key,
     }),
   }));
@@ -197,7 +206,7 @@ export default function AttendanceHistoryFilters({
   } else if (appliedTo) {
     chips.push({ key: "to", label: `To: ${formatDate(appliedTo)}` });
   }
-  if (appliedBatchId !== "all") {
+  if (!hideBatchFilter && appliedBatchId !== "all") {
     chips.push({ key: "batch", label: `${isInstructor ? "Class" : "Batch"}: ${optionLabel(batchSelectOptions, appliedBatchId)}` });
   }
   if (!isInstructor && appliedInstructorId !== "all") {
@@ -225,7 +234,7 @@ export default function AttendanceHistoryFilters({
             id="attendance-history-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by student name or batch"
+            placeholder={searchPlaceholder}
           />
         </form>
 
@@ -262,20 +271,22 @@ export default function AttendanceHistoryFilters({
           </FilterSection>
         </div>
 
-        <FilterSection id="attendance-history-batch" label={batchLabel}>
-          <Select items={batchSelectOptions} value={batchId} onValueChange={setBatchId}>
-            <SelectTrigger aria-labelledby="attendance-history-batch-label" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {batchSelectOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FilterSection>
+        {!hideBatchFilter ? (
+          <FilterSection id="attendance-history-batch" label={batchLabel}>
+            <Select items={batchSelectOptions} value={batchId} onValueChange={setBatchId}>
+              <SelectTrigger aria-labelledby="attendance-history-batch-label" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {batchSelectOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterSection>
+        ) : null}
 
         {!isInstructor ? (
           <FilterSection id="attendance-history-instructor" label="Instructor">
