@@ -1,124 +1,96 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Calendar, Clock, Layers, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleCheck, Clock, Hash, Pencil, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Avatar from "@/components/ui/avatar";
+import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
+import { formatTimeRange } from "@/lib/format";
+import { ENTITY_STATUS } from "@/lib/status";
 import { DAY_LABELS } from "@/lib/schedules/validation";
 import DeactivateSchedule from "@/app/schedule/[id]/deactivate-schedule";
 
-function MetricTile({ icon: Icon, value, label, tone }) {
-  const tones = {
-    warning: "border-warning/20 bg-warning/10 text-warning",
-    info: "border-info/20 bg-info/10 text-info",
-    success: "border-success/20 bg-success/10 text-success",
-    brand: "border-brand/20 bg-brand/10 text-brand",
+function describe(schedule) {
+  return {
+    isActive: schedule.status === "active",
+    status: ENTITY_STATUS[schedule.status] ?? ENTITY_STATUS.inactive,
+    batchName: schedule.batches?.name ?? "Schedule",
+    batchCode: schedule.batches?.code || "—",
+    dayLabel: DAY_LABELS[schedule.day_of_week] ?? schedule.day_of_week,
+    timeLabel: formatTimeRange(schedule.start_time, schedule.end_time),
+    instructorName: schedule.instructors?.full_name ?? "—",
   };
-
-  return (
-    <div className={`flex min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2.5 ${tones[tone] ?? tones.brand}`}>
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface/80 shadow-xs">
-        <Icon className="size-3.5" aria-hidden="true" />
-      </span>
-      <div className="min-w-0">
-        <p className="text-[10px] leading-[14px] font-medium tracking-wide text-text-secondary uppercase">
-          {label}
-        </p>
-        <p className="truncate text-body font-semibold tracking-tight text-text-primary">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function formatTime(value) {
-  if (!value) return "—";
-  const [hours, minutes] = value.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
-  return `${hour12}:${String(minutes).padStart(2, "0")} ${period}`;
 }
 
 /**
- * Schedule Details hero + KPI strip — visual sibling of BatchHeader's top
- * block. Folder tabs live in schedule-details-tabs.js (client) so they can
- * keep local-state switching while matching Batch Detail's tab chrome.
+ * Schedule Details' back link + the finalized detail header (the same one
+ * Student, Membership and Batch Details use): batch avatar, batch name,
+ * status, the schedule's code / day / time / instructor, and the Edit /
+ * Deactivate actions. The parent stacks this with the summary tiles and the
+ * tabs (`gap-6`).
  */
 export default function ScheduleHeader({ schedule }) {
-  const isActive = schedule.status === "active";
-  const batchName = schedule.batches?.name ?? "Schedule";
-  const batchCode = schedule.batches?.code || "—";
-  const dayLabel = DAY_LABELS[schedule.day_of_week] ?? schedule.day_of_week;
-  const timeLabel = `${formatTime(schedule.start_time)} – ${formatTime(schedule.end_time)}`;
-  const instructorName = schedule.instructors?.full_name ?? "—";
+  const { isActive, status, batchName, batchCode, dayLabel, timeLabel, instructorName } = describe(schedule);
 
   return (
-    <div className="mb-6 flex flex-col gap-4">
+    <>
       <Link
         href="/schedule"
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
+        className="text-body inline-flex w-fit items-center gap-1.5 text-text-secondary hover:text-text-primary"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
         Back to Schedule
       </Link>
 
-      <div className="overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-info/10 via-surface to-brand/10 shadow-xs">
-        <section className="relative p-4 sm:p-5">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-8 -right-6 size-32 rounded-full border border-info/20"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute top-8 right-12 size-16 rounded-full border border-brand/20"
-          />
+      <EntityDetailHeader
+        className="mb-0"
+        avatar={<Avatar name={batchName} shape="square" size="lg" />}
+        title={batchName}
+        status={<Badge variant={status.variant}>{status.label}</Badge>}
+        subMeta={
+          <>
+            <span className="inline-flex items-center gap-1.5">
+              <Hash className="size-3.5 shrink-0" aria-hidden="true" />
+              Code: {batchCode}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarDays className="size-3.5 shrink-0" aria-hidden="true" />
+              {dayLabel}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+              {timeLabel}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
+              {instructorName}
+            </span>
+          </>
+        }
+        actions={
+          <>
+            <Button variant="outline" render={<Link href={`/schedule/${schedule.id}/edit`} />} nativeButton={false}>
+              <Pencil className="size-4" aria-hidden="true" />
+              Edit Schedule
+            </Button>
+            <DeactivateSchedule scheduleId={schedule.id} isActive={isActive} />
+          </>
+        }
+      />
+    </>
+  );
+}
 
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-              <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-info/40 bg-info/10 text-small font-semibold text-info sm:size-[4.25rem]">
-                {batchCode}
-              </span>
+/** The four summary tiles under the header (finalized `StatTile`s). */
+export function ScheduleSummary({ schedule }) {
+  const { isActive, status, dayLabel, timeLabel, instructorName } = describe(schedule);
 
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-page-title font-semibold break-words text-brand">{batchName}</h1>
-                  <Badge variant={isActive ? "success" : "danger"} className="px-1.5 py-0">
-                    <span className="text-[10px] leading-[14px] font-medium">
-                      {isActive ? "Active" : "Inactive"}
-                    </span>
-                  </Badge>
-                </div>
-                <p className="text-small mt-1 text-text-secondary">
-                  {dayLabel} · {timeLabel}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-              <DeactivateSchedule scheduleId={schedule.id} isActive={isActive} />
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-brand/30 bg-surface/80 text-brand hover:bg-brand/5 hover:text-brand"
-                render={<Link href={`/schedule/${schedule.id}/edit`} />}
-                nativeButton={false}
-              >
-                Edit Schedule
-                <ArrowRight className="size-3.5" aria-hidden="true" />
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        <div className="grid grid-cols-2 gap-2 border-t border-border/50 bg-surface/50 px-3 py-2.5 sm:gap-2.5 sm:px-4 sm:py-3 lg:grid-cols-4">
-          <MetricTile
-            icon={UserRound}
-            value={isActive ? "Active" : "Inactive"}
-            label="Status"
-            tone={isActive ? "success" : "warning"}
-          />
-          <MetricTile icon={Calendar} value={dayLabel} label="Day" tone="info" />
-          <MetricTile icon={Clock} value={timeLabel} label="Time" tone="warning" />
-          <MetricTile icon={Layers} value={instructorName} label="Instructor" tone="brand" />
-        </div>
-      </div>
-    </div>
+  return (
+    <StatTileGroup ariaLabel="Schedule summary" className="grid-cols-1 sm:grid-cols-2">
+      <StatTile icon={CircleCheck} label="Status" value={status.label} tone={isActive ? "success" : "warning"} />
+      <StatTile icon={CalendarDays} label="Day" value={dayLabel} tone="brand" />
+      <StatTile icon={Clock} label="Time" value={timeLabel} tone="info" />
+      <StatTile icon={UserRound} label="Instructor" value={instructorName} tone="warning" />
+    </StatTileGroup>
   );
 }

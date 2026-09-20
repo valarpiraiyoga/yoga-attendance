@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getSchedule, projectUpcomingSessions } from "@/lib/schedules/data";
 import ScheduleDetailsTabs from "@/app/schedule/[id]/schedule-details-tabs";
-import ScheduleHeader from "@/app/schedule/[id]/schedule-header";
+import ScheduleHeader, { ScheduleSummary } from "@/app/schedule/[id]/schedule-header";
 
 const SUCCESS_MESSAGES = {
   created: "Schedule created successfully.",
@@ -15,8 +15,8 @@ const SUCCESS_MESSAGES = {
  * once, and passed down to the client tabs component — it is a pure
  * projection (lib/schedules/data.js), not a database read of session rows.
  *
- * Visual language mirrors Batch Detail: hero + KPIs, then folder tabs with
- * content inside the same card.
+ * Composition mirrors Batch Details: the shared detail header, four summary
+ * tiles, then the underline tabs with their panels.
  */
 export default async function ScheduleDetailsPage({ params, searchParams }) {
   // Authorization boundary — see app/schedule/layout.js for why this must be
@@ -35,8 +35,10 @@ export default async function ScheduleDetailsPage({ params, searchParams }) {
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <ScheduleHeader schedule={schedule} />
+
+      <ScheduleSummary schedule={schedule} />
 
       {message ? (
         <div
