@@ -137,6 +137,8 @@ Each schedule assignment carries an effective start date and an optional effecti
 
 Changing which schedule a student attends closes the existing assignment on the day before the change takes effect and creates a new assignment from that date. The earlier assignment is retained, never rewritten, so what a student was scheduled to attend on any past date can always be reconstructed — the same principle §7 applies to schedule versions and §5 applies to memberships.
 
+The one exception is an assignment that has not started yet when it is removed — one whose effective start date is on or after the date the removal takes effect. It has no past to reconstruct and cannot be closed on the day before it starts, so it is withdrawn (deleted) rather than left as a one-day assignment that would still apply on the change date. An assignment that has already covered any past day is never deleted.
+
 ### Deactivation
 Inactive students remain in the system. Deactivation does not remove historical student, membership, enrollment, or attendance records.
 
