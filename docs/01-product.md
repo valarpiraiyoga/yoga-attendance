@@ -274,7 +274,7 @@ Each schedule can have its own instructor.
 Default duration is 60 minutes. When Admin enters a start time, the system automatically calculates the end time one hour later. The Admin can edit the calculated end time.
 
 ### Management
-Admin can add new schedules anytime, edit schedules, change future schedules, deactivate schedules, assign instructors, and set effective dates.
+Admin can add new schedules anytime, edit schedules, change future schedules, deactivate schedules, delete unused schedules, assign instructors, and set effective dates.
 
 ### Future Changes
 Changes to recurring schedules apply to future sessions only. Past sessions and historical attendance remain unchanged.
@@ -288,6 +288,21 @@ Which of those two things happens depends on whether the schedule being edited h
 3. **The new effective from date is before today** — rejected. Back-dating a change would rewrite what was scheduled on a date that has already passed.
 
 Both of the first two outcomes leave every schedule version with an effective period that starts on or before it ends; the third is what keeps the past out of reach of an edit.
+
+### Unused Schedules — Direct Correction and Deletion
+A schedule that has not become part of the historical record can be corrected or removed outright. Versioning exists to protect history; a schedule that has none needs no protecting. A schedule is **unused** when, together:
+
+1. **No class session references it** — of any status. A materialized session (§7A) is historical data even when it has no attendance: a Cancelled or Holiday session, an edited session, or one whose attendance was saved all count.
+2. **Its schedule series has exactly one schedule version.** An edit that versioned it created another; the version chain is history and is never deleted.
+3. **No schedule assignment (§4) on its series has started** — every assignment starts today or later in the centre's timezone (§7A "Centre Timezone"). An assignment that has already covered a past day is history.
+
+Occurrences that were only ever projected (§7A) — including past dates nobody recorded anything for — are not sessions and do not make a schedule used.
+
+**Direct edit.** An unused schedule is edited in place — day, time, instructor and effective dates — with no new version and no need to choose an effective date. The days work as when adding: unticking the schedule's own day and ticking another moves it; any other ticked day creates a new schedule. If students hold unstarted assignments on it, changing its day moves those assignments with it, and Review says so. Every other schedule keeps the versioned edit above.
+
+**Delete.** An unused schedule can be deleted. Its unstarted schedule assignments are withdrawn with it (§4), and its now-empty schedule series is removed. Before confirming, Admin is told how many students are affected, and how many past occurrences were never recorded and will no longer appear. A schedule that is not unused cannot be deleted; Deactivate is how it stops.
+
+Both are decided by the database in the same transaction as the change, not from what the screen last showed: a session materialized after the confirmation opened blocks the change instead of being lost. Deleting does not create, cancel or alter any session.
 
 ### Schedule Series
 Versioning means a single real-world class — "the Monday 6:00 AM Hatha Yoga class" — is represented over time by a succession of schedule versions, each with its own effective period. A **schedule series** is the stable identity those versions share: editing a schedule creates a new version within the same series, never a new series.
@@ -312,7 +327,7 @@ Admin can change one specific future session without changing the recurring sche
 A specific session can be marked Cancelled or Holiday. Such sessions do not require attendance and the recurring schedule remains unchanged.
 
 ### Deactivation
-Schedules are deactivated rather than permanently deleted. Historical sessions and attendance remain available.
+A schedule that has been used is deactivated rather than deleted — it is closed with an effective until date and marked inactive. Historical sessions and attendance remain available. Only an unused schedule (see "Unused Schedules") can be permanently deleted; a schedule with a class session, an earlier version, or a started student assignment never can.
 
 ### Online / Offline
 Online/offline is not a required property of the recurring schedule. Students may attend online or offline based on their circumstances. V1 attendance records only Present or Absent.
@@ -654,7 +669,10 @@ Short code uniqueness protects identification. The Weekly Schedule identifies a 
 - An elapsed effective period does not change a schedule's stored status.
 - Individual future sessions can have exceptions.
 - Cancelled/Holiday sessions do not require attendance.
-- Schedules are deactivated rather than permanently deleted.
+- A schedule that has been used is deactivated rather than deleted.
+- An unused schedule — no class session, a single version, no started assignment — may be deleted, and may be edited directly instead of versioned.
+- A schedule with any class session (any status), an earlier version, or a started student assignment is never deleted and is never edited in place.
+- A schedule version is never deleted on its own.
 
 Versioning schedule edits is what makes "future changes only" true: a schedule that was rewritten in place would silently change what the past looked like, which §12's Historical Integrity rules forbid.
 

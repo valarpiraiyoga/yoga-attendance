@@ -81,6 +81,11 @@ export default async function SchedulePage({ searchParams }) {
   const instructorId = typeof rawParams.instructor === "string" ? rawParams.instructor : "";
   const status = STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
+  // `created=N` marks the redirect after Add Schedule created several
+  // weekday schedules at once. It is not list state, so it is kept out of the
+  // pagination links below.
+  const createdCount = Math.min(7, Math.max(0, Math.floor(Number(rawParams.created)) || 0));
+  const { created: _created, ...listParams } = rawParams;
   const layout = rawParams.layout === "table" ? "table" : "cards";
   const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort)
     ? rawParams.sort
@@ -100,6 +105,15 @@ export default async function SchedulePage({ searchParams }) {
       <ScheduleHeader />
 
       <ScheduleTabs active="list" />
+
+      {createdCount > 0 ? (
+        <div
+          role="status"
+          className="mb-4 rounded-input border border-success/30 bg-success/5 px-3 py-2 text-body text-success"
+        >
+          {createdCount === 1 ? "Schedule created successfully." : `${createdCount} schedules created successfully.`}
+        </div>
+      ) : null}
 
       <ScheduleFilters
         key={`${batchId}:${instructorId}:${status}`}
@@ -152,7 +166,7 @@ export default async function SchedulePage({ searchParams }) {
             pageSize={PAGE_SIZE}
             itemLabel="schedules"
             ariaLabel="Schedule list pagination"
-            getHref={(targetPage) => buildListHref("/schedule", rawParams, { page: targetPage })}
+            getHref={(targetPage) => buildListHref("/schedule", listParams, { page: targetPage })}
           />
         </>
       )}

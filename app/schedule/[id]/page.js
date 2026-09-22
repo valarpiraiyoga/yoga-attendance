@@ -32,7 +32,13 @@ export default async function ScheduleDetailsPage({ params, searchParams }) {
 
   const upcomingSessions = projectUpcomingSessions(schedule);
   const rawParams = await searchParams;
-  const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
+  const baseMessage = SUCCESS_MESSAGES[rawParams?.success] ?? null;
+  // `added=N`: Edit Schedule also created N schedules on extra weekdays.
+  const added = Math.min(6, Math.max(0, Math.floor(Number(rawParams?.added)) || 0));
+  const message =
+    baseMessage && rawParams?.success === "updated" && added > 0
+      ? `${baseMessage} ${added === 1 ? "1 more schedule was" : `${added} more schedules were`} created for the extra days.`
+      : baseMessage;
 
   return (
     <div className="flex flex-col gap-6">

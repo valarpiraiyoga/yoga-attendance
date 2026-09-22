@@ -51,6 +51,9 @@ const NOTE_TONE_CLASSES = {
  * caller keeps its current confirm-button color (`destructive` ⇒ the
  * `destructive` Button variant) and gains only the icon/centering treatment.
  *
+ * `pendingLabel` is the confirm button's text while `isPending` ("Saving…" by
+ * default; a delete says "Deleting…").
+ *
  * `children` is the "Review" content — a short inline note fits the
  * `note` prop; a larger review summary (a definition list of what is about
  * to change) renders as `children` below the centered header, in its own
@@ -66,6 +69,7 @@ export default function ConfirmDialog({
   children,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  pendingLabel = "Saving…",
   onConfirm,
   isPending = false,
   destructive = false,
@@ -125,7 +129,7 @@ export default function ConfirmDialog({
             className={cn(hideCancel ? "w-full" : "flex-1")}
             onClick={onConfirm}
           >
-            {isPending ? "Saving…" : confirmLabel}
+            {isPending ? pendingLabel : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { getSchedule } from "@/lib/schedules/data";
+import { getSchedule, getScheduleDeleteImpact } from "@/lib/schedules/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { updateSchedule } from "@/lib/schedules/actions";
 import ScheduleForm from "@/app/schedule/schedule-form";
@@ -14,6 +14,10 @@ import ScheduleForm from "@/app/schedule/schedule-form";
  * `updateSchedule`) rather than rewriting the current row, so this page
  * lands the admin back on whichever row ends up current after saving —
  * `updateSchedule` decides that and redirects accordingly.
+ *
+ * A completely unused schedule (no class session, one version, no started
+ * assignment) is the exception: `usage.editMode` is "direct", the form frees
+ * the day and prefills the dates, and the schedule is corrected in place.
  */
 export default async function EditSchedulePage({ params }) {
   // Authorization boundary — see app/schedule/layout.js for why this must be
@@ -22,9 +26,13 @@ export default async function EditSchedulePage({ params }) {
   await requireRole(ROLES.ADMIN);
 
   const { id } = await params;
-  const [schedule, instructorOptions] = await Promise.all([getSchedule(id), listInstructorOptions()]);
+  const [schedule, instructorOptions, usage] = await Promise.all([
+    getSchedule(id),
+    listInstructorOptions(),
+    getScheduleDeleteImpact(id),
+  ]);
 
-  if (!schedule) {
+  if (!schedule || !usage) {
     notFound();
   }
 
@@ -51,6 +59,8 @@ export default async function EditSchedulePage({ params }) {
           batch={schedule.batches}
           instructorOptions={instructorOptions}
           schedule={schedule}
+          editMode={usage.editMode}
+          affectedStudentCount={usage.affectedStudentCount}
           requireConfirmation
           submitLabel="Save Changes"
           pendingLabel="Saving…"
