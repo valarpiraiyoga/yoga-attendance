@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, CalendarDays, Hash, Pencil, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Avatar from "@/components/ui/avatar";
+import BatchAvatar from "@/components/ui/batch-avatar";
 import Tabs from "@/components/ui/tabs";
 import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
 import { Panel } from "@/components/layout/Panel";
@@ -42,7 +42,7 @@ export default function BatchHeader({ batch, active, children }) {
       <EntityDetailHeader
         decorative={false}
         className="mb-0"
-        avatar={<Avatar name={batch.name} shape="square" size="lg" />}
+        avatar={<BatchAvatar batch={batch} size="lg" />}
         title={batch.name}
         status={<Badge variant={status.variant}>{status.label}</Badge>}
         subMeta={

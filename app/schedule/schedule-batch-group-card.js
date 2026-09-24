@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CalendarDays, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Avatar from "@/components/ui/avatar";
+import BatchAvatar from "@/components/ui/batch-avatar";
 import { ENTITY_STATUS } from "@/lib/status";
 import { summarizeCurrentSchedules } from "@/lib/batches/summary";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ export default function ScheduleBatchGroupCard({ batch, batchId, schedules }) {
       )}
     >
       <div className="flex items-start gap-2.5">
-        <Avatar name={batchName} shape="square" bordered />
+        <BatchAvatar batch={{ ...batch, name: batchName }} />
         <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-body font-semibold text-brand">{batchName}</p>

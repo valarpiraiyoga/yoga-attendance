@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Avatar from "@/components/ui/avatar";
+import BatchAvatar from "@/components/ui/batch-avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BATCH_STATUS } from "@/lib/status";
 import { summarizeCurrentSchedules } from "@/lib/batches/summary";
@@ -44,7 +44,7 @@ function BatchRow({ batch }) {
     <TableRow className={cn(menuOpen && "bg-brand/10 hover:bg-brand/10")}>
       <TableCell className="py-3 pr-2 pl-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <Avatar name={batch.name} shape="square" />
+          <BatchAvatar batch={batch} />
           <div className="min-w-0">
             <p className="text-body font-semibold text-text-primary">{batch.name}</p>
             {batch.code ? <p className="text-small text-text-secondary">{batch.code}</p> : null}

@@ -22,7 +22,7 @@ const TONE_CLASSES = {
  * avatar (`border-surface/80` + `shadow-xs`) for a card sitting on a tinted
  * surface; plain (unbordered) is the default used everywhere else.
  */
-export default function Avatar({ name, src, size = "md", tone = "brand", shape = "circle", bordered = false, className }) {
+export default function Avatar({ name, src, alt = "", size = "md", tone = "brand", shape = "circle", bordered = false, className }) {
   const dimension = SIZE_CLASSES[size] ?? SIZE_CLASSES.md;
   const shapeClass = shape === "square" ? "rounded-lg" : "rounded-full";
 
@@ -33,7 +33,7 @@ export default function Avatar({ name, src, size = "md", tone = "brand", shape =
     return (
       <img
         src={src}
-        alt=""
+        alt={alt}
         className={cn(dimension, shapeClass, "shrink-0 object-cover", className)}
       />
     );

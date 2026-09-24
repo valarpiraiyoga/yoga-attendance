@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
+import BatchAvatar from "@/components/ui/batch-avatar";
 import { InstructorCell } from "@/components/ui/session-cells";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate, formatTime } from "@/lib/format";
@@ -168,7 +169,7 @@ export default function ScheduleBatchAccordion({ batch, batchId, schedules, defa
         aria-controls={regionId}
         onClick={() => setExpanded((value) => !value)}
       >
-        <Avatar name={batchName} shape="square" bordered />
+        <BatchAvatar batch={{ ...batch, name: batchName }} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-body font-semibold text-text-primary" title={batchName}>
             {batchName}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ImageUp, Trash2 } from "lucide-react";
 import Avatar from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -38,16 +38,34 @@ export function useProfilePhoto() {
  * The chosen file is validated (type, size) immediately and previewed locally;
  * the server validates it again on save. No cropping or editing.
  *
+ * Add/Edit Batch reuses it for the batch image (same rules, same bucket): it
+ * passes its own `label` / `noun` for the wording and a `preview` to draw the
+ * batch's mark instead of a person's avatar.
+ *
  * @param {object} props
  * @param {string} props.name - the person's name, for the initials fallback.
+ * @param {string} [props.label] - the field's label ("Profile Photo").
+ * @param {string} [props.noun] - the file's name in buttons and messages ("Photo").
+ * @param {(url: string|null) => import("react").ReactNode} [props.preview] - draws the preview for the shown URL (default: the person's `Avatar`).
  * @param {string|null} [props.currentUrl] - the saved photo, if any.
  * @param {ReturnType<typeof useProfilePhoto>["photo"]} props.photo
  * @param {(photo: object) => void} props.onChange
  * @param {string} [props.error] - a server-side message for the photo.
  * @param {boolean} [props.disabled]
  */
-export default function ProfilePhotoField({ name, currentUrl = null, photo, onChange, error, disabled = false }) {
+export default function ProfilePhotoField({
+  name,
+  label = "Profile Photo",
+  noun = "Photo",
+  preview,
+  currentUrl = null,
+  photo,
+  onChange,
+  error,
+  disabled = false,
+}) {
   const inputRef = useRef(null);
+  const labelId = useId();
   const [clientError, setClientError] = useState(null);
 
   // Revokes a blob URL once it is replaced, cleared or the form unmounts.
@@ -67,7 +85,7 @@ export default function ProfilePhotoField({ name, currentUrl = null, photo, onCh
     event.target.value = "";
     if (!file) return;
 
-    const problem = validateProfilePhotoFile(file);
+    const problem = validateProfilePhotoFile(file, noun.toLowerCase());
     if (problem) {
       setClientError(problem);
       return;
@@ -84,12 +102,12 @@ export default function ProfilePhotoField({ name, currentUrl = null, photo, onCh
 
   return (
     <div className="flex flex-col gap-2">
-      <span id="profile-photo-label" className="text-body font-medium text-text-primary">
-        Profile Photo
+      <span id={labelId} className="text-body font-medium text-text-primary">
+        {label}
       </span>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-        <Avatar name={name} src={shownUrl} className="size-20 text-page-title" />
+        {preview ? preview(shownUrl) : <Avatar name={name} src={shownUrl} className="size-20 text-page-title" />}
 
         <div className="flex min-w-0 flex-col items-start gap-2">
           <div className="flex flex-wrap gap-2">
@@ -101,12 +119,12 @@ export default function ProfilePhotoField({ name, currentUrl = null, photo, onCh
               onClick={() => inputRef.current?.click()}
             >
               <ImageUp className="size-4" aria-hidden="true" />
-              {shownUrl ? "Change Photo" : "Upload Photo"}
+              {shownUrl ? `Change ${noun}` : `Upload ${noun}`}
             </Button>
             {shownUrl ? (
               <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={handleRemove}>
                 <Trash2 className="size-4" aria-hidden="true" />
-                Remove Photo
+                Remove {noun}
               </Button>
             ) : null}
           </div>
@@ -122,7 +140,7 @@ export default function ProfilePhotoField({ name, currentUrl = null, photo, onCh
           accept={PROFILE_PHOTO_ACCEPT}
           onChange={handleSelect}
           tabIndex={-1}
-          aria-labelledby="profile-photo-label"
+          aria-labelledby={labelId}
           className="sr-only"
         />
       </div>

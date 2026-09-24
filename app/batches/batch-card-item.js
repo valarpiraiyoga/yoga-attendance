@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CalendarDays, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Avatar from "@/components/ui/avatar";
+import BatchAvatar from "@/components/ui/batch-avatar";
 import EntityCard from "@/components/ui/entity-card";
 import { BATCH_STATUS } from "@/lib/status";
 import { summarizeCurrentSchedules } from "@/lib/batches/summary";
@@ -47,7 +47,7 @@ export default function BatchCardItem({ batch }) {
     <EntityCard
       className={cn("h-auto", menuOpen && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
-      avatar={<Avatar name={batch.name} shape="square" size="lg" bordered />}
+      avatar={<BatchAvatar batch={batch} size="lg" />}
       title={batch.name}
       subtitle={batch.code}
       status={<Badge variant={status.variant}>{status.label}</Badge>}

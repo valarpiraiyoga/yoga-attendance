@@ -6,9 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useProfilePhoto } from "@/components/ui/profile-photo-field";
+import BatchIdentityField from "@/app/batches/batch-identity-field";
+import { DEFAULT_BATCH_COLOR } from "@/lib/batches/identity";
 import { validateBatchInput } from "@/lib/batches/validation";
 
 const BLUR_VALIDATED_FIELDS = new Set(["name", "code", "category", "description"]);
+
+// Batch Identity (colour + optional image / icon) is one section of the form.
+// The colour is controlled state that submits its palette key as
+// `batch_color`; the image is kept in state too (`useProfilePhoto`, shared with
+// the Student / Instructor photo) and added to the submission with the rest of
+// the form, so nothing is uploaded until the admin saves.
 
 /**
  * Shared Add/Edit Batch form. Mirrors
@@ -34,6 +43,9 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
   const [state, formAction, isPending] = useActionState(action, {});
   const [fieldErrors, setFieldErrors] = useState(state?.fieldErrors ?? {});
   const [isActive, setIsActive] = useState(batch?.status === "active");
+  const [batchName, setBatchName] = useState(batch?.name ?? "");
+  const [color, setColor] = useState(batch?.batch_color ?? DEFAULT_BATCH_COLOR);
+  const { photo: image, setPhoto: setImage, appendTo } = useProfilePhoto();
 
   // The server's verdict is authoritative and wins on every submission —
   // this only resyncs to it, it never overrides it. Adjusted during render
@@ -44,6 +56,13 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
   if (state !== prevState) {
     setPrevState(state);
     setFieldErrors(state?.fieldErrors ?? {});
+  }
+
+  // React resets the form's DOM inputs when an action runs, so the image
+  // (kept in state, not in a named input) is added to the submission here.
+  function submitForm(formData) {
+    appendTo(formData);
+    formAction(formData);
   }
 
   // Mirrors InstructorForm's Phone digit-strip handler: this only reflects
@@ -83,7 +102,7 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
   const cancelHref = batch ? `/batches/${batch.id}` : "/batches";
 
   return (
-    <form action={formAction} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
+    <form action={submitForm} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
       {state?.error ? (
         <p
           role="alert"
@@ -102,6 +121,7 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
           required
           disabled={isPending}
           defaultValue={state?.values?.name ?? batch?.name ?? ""}
+          onChange={(event) => setBatchName(event.target.value)}
           placeholder="Enter batch name"
           aria-invalid={Boolean(fieldErrors.name)}
           aria-describedby={fieldErrors.name ? "name-error" : undefined}
@@ -171,6 +191,18 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
           </p>
         ) : null}
       </div>
+
+      <BatchIdentityField
+        batchName={batchName}
+        color={color}
+        onColorChange={setColor}
+        colorError={fieldErrors.batch_color}
+        currentImageUrl={batch?.batch_image_url ?? null}
+        image={image}
+        onImageChange={setImage}
+        imageError={fieldErrors.photo}
+        disabled={isPending}
+      />
 
       {batch ? (
         <div className="flex flex-col gap-2">

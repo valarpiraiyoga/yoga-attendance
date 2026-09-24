@@ -32,6 +32,26 @@
   --neutral: #98a2b3;
 
   /*
+    Batch Identity accents (lib/batches/identity.js). A batch stores a palette
+    KEY; these are the colours behind the keys. Accent only - a dot, a tint, a
+    left edge - never a replacement for the semantic status colours above, and
+    never the only identifier (the batch name / code is always shown). Teal is
+    the brand colour; the rest are mid-tone (about 4:1 or better against white,
+    so a dot or edge stays visible) and are deepened through the -strong theme
+    colours wherever a colour is used for text.
+  */
+  --batch-teal: var(--brand);
+  --batch-blue: #2563eb;
+  --batch-indigo: #4f46e5;
+  --batch-purple: #9333ea;
+  --batch-pink: #db2777;
+  --batch-orange: #ea580c;
+  --batch-amber: #d97706;
+  --batch-green: #16a34a;
+  --batch-red: #dc2626;
+  --batch-slate: #64748b;
+
+  /*
     Sidebar-only gradient stops, derived from --brand rather than a new hex
     — `color-mix` against `transparent` keeps this a pure alpha tint of the
     existing brand hue, so it stays in sync if --brand is ever retuned.
@@ -101,6 +121,27 @@
   --color-danger: var(--danger);
   --color-info: var(--info);
   --color-neutral: var(--neutral);
+
+  --color-batch-teal: var(--batch-teal);
+  --color-batch-teal-strong: color-mix(in srgb, var(--batch-teal) 72%, black);
+  --color-batch-blue: var(--batch-blue);
+  --color-batch-blue-strong: color-mix(in srgb, var(--batch-blue) 72%, black);
+  --color-batch-indigo: var(--batch-indigo);
+  --color-batch-indigo-strong: color-mix(in srgb, var(--batch-indigo) 72%, black);
+  --color-batch-purple: var(--batch-purple);
+  --color-batch-purple-strong: color-mix(in srgb, var(--batch-purple) 72%, black);
+  --color-batch-pink: var(--batch-pink);
+  --color-batch-pink-strong: color-mix(in srgb, var(--batch-pink) 72%, black);
+  --color-batch-orange: var(--batch-orange);
+  --color-batch-orange-strong: color-mix(in srgb, var(--batch-orange) 72%, black);
+  --color-batch-amber: var(--batch-amber);
+  --color-batch-amber-strong: color-mix(in srgb, var(--batch-amber) 72%, black);
+  --color-batch-green: var(--batch-green);
+  --color-batch-green-strong: color-mix(in srgb, var(--batch-green) 72%, black);
+  --color-batch-red: var(--batch-red);
+  --color-batch-red-strong: color-mix(in srgb, var(--batch-red) 72%, black);
+  --color-batch-slate: var(--batch-slate);
+  --color-batch-slate-strong: color-mix(in srgb, var(--batch-slate) 72%, black);
 
   /* shadcn/ui compatibility tokens — aliased to the approved tokens above */
   --color-foreground: var(--foreground);

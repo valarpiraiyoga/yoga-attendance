@@ -192,6 +192,10 @@ When a new UI state appears:
 
 **Do not add raw hex colors directly to individual screens when an existing token applies.**
 
+### Batch Identity accents
+
+A batch has a user-chosen accent color (Teal, Blue, Indigo, Purple, Pink, Orange, Amber, Green, Red, Slate), stored as a stable key. The colors are the `--batch-*` tokens in `app/globals.css` (Teal is the brand color); `lib/batches/identity.js` maps each key to its classes. They are an **accent only** (a dot, a tint, a left edge) and never replace the semantic status colors above. The batch name or code is always shown beside them, so color is never the only identifier.
+
 ---
 
 ## 8. Token Summary
