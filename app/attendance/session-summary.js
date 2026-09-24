@@ -10,6 +10,9 @@ import { formatDate, formatTimeRange } from "@/lib/format";
  * once from a session occurrence (with its `attendanceSummary`) so the two
  * layouts can never disagree. Presentation only — no data is read here.
  *
+ * `startTime` / `endTime` are the raw "HH:MM" values the start-time tile and the
+ * shared session cell format themselves; `timeLabel` is the joined text form.
+ *
  * `actionLabel` is the session's primary action: Cancelled / Holiday
  * sessions have no attendance, a completed one is viewed, and a session
  * that has started (or is today's and not yet started) is taken.
@@ -32,6 +35,9 @@ export function summarizeSession(session, today) {
     batchName: session.batches?.name ?? "—",
     batchCode: session.batches?.code ?? null,
     instructor: session.instructors?.full_name ?? "—",
+    instructorPhotoUrl: session.instructors?.photo_url ?? null,
+    startTime: session.start_time,
+    endTime: session.end_time,
     dateLabel: formatDate(session.session_date),
     timeLabel: formatTimeRange(session.start_time, session.end_time),
     status: { label: DISPLAY_STATUS_LABELS[displayStatus], variant: DISPLAY_STATUS_BADGE_VARIANTS[displayStatus] },

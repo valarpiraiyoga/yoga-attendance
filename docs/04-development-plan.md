@@ -385,7 +385,7 @@ model:
   `start_time` ascending — since its primary use is seeing what is coming
   up, not a most-recent-first history.
 - **The Session Status filter uses the five displayed values** (Upcoming /
-  In Progress / Completed / Cancelled / Holiday), matching the STATUS badge
+  Ongoing / Completed / Cancelled / Holiday), matching the STATUS badge
   shown on every row. The four persisted values are a storage detail, never
   a user-facing filter option — "Scheduled" is not a status this product
   exposes.
@@ -404,7 +404,7 @@ model:
   Start time changing recalculates end time using the same 60-minute
   default the Schedule form uses (`calculateEndTime`); the admin can still
   edit the result.
-- **Editable status is Upcoming only.** Editing an In Progress, Completed,
+- **Editable status is Upcoming only.** Editing an Ongoing, Completed,
   Cancelled or Holiday session is rejected — for Completed, editing would
   rewrite history (§12 Historical Integrity); the others have already
   happened, been cancelled, or are a non-class day. The "Edit This Session"
@@ -449,7 +449,7 @@ model:
 - **Eligibility is checked against the *persisted* status, not the
   displayed one** — deliberately different from Flow 06's Upcoming-only
   rule. A session whose stored status is still `scheduled` can be marked
-  regardless of whether it currently displays as Upcoming, In Progress, or
+  regardless of whether it currently displays as Upcoming, Ongoing, or
   a clock-derived Completed reading; a session already `completed`,
   `cancelled` or `holiday` is rejected. Once Phase 15 exists, stored
   `completed` is only ever written when attendance is saved (§7A, §8), so

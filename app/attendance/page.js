@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { CalendarDays, CircleCheck, ClipboardCheck, Users, UserRoundX } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
+import Container from "@/components/layout/Container";
+import DateNavigator from "@/components/layout/DateNavigator";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/ui/pagination";
@@ -9,22 +11,33 @@ import { KpiStrip, KpiToggle } from "@/components/ui/kpi-visibility";
 import {
   DEFAULT_SESSION_SORT,
   filterSessions,
+  getSessionDateNavigation,
   listSessionsForDate,
   listSessions,
   sortSessions,
 } from "@/lib/class-sessions/data";
+import { isValidMonth, monthOf, monthRange } from "@/lib/attendance-history/calendar";
+import { groupSessionsByDate, isValidDateString } from "@/lib/attendance-history/grouping";
 import { todayInCentreTimezone, DISPLAY_STATUSES } from "@/lib/class-sessions/validation";
 import { getAttendanceSummaries } from "@/lib/attendance/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { formatShare } from "@/lib/format";
+import SortSelect from "@/components/ui/sort-select";
 import { buildListHref } from "@/lib/url-params";
 import { Button } from "@/components/ui/button";
 import AttendanceViewToggle from "@/app/attendance/attendance-view-toggle";
 import AttendanceFilters from "@/app/attendance/attendance-filters";
 import SessionList from "@/app/attendance/session-list";
+import SessionTimeline from "@/app/attendance/session-timeline";
+import { SessionDateJump, TodayDateChip } from "@/app/attendance/attendance-date-controls";
 
 const PAGE_SIZE = 10;
+
+// All Sessions shows a whole date range at once, grouped by date (no
+// pagination), so it asks for one page this large; a month of classes is far
+// below it.
+const ALL_SESSIONS_LIMIT = 500;
 
 // Labels for the "Sort by" control. Every `value` must be a key of
 // `SESSION_SORTS` (lib/class-sessions/data.js), which owns the direction.
@@ -37,16 +50,6 @@ const ALL_SORT_OPTIONS = [
   { value: "earliest", label: "Date (Earliest)" },
   { value: "latest", label: "Date (Latest)" },
 ];
-
-function formatHeadingDate(value) {
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
 
 /**
  * Sums each already-fetched session's attendance summary
@@ -139,7 +142,8 @@ export default async function AttendancePage({ searchParams }) {
   const instructorId = typeof rawParams.instructor === "string" ? rawParams.instructor : "";
   const status = DISPLAY_STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
-  const layout = rawParams.layout === "table" ? "table" : "cards";
+  // "" = no explicit choice: Table from `lg` up, Cards below (resolved in CSS).
+  const layout = rawParams.layout === "cards" || rawParams.layout === "table" ? rawParams.layout : "";
 
   if (rawParams.view !== "all") {
     const sort = TODAY_SORT_OPTIONS.some((option) => option.value === rawParams.sort)
@@ -164,184 +168,234 @@ export default async function AttendancePage({ searchParams }) {
     return (
       <>
         <PageHeader
+          compact
           title="Attendance"
-          description="View today's class sessions."
+          description="View today's class sessions and take attendance."
           icon={<ClipboardCheck className="size-6" />}
           actions={
             <>
               <KpiToggle pageKey="attendance" />
-              <p className="text-small flex h-9 items-center rounded-lg border border-border bg-surface px-3 font-medium text-text-primary shadow-xs">
-                {formatHeadingDate(today)}
-              </p>
+              <TodayDateChip date={today} />
             </>
           }
+          mobileActions={<TodayDateChip date={today} compact />}
         />
 
-        <AttendanceViewToggle active="today" />
+        <Container>
+          <AttendanceViewToggle active="today" />
 
-        {/* Whole-day totals, independent of the search/filters below — the
-            sum of each session's own attendance summary. Present / Absent
-            are shares of the day's eligible students. */}
-        <KpiStrip pageKey="attendance">
-          <StatTileGroup className="mb-6" ariaLabel="Today's attendance summary">
-            <StatTile valueFirst decorativeChart icon={CalendarDays} label="Sessions Today" value={allToday.length} tone="brand" />
-            <StatTile valueFirst decorativeChart icon={Users} label="Total Eligible" value={totals.eligible} tone="info" />
-            <StatTile
-              valueFirst
-              decorativeChart
-              icon={CircleCheck}
-              label="Marked Present"
-              value={totals.present}
-              aside={formatShare(totals.present, totals.eligible)}
-              tone="success"
-            />
-            <StatTile
-              valueFirst
-              decorativeChart
-              icon={UserRoundX}
-              label="Marked Absent"
-              value={totals.absent}
-              aside={formatShare(totals.absent, totals.eligible)}
-              tone="danger"
-            />
-          </StatTileGroup>
-        </KpiStrip>
+          {/* Whole-day totals, independent of the search/filters below - the
+              sum of each session's own attendance summary. Present / Absent
+              are shares of the day's eligible students. Desktop only: the
+              mobile reference is the session list alone. */}
+          <div className="max-lg:hidden">
+            <KpiStrip pageKey="attendance">
+              <StatTileGroup className="mb-6" ariaLabel="Today's attendance summary">
+                <StatTile valueFirst decorativeChart icon={CalendarDays} label="Sessions Today" value={allToday.length} tone="brand" />
+                <StatTile valueFirst decorativeChart icon={Users} label="Total Eligible" value={totals.eligible} tone="info" />
+                <StatTile
+                  valueFirst
+                  decorativeChart
+                  icon={CircleCheck}
+                  label="Marked Present"
+                  value={totals.present}
+                  aside={formatShare(totals.present, totals.eligible)}
+                  tone="success"
+                />
+                <StatTile
+                  valueFirst
+                  decorativeChart
+                  icon={UserRoundX}
+                  label="Marked Absent"
+                  value={totals.absent}
+                  aside={formatShare(totals.absent, totals.eligible)}
+                  tone="danger"
+                />
+              </StatTileGroup>
+            </KpiStrip>
+          </div>
 
-        {allToday.length === 0 ? (
-          <EmptyState description="No class sessions are scheduled for today." />
-        ) : (
-          <>
-            <AttendanceFilters
-              key={`today:${batchId}:${instructorId}:${status}`}
-              mode="today"
-              defaultQuery={q}
-              defaultBatchId={batchId || "all"}
-              defaultInstructorId={instructorId || "all"}
-              defaultStatus={status}
-              layout={layout}
-              batchOptions={batchOptions}
-              instructorOptions={instructorOptions}
-            />
-
-            {sessions.length === 0 ? (
-              <EmptyState
-                className="mt-6"
-                description="No sessions match your search or filters."
-                action={
-                  isFiltered ? (
-                    <Button variant="outline" render={<Link href="/attendance" />} nativeButton={false}>
-                      Clear Filters
-                    </Button>
-                  ) : undefined
-                }
+          {allToday.length === 0 ? (
+            <EmptyState description="No class sessions are scheduled for today." />
+          ) : (
+            <>
+              <AttendanceFilters
+                key={`today:${batchId}:${instructorId}:${status}`}
+                mode="today"
+                defaultQuery={q}
+                defaultBatchId={batchId || "all"}
+                defaultInstructorId={instructorId || "all"}
+                defaultStatus={status}
+                layout={layout}
+                batchOptions={batchOptions}
+                instructorOptions={instructorOptions}
               />
-            ) : (
-              <>
-                <SessionList
-                  mode="today"
-                  sessions={sessions}
-                  layout={layout}
-                  total={total}
-                  sort={sort}
-                  sortOptions={TODAY_SORT_OPTIONS}
-                />
 
-                <Pagination
-                  className="mt-4"
-                  page={page}
-                  totalPages={totalPages}
-                  total={total}
-                  pageSize={PAGE_SIZE}
-                  itemLabel="sessions"
-                  ariaLabel="Today's Sessions pagination"
-                  getHref={(targetPage) => buildListHref("/attendance", rawParams, { page: targetPage })}
+              {sessions.length === 0 ? (
+                <EmptyState
+                  className="mt-6"
+                  description="No sessions match your search or filters."
+                  action={
+                    isFiltered ? (
+                      <Button variant="outline" render={<Link href="/attendance" />} nativeButton={false}>
+                        Clear Filters
+                      </Button>
+                    ) : undefined
+                  }
                 />
-              </>
-            )}
-          </>
-        )}
+              ) : (
+                <>
+                  <SessionList
+                    sessions={sessions}
+                    layout={layout}
+                    total={total}
+                    sort={sort}
+                    sortOptions={TODAY_SORT_OPTIONS}
+                  />
+
+                  <Pagination
+                    className="mt-4"
+                    page={page}
+                    totalPages={totalPages}
+                    total={total}
+                    pageSize={PAGE_SIZE}
+                    itemLabel="sessions"
+                    ariaLabel="Today's Sessions pagination"
+                    getHref={(targetPage) => buildListHref("/attendance", rawParams, { page: targetPage })}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </Container>
       </>
     );
   }
 
-  const dateFrom = typeof rawParams.from === "string" ? rawParams.from : "";
-  const dateTo = typeof rawParams.to === "string" ? rawParams.to : "";
+  // All Sessions: the sessions of a date range grouped by date, beside a month
+  // calendar. The range defaults to the displayed month - from today onward
+  // when that month is the current one, since this list is about what is
+  // coming - unless a past date was picked, or `from` / `to` are applied.
+  const requestedFrom = isValidDateString(rawParams.from) ? rawParams.from : "";
+  const requestedTo = isValidDateString(rawParams.to) ? rawParams.to : "";
+  const requestedDate = isValidDateString(rawParams.date) ? rawParams.date : "";
+  const month = isValidMonth(rawParams.month)
+    ? rawParams.month
+    : monthOf(requestedFrom || requestedTo || requestedDate || today);
+  const fullMonth = monthRange(month);
+  const startsToday = month === monthOf(today) && !(requestedDate && requestedDate < today);
+  let rangeFrom = requestedFrom || (startsToday ? today : fullMonth.from);
+  let rangeTo = requestedTo || fullMonth.to;
+  if (rangeFrom > rangeTo) [rangeFrom, rangeTo] = [rangeTo, rangeFrom];
+
   const sort = ALL_SORT_OPTIONS.some((option) => option.value === rawParams.sort)
     ? rawParams.sort
     : DEFAULT_SESSION_SORT;
 
-  const [{ sessions: rawSessions, total }, batchOptions, instructorOptions] = await Promise.all([
-    listSessions({ q, dateFrom, dateTo, batchId, instructorId, status, sort, page, pageSize: PAGE_SIZE }),
+  const [{ sessions: rawSessions, total }, navigation, batchOptions, instructorOptions] = await Promise.all([
+    listSessions({
+      q,
+      dateFrom: rangeFrom,
+      dateTo: rangeTo,
+      batchId,
+      instructorId,
+      status,
+      sort,
+      page: 1,
+      pageSize: ALL_SESSIONS_LIMIT,
+    }),
+    getSessionDateNavigation(month),
     listBatchOptions(),
     listInstructorOptions(),
   ]);
   const sessions = await withAttendanceSummaries(rawSessions);
 
+  const groups = groupSessionsByDate(sessions);
+  const selectedDate = groups.some((group) => group.date === requestedDate) ? requestedDate : (groups[0]?.date ?? "");
+
   const isFiltered =
-    Boolean(q) || Boolean(dateFrom) || Boolean(dateTo) || Boolean(batchId) || Boolean(instructorId) || status !== "all";
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    Boolean(q) ||
+    Boolean(requestedFrom) ||
+    Boolean(requestedTo) ||
+    Boolean(batchId) ||
+    Boolean(instructorId) ||
+    status !== "all";
 
   return (
     <>
       <PageHeader
+        compact
         title="Attendance"
         description="View and manage class sessions and attendance."
         icon={<ClipboardCheck className="size-6" />}
+        actions={<SessionDateJump date={selectedDate} />}
+        mobileActions={<SessionDateJump date={selectedDate} compact className="min-w-0" />}
       />
 
-      <AttendanceViewToggle active="all" />
+      <Container>
+        <AttendanceViewToggle active="all" />
 
-      <AttendanceFilters
-        key={`all:${dateFrom}:${dateTo}:${batchId}:${instructorId}:${status}`}
-        mode="all"
-        defaultQuery={q}
-        defaultDateFrom={dateFrom}
-        defaultDateTo={dateTo}
-        defaultBatchId={batchId || "all"}
-        defaultInstructorId={instructorId || "all"}
-        defaultStatus={status}
-        layout={layout}
-        batchOptions={batchOptions}
-        instructorOptions={instructorOptions}
-      />
-
-      {sessions.length === 0 ? (
-        <EmptyState
-          className="mt-6"
-          description={
-            isFiltered ? "No sessions match your search or filters." : "No class sessions fall in this date range."
-          }
-          action={
-            isFiltered ? (
-              <Button variant="outline" render={<Link href="/attendance?view=all" />} nativeButton={false}>
-                Clear Filters
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <>
-          <SessionList
-            mode="all"
-            sessions={sessions}
-            layout={layout}
-            total={total}
-            sort={sort}
-            sortOptions={ALL_SORT_OPTIONS}
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]">
+          <DateNavigator
+            basePath="/attendance"
+            currentParams={rawParams}
+            month={month}
+            monthDays={navigation.monthDays}
+            quickDates={navigation.quickDates}
+            quickDatesTitle="Sessions by date"
+            selectedDate={selectedDate}
+            rangeFrom={rangeFrom}
+            rangeTo={rangeTo}
           />
 
-          <Pagination
-            className="mt-4"
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            pageSize={PAGE_SIZE}
-            itemLabel="sessions"
-            ariaLabel="All Sessions pagination"
-            getHref={(targetPage) => buildListHref("/attendance", rawParams, { page: targetPage })}
-          />
-        </>
-      )}
+          <div className="min-w-0">
+            <AttendanceFilters
+              key={`all:${requestedFrom}:${requestedTo}:${batchId}:${instructorId}:${status}`}
+              mode="all"
+              defaultQuery={q}
+              defaultDateFrom={requestedFrom}
+              defaultDateTo={requestedTo}
+              defaultBatchId={batchId || "all"}
+              defaultInstructorId={instructorId || "all"}
+              defaultStatus={status}
+              layout={layout}
+              trailing={
+                <SortSelect id="session-sort" options={ALL_SORT_OPTIONS} value={sort} defaultValue={DEFAULT_SESSION_SORT} />
+              }
+              batchOptions={batchOptions}
+              instructorOptions={instructorOptions}
+            />
+
+            <div className="mt-5">
+              {groups.length === 0 ? (
+                <EmptyState
+                  description={
+                    isFiltered
+                      ? "No sessions match your search or filters in this date range."
+                      : "No class sessions fall in this date range."
+                  }
+                  action={
+                    isFiltered ? (
+                      <Button variant="outline" render={<Link href="/attendance?view=all" />} nativeButton={false}>
+                        Clear Filters
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ) : (
+                <>
+                  <SessionTimeline groups={groups} selectedDate={selectedDate} layout={layout} today={today} />
+                  {total > sessions.length ? (
+                    <p className="mt-4 text-small text-text-secondary">
+                      Showing the first {sessions.length} of {total} sessions. Narrow the date range to see the rest.
+                    </p>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </Container>
     </>
   );
 }

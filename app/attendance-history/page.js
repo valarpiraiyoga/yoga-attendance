@@ -18,7 +18,7 @@ import { listInstructorOptions } from "@/lib/instructors/data";
 import { ATTENDANCE_STATUSES } from "@/lib/attendance/validation";
 import { todayInCentreTimezone } from "@/lib/class-sessions/validation";
 import AttendanceHistoryFilters from "@/app/attendance-history/attendance-history-filters";
-import HistoryCalendar from "@/app/attendance-history/history-calendar";
+import DateNavigator from "@/components/layout/DateNavigator";
 import HistoryDateRange from "@/app/attendance-history/history-date-range";
 import HistoryTimeline from "@/app/attendance-history/history-timeline";
 
@@ -102,7 +102,7 @@ export default async function AttendanceHistoryPage({ searchParams }) {
 
       <Container>
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]">
-          <HistoryCalendar
+          <DateNavigator
             basePath={BASE_PATH}
             currentParams={rawParams}
             month={month}

@@ -13,11 +13,13 @@ import { cn } from "@/lib/utils";
  * the bordered card holding search + the Filters trigger + the view
  * switcher, one row on `sm+`, stacked below it. `chips` renders inside the
  * same card, below the row — the existing applied-filter chips position.
+ * The card is an `@container`, so a toolbar control can move by the toolbar's
+ * own width; `rowClassName` extends the row (e.g. `sm:flex-wrap`).
  */
-export function ListToolbar({ children, chips, className }) {
+export function ListToolbar({ children, chips, className, rowClassName }) {
   return (
-    <div className={cn("rounded-card border border-border bg-surface p-4 shadow-xs", className)}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">{children}</div>
+    <div className={cn("@container rounded-card border border-border bg-surface p-4 shadow-xs", className)}>
+      <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-center", rowClassName)}>{children}</div>
       {chips}
     </div>
   );

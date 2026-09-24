@@ -12,7 +12,8 @@ function sessionsLabel(count) {
 }
 
 /**
- * Attendance History's date navigator (`ui-reference/02/attendance history.png`):
+ * The date navigator shared by Attendance History and Attendance -> All Sessions
+ * (`ui-reference/02`):
  * a month calendar whose days with completed sessions carry a brand dot, plus
  * the "Quick dates" list of the most recent such dates. Server-rendered — every
  * control is a link, so month, and date selection live in the URL:
@@ -24,12 +25,13 @@ function sessionsLabel(count) {
  *
  * Days without sessions are not links: there is nothing to open.
  */
-export default function HistoryCalendar({
+export default function DateNavigator({
   basePath,
   currentParams,
   month,
   monthDays,
   quickDates,
+  quickDatesTitle = "Quick dates",
   selectedDate,
   rangeFrom,
   rangeTo,
@@ -151,7 +153,7 @@ export default function HistoryCalendar({
 
       {quickDates.length > 0 ? (
         <section className="hidden rounded-card border border-border bg-surface p-4 shadow-xs lg:block">
-          <h2 className="mb-2 text-body font-semibold text-text-primary">Quick dates</h2>
+          <h2 className="mb-2 text-body font-semibold text-text-primary">{quickDatesTitle}</h2>
           <ul className="flex flex-col gap-1">
             {quickDates.map((quick) => {
               const isSelected = quick.date === selectedDate;

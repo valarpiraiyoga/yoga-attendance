@@ -1,9 +1,12 @@
 import AppShell from "@/components/layout/AppShell";
-import Container from "@/components/layout/Container";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 
 /**
- * Shared Attendance shell: auth boundary + shared page chrome. Mirrors
+ * Shared Attendance shell: auth boundary + shared page chrome. No `Container`
+ * here: the list page's full-bleed header strip must be a direct child of the
+ * shell's `<main>`, so the list page wraps its own body in `Container` and the
+ * session-detail routes get theirs from `[scheduleId]/layout.js`.
+ * Mirrors
  * app/schedule/layout.js, except for who may enter: Attendance is the one
  * feature area both roles reach (01-product.md §8 "Purpose": "Allow
  * instructors and administrators to quickly record and maintain
@@ -31,8 +34,8 @@ export default async function AttendanceLayout({ children }) {
   const user = await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
 
   return (
-    <AppShell role={user.role} user={user}>
-      <Container>{children}</Container>
+    <AppShell role={user.role} user={user} mobileTitle="Attendance">
+      {children}
     </AppShell>
   );
 }

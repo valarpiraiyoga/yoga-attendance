@@ -605,7 +605,7 @@ All 35 reference files inspected. Tabs appear in 11:
 | `07 Memberships detail view.png` | Batch Enrollments · Membership History | **Underline + icons** | Matches canonical ✓ |
 | `10 Batche detail.png` | Overview · Schedule · Students · Attendance | **Underline + icons** | Matches canonical ✓ |
 | `12 schedule list card view.png` | Weekly Schedule · List View | **Underline** | Matches canonical ✓ — implementation currently uses a segmented control and is normalized to tabs (§15.5) |
-| `14 Attendance today-session.png` | Upcoming · In Progress · Completed | **Underline + count chips** | Matches canonical ✓ |
+| `14 Attendance today-session.png` | Upcoming · Ongoing · Completed | **Underline + count chips** | Matches canonical ✓ |
 | `17 Reports student addendance.png` | Student · Batch · Attendance Summary | Folder shelf **+ underline on the active label** | Normalize → underline; drop the shelf |
 | `17 Reports … help.png` | same | Folder **+ underline on active label** | Same |
 | `18 Settings center profile.png` | Center Profile · Instructors · Roles & Permissions | Folder **+ underline on active label** | Same |

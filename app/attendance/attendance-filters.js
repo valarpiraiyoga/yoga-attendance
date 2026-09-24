@@ -22,7 +22,7 @@ import { formatDate } from "@/lib/format";
 const STATUS_OPTIONS = [
   { value: "all", label: "All Session Statuses" },
   { value: "upcoming", label: "Upcoming" },
-  { value: "in_progress", label: "In Progress" },
+  { value: "in_progress", label: "Ongoing" },
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },
   { value: "holiday", label: "Holiday" },
@@ -45,6 +45,12 @@ function optionLabel(options, value) {
  * params as before. Cards/Table is the `layout` param (`view` belongs to the
  * Today's / All Sessions switch).
  *
+ * Both views follow the finalized responsive default rule (as Attendance
+ * History): with no `layout` in the URL (`layout` is `""`), Table is the
+ * default from `lg` up and Cards below it — drawn by CSS in the switcher —
+ * and both segments link with an explicit `?layout=`, so a choice is always
+ * kept. `trailing` (All Sessions' "Sort by") sits after the switcher.
+ *
  * `mode` is "today" or "all". Today's Sessions is fixed to today's date
  * (02-ux.md), so its drawer has no Date Range; All Sessions keeps
  * `view=all` on every write so clearing never drops the admin back onto
@@ -59,6 +65,7 @@ export default function AttendanceFilters({
   defaultInstructorId,
   defaultStatus,
   layout,
+  trailing,
   batchOptions,
   instructorOptions,
 }) {
@@ -109,8 +116,9 @@ export default function AttendanceFilters({
     ...item,
     href: buildListHref("/attendance", searchParams, {
       view: isAll ? "all" : "",
-      layout: item.key === "cards" ? "" : item.key,
+      layout: item.key,
     }),
+    autoActive: item.key === "table" ? "lg" : "below-lg",
   }));
 
   function pushParams(mutate) {
@@ -206,6 +214,8 @@ export default function AttendanceFilters({
   return (
     <>
       <ListToolbar
+        className="border-0 bg-transparent p-0 shadow-none"
+        rowClassName="sm:flex-wrap"
         chips={
           <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
         }
@@ -216,13 +226,25 @@ export default function AttendanceFilters({
             value={query}
             onChange={(event) => searchFor(event.target.value)}
             onClear={() => searchFor("")}
-            placeholder="Search by batch or instructor"
+            placeholder="Search by batch name, code or instructor..."
           />
         </form>
 
-        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
+        {/* Filters and Cards / Table share one row on mobile, as the reference draws it. */}
+        <div className="flex items-center gap-3 sm:contents">
+          <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} className="flex-1 justify-center sm:flex-none" />
 
-        <ViewSwitcher items={layoutItems} active={layout} ariaLabel="Session list views" />
+          <ViewSwitcher
+            items={layoutItems}
+            active={layout || undefined}
+            ariaLabel="Session list views"
+            className="flex-[2] sm:flex-none [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none"
+          />
+        </div>
+
+        {/* All Sessions' "Sort by": beside the switcher when the toolbar is wide
+            enough, otherwise on its own right-aligned row beneath. */}
+        {trailing ? <div className="flex basis-full justify-end @3xl:basis-auto">{trailing}</div> : null}
       </ListToolbar>
 
       <FilterSheet

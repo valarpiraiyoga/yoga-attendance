@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Clock, Eye } from "lucide-react";
-import Avatar from "@/components/ui/avatar";
+import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Progress from "@/components/ui/progress";
+import { InstructorCell, SessionCell } from "@/components/ui/session-cells";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_BADGE_VARIANTS } from "@/lib/class-sessions/validation";
-import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import HistoryCardMenu from "@/app/attendance-history/history-card-menu";
 
@@ -17,11 +16,11 @@ import HistoryCardMenu from "@/app/attendance-history/history-card-menu";
 // each group's region `@container`), not the viewport: the page's calendar
 // column narrows the table at desktop widths, so a viewport breakpoint would
 // misjudge it. Narrow (mobile): Session, Attendance, Action. From `@xl`
-// (36rem): the Instructor column joins. From `@2xl` (42rem): the Eligible /
+// (36rem): the Instructor column joins. From 46rem: the Eligible /
 // Present / Absent counts too — the whole table fits from there, including
 // the ~750px table a 1440px screen leaves beside the calendar.
 const INSTRUCTOR_ONLY = "hidden @xl:table-cell";
-const COUNTS_ONLY = "hidden @2xl:table-cell";
+const COUNTS_ONLY = "hidden @[46rem]:table-cell";
 
 const HEAD_CLASS = "h-10 px-2 text-small tracking-normal";
 
@@ -37,41 +36,17 @@ function GroupRow({ session, variant }) {
 
   return (
     <TableRow className={cn(menuOpen && "bg-brand/10 hover:bg-brand/10")}>
-      {/* Session: clock + start time (strong), end time (muted), then the batch
-          name with its code inline and muted. */}
       <TableCell className="py-3 pr-1 pl-2 @xl:pr-2 @xl:pl-3">
-        <div className="flex items-center gap-2 @xl:gap-2.5">
-          <span
-            aria-hidden="true"
-            className="flex size-7 shrink-0 items-center @xl:size-8 justify-center rounded-full bg-brand/10 text-brand"
-          >
-            <Clock className="size-4" />
-          </span>
-          <div className="min-w-0">
-            <p className="leading-tight whitespace-nowrap">
-              <span className="text-section-title font-semibold whitespace-nowrap text-text-primary">
-                {formatTime(session.start_time)}
-              </span>{" "}
-              <span className="text-small whitespace-nowrap text-text-secondary">– {formatTime(session.end_time)}</span>
-            </p>
-            <p className="leading-snug">
-              <span className="text-body font-medium text-text-primary">{batchName}</span>
-              {code ? <span className="text-small whitespace-nowrap text-text-secondary"> · {code}</span> : null}
-            </p>
-          </div>
-        </div>
+        <SessionCell
+          startTime={session.start_time}
+          endTime={session.end_time}
+          batchName={batchName}
+          batchCode={code}
+        />
       </TableCell>
       {variant === "admin" ? (
         <TableCell className={cn("px-2 py-3", INSTRUCTOR_ONLY)}>
-          <span className="inline-flex min-w-0 items-center gap-2">
-            <Avatar name={instructorName} src={session.instructors?.photo_url} size="sm" />
-            <span className="min-w-0">
-              <span className="block text-small font-semibold whitespace-nowrap text-text-primary">
-                {instructorName || "—"}
-              </span>
-              <span className="block text-small text-text-secondary">Instructor</span>
-            </span>
-          </span>
+          <InstructorCell name={instructorName} photoUrl={session.instructors?.photo_url} />
         </TableCell>
       ) : null}
       <TableCell className={cn("px-1.5 py-3 text-center font-semibold tabular-nums text-text-secondary", COUNTS_ONLY)}>
