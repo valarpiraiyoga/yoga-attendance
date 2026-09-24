@@ -1,27 +1,26 @@
-import { Bell, HelpCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import MobileMenu from "@/components/global/MobileMenu";
-import UserMenu from "@/components/global/UserMenu";
+import { MOBILE_HEADER_ACTIONS_ID } from "@/components/layout/MobileHeaderAction";
 
-export default function Header({ role, user }) {
+/**
+ * The top bar exists only below `lg`, where the Sidebar is hidden: it carries
+ * the navigation button (MobileMenu, whose sheet also holds the account /
+ * notifications / help / logout row) and, beside it, the page title
+ * (`mobileTitle`, passed down from a section layout through `AppShell`) — or
+ * the app name when a section gives none — with a right-hand slot a page can
+ * fill with an icon action (`MobileHeaderAction`). From `lg` up those all
+ * live in the Sidebar, so the bar is removed and the page starts at the top of
+ * the workspace.
+ */
+export default function Header({ role, user, mobileTitle }) {
   return (
-    <header className="flex h-12 shrink-0 print:hidden items-center justify-between border-b border-border bg-surface px-4 md:px-6">
-      <div className="flex items-center gap-3">
-        <MobileMenu role={role} />
-      </div>
-
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell className="size-4" aria-hidden="true" />
-        </Button>
-        <Button variant="ghost" size="icon" aria-label="Help">
-          <HelpCircle className="size-4" aria-hidden="true" />
-        </Button>
-
-        <div className="mx-2 h-5 w-px bg-border" aria-hidden="true" />
-
-        <UserMenu role={role} name={user?.name} />
-      </div>
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-4 md:px-6 lg:hidden print:hidden">
+      <MobileMenu role={role} user={user} />
+      {mobileTitle ? (
+        <span className="min-w-0 truncate text-body font-semibold text-text-primary">{mobileTitle}</span>
+      ) : (
+        <span className="text-body font-semibold whitespace-nowrap text-text-primary">Yoga Center</span>
+      )}
+      <div id={MOBILE_HEADER_ACTIONS_ID} className="ml-auto flex min-w-0 items-center gap-2" />
     </header>
   );
 }

@@ -14,6 +14,12 @@ import { cn } from "@/lib/utils";
  * `items`: `{ key, label, href, icon? }[]`. Server-rendered — view state is
  * a URL param, not client state, matching the existing Cards/Table and
  * Weekly/List toggles.
+ *
+ * Optional `autoActive` on an item (`"lg"` | `"below-lg"`) marks it as the
+ * default view for that viewport range: while `active` is unset (no explicit
+ * choice in the URL), that item is drawn active by CSS alone — from `lg` up or
+ * below it — so the highlight follows the viewport with no client state and no
+ * first-paint flash. An explicit `active` key always wins.
  */
 // Full literal class strings, deliberately NOT passed through `cn()`:
 // tailwind-merge does not know our custom type tokens and treats
@@ -26,6 +32,10 @@ import { cn } from "@/lib/utils";
 const SEGMENT_BASE = "inline-flex items-center gap-1.5 rounded-md px-3 text-button font-medium transition-colors";
 const SEGMENT_ACTIVE = `${SEGMENT_BASE} bg-brand text-surface shadow-sm`;
 const SEGMENT_INACTIVE = `${SEGMENT_BASE} text-text-secondary hover:bg-surface hover:text-text-primary`;
+const SEGMENT_AUTO = {
+  lg: `${SEGMENT_BASE} lg:bg-brand lg:text-surface lg:shadow-sm max-lg:text-text-secondary max-lg:hover:bg-surface max-lg:hover:text-text-primary`,
+  "below-lg": `${SEGMENT_BASE} max-lg:bg-brand max-lg:text-surface max-lg:shadow-sm lg:text-text-secondary lg:hover:bg-surface lg:hover:text-text-primary`,
+};
 
 /**
  * Sized to sit level with the Filters button beside it: a fixed 36px
@@ -41,6 +51,7 @@ export default function ViewSwitcher({ items, active, ariaLabel = "Views", class
     >
       {items.map((item) => {
         const Icon = item.icon;
+        const isAuto = !active && Boolean(item.autoActive);
         const isActive = item.key === active;
 
         return (
@@ -48,8 +59,8 @@ export default function ViewSwitcher({ items, active, ariaLabel = "Views", class
             key={item.key}
             href={item.href}
             role="tab"
-            aria-selected={isActive}
-            className={isActive ? SEGMENT_ACTIVE : SEGMENT_INACTIVE}
+            aria-selected={isAuto ? undefined : isActive}
+            className={isAuto ? SEGMENT_AUTO[item.autoActive] : isActive ? SEGMENT_ACTIVE : SEGMENT_INACTIVE}
           >
             {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden="true" /> : null}
             {item.label}

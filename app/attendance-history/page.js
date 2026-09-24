@@ -1,129 +1,167 @@
 import Link from "next/link";
 import { History } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
+import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
-import Pagination from "@/components/ui/pagination";
-import { DEFAULT_HISTORY_SORT, listAttendanceHistory } from "@/lib/attendance-history/data";
+import { Button } from "@/components/ui/button";
+import {
+  DEFAULT_HISTORY_SORT,
+  HISTORY_RANGE_LIMIT,
+  getHistoryDateNavigation,
+  listAttendanceHistory,
+} from "@/lib/attendance-history/data";
+import { isValidMonth, monthOf, monthRange } from "@/lib/attendance-history/calendar";
+import { groupSessionsByDate, isValidDateString } from "@/lib/attendance-history/grouping";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { ATTENDANCE_STATUSES } from "@/lib/attendance/validation";
-import { buildListHref } from "@/lib/url-params";
-import { Button } from "@/components/ui/button";
+import { todayInCentreTimezone } from "@/lib/class-sessions/validation";
 import AttendanceHistoryFilters from "@/app/attendance-history/attendance-history-filters";
-import HistoryList from "@/app/attendance-history/history-list";
+import HistoryCalendar from "@/app/attendance-history/history-calendar";
+import HistoryDateRange from "@/app/attendance-history/history-date-range";
+import HistoryTimeline from "@/app/attendance-history/history-timeline";
 
-const PAGE_SIZE = 10;
-
-// Labels for the "Sort by" control. Every `value` must be a key of
-// `HISTORY_SORTS` (lib/attendance-history/data.js), which owns the direction.
-const SORT_OPTIONS = [
-  { value: "newest", label: "Date (Newest)" },
-  { value: "oldest", label: "Date (Oldest)" },
-];
+const BASE_PATH = "/attendance-history";
 
 /**
- * Attendance History (Phase 16; approved wireframe p.6 Instructor, p.30 Admin).
- * One page for admin and instructor — filters/table columns branch on role;
- * row visibility stays RLS-only via listAttendanceHistory. Table is the
- * default layout (`layout=cards` optional).
+ * Attendance History (Phase 16; approved wireframe p.6 Instructor, p.30 Admin,
+ * finalized in `docs/ui-reference/02/attendance history.png`).
+ *
+ * One page for admin and instructor — the toolbar and table columns branch on
+ * role; row visibility stays RLS-only via `listAttendanceHistory`. The results
+ * are the completed sessions of a date range, grouped by date into a timeline
+ * of accordions, beside a month calendar and Quick dates for jumping between
+ * dates. Default view: Table from `lg` up, Cards below; an explicit
+ * `?layout=cards|table` is always respected.
+ *
+ * URL state: `from` / `to` (range; default is the displayed month), `month`
+ * (calendar month; default is the centre's current month, or the range's first
+ * month), `date` (the group that opens; default is the newest date shown),
+ * plus the toolbar's `q`, `batch`, `instructor`, `status`, `layout`. "Today",
+ * and so the default month, is the centre-timezone date (01-product.md §7A).
  */
 export default async function AttendanceHistoryPage({ searchParams }) {
   const user = await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
   const isAdmin = user.role === ROLES.ADMIN;
+  const variant = isAdmin ? "admin" : "instructor";
 
   const rawParams = await searchParams;
   const q = typeof rawParams.q === "string" ? rawParams.q : "";
-  const dateFrom = typeof rawParams.from === "string" ? rawParams.from : "";
-  const dateTo = typeof rawParams.to === "string" ? rawParams.to : "";
   const batchId = typeof rawParams.batch === "string" ? rawParams.batch : "";
   const instructorId = isAdmin && typeof rawParams.instructor === "string" ? rawParams.instructor : "";
   const attendanceStatus = ATTENDANCE_STATUSES.includes(rawParams.status) ? rawParams.status : "all";
-  const page = Math.max(1, Number(rawParams.page) || 1);
-  const layout = rawParams.layout === "cards" ? "cards" : "table";
-  const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort) ? rawParams.sort : DEFAULT_HISTORY_SORT;
+  // "" = no explicit choice: Table from `lg` up, Cards below (resolved in CSS).
+  const layout = rawParams.layout === "cards" || rawParams.layout === "table" ? rawParams.layout : "";
 
-  const [{ sessions, total }, batchOptions, instructorOptions] = await Promise.all([
+  // Range and calendar month. The range always exists (it defaults to the
+  // month on the calendar), so the header control never shows an empty range.
+  const requestedFrom = isValidDateString(rawParams.from) ? rawParams.from : "";
+  const requestedTo = isValidDateString(rawParams.to) ? rawParams.to : "";
+  const month = isValidMonth(rawParams.month)
+    ? rawParams.month
+    : monthOf(requestedFrom || requestedTo || todayInCentreTimezone());
+  const defaultRange = monthRange(month);
+  let rangeFrom = requestedFrom || defaultRange.from;
+  let rangeTo = requestedTo || defaultRange.to;
+  if (rangeFrom > rangeTo) [rangeFrom, rangeTo] = [rangeTo, rangeFrom];
+
+  const [{ sessions, total }, navigation, batchOptions, instructorOptions] = await Promise.all([
     listAttendanceHistory({
-      dateFrom,
-      dateTo,
+      dateFrom: rangeFrom,
+      dateTo: rangeTo,
       batchId,
       instructorId,
       q,
       attendanceStatus,
-      sort,
-      page,
-      pageSize: PAGE_SIZE,
+      sort: DEFAULT_HISTORY_SORT,
+      page: 1,
+      pageSize: HISTORY_RANGE_LIMIT,
     }),
+    getHistoryDateNavigation(month),
     listBatchOptions(),
     isAdmin ? listInstructorOptions() : Promise.resolve([]),
   ]);
 
-  const isFiltered =
-    Boolean(q) || Boolean(dateFrom) || Boolean(dateTo) || Boolean(batchId) || Boolean(instructorId) || attendanceStatus !== "all";
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const groups = groupSessionsByDate(sessions);
+  const requestedDate = isValidDateString(rawParams.date) ? rawParams.date : "";
+  const selectedDate = groups.some((group) => group.date === requestedDate) ? requestedDate : (groups[0]?.date ?? "");
+
+  const isFiltered = Boolean(q) || Boolean(batchId) || Boolean(instructorId) || attendanceStatus !== "all";
 
   return (
     <>
       <PageHeader
+        compact
         title="Attendance History"
         description="View past class sessions and attendance records."
         icon={<History className="size-6" />}
+        actions={<HistoryDateRange from={rangeFrom} to={rangeTo} />}
+        mobileActions={<HistoryDateRange from={rangeFrom} to={rangeTo} compact className="min-w-0" />}
       />
 
-      <AttendanceHistoryFilters
-        key={`${dateFrom}:${dateTo}:${batchId}:${instructorId}:${attendanceStatus}`}
-        variant={isAdmin ? "admin" : "instructor"}
-        layout={layout}
-        defaultQuery={q}
-        defaultDateFrom={dateFrom}
-        defaultDateTo={dateTo}
-        defaultBatchId={batchId || "all"}
-        defaultInstructorId={instructorId || "all"}
-        defaultAttendanceStatus={attendanceStatus}
-        batchOptions={batchOptions}
-        instructorOptions={instructorOptions}
-      />
-
-      {sessions.length === 0 ? (
-        <EmptyState
-          className="mt-6"
-          description={
-            isFiltered
-              ? "No attendance records match your search or filters."
-              : "No completed sessions have attendance recorded yet."
-          }
-          action={
-            isFiltered ? (
-              <Button variant="outline" render={<Link href="/attendance-history" />} nativeButton={false}>
-                Clear Filters
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <>
-          <HistoryList
-            sessions={sessions}
-            total={total}
-            variant={isAdmin ? "admin" : "instructor"}
-            layout={layout}
-            sort={sort}
-            sortOptions={SORT_OPTIONS}
+      <Container>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]">
+          <HistoryCalendar
+            basePath={BASE_PATH}
+            currentParams={rawParams}
+            month={month}
+            monthDays={navigation.monthDays}
+            quickDates={navigation.quickDates}
+            selectedDate={selectedDate}
+            rangeFrom={rangeFrom}
+            rangeTo={rangeTo}
           />
 
-          <Pagination
-            className="mt-4"
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            pageSize={PAGE_SIZE}
-            itemLabel="sessions"
-            ariaLabel="Attendance History pagination"
-            getHref={(targetPage) => buildListHref("/attendance-history", rawParams, { page: targetPage })}
-          />
-        </>
-      )}
+          <div className="min-w-0">
+            <AttendanceHistoryFilters
+              key={`${batchId}:${instructorId}:${attendanceStatus}`}
+              variant={variant}
+              layout={layout}
+              showDateFilters={false}
+            responsiveLayoutDefault
+              toolbarClassName="border-0 bg-transparent p-0 shadow-none"
+              searchPlaceholder="Search by student name, batch or instructor…"
+              defaultQuery={q}
+              defaultDateFrom=""
+              defaultDateTo=""
+              defaultBatchId={batchId || "all"}
+              defaultInstructorId={instructorId || "all"}
+              defaultAttendanceStatus={attendanceStatus}
+              batchOptions={batchOptions}
+              instructorOptions={instructorOptions}
+            />
+
+            <div className="mt-5">
+              {groups.length === 0 ? (
+                <EmptyState
+                  description={
+                    isFiltered
+                      ? "No attendance records match your search or filters in this date range."
+                      : "No completed sessions with attendance recorded in this date range."
+                  }
+                  action={
+                    isFiltered ? (
+                      <Button variant="outline" render={<Link href={BASE_PATH} />} nativeButton={false}>
+                        Clear Filters
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ) : (
+                <>
+                  <HistoryTimeline groups={groups} selectedDate={selectedDate} layout={layout} variant={variant} />
+                  {total > sessions.length ? (
+                    <p className="mt-4 text-small text-text-secondary">
+                      Showing the most recent {sessions.length} of {total} sessions. Narrow the date range to see the rest.
+                    </p>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </Container>
     </>
   );
 }

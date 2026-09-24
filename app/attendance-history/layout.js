@@ -1,9 +1,11 @@
 import AppShell from "@/components/layout/AppShell";
-import Container from "@/components/layout/Container";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 
 /**
  * Shared Attendance History shell: auth boundary + shared page chrome.
+ * No `Container` here: the list page's full-bleed header strip must be a direct
+ * child of the shell's `<main>`, so each page wraps its own body in `Container`
+ * (the detail routes do so in `[scheduleId]/layout.js`).
  * Mirrors app/attendance/layout.js exactly, including which roles may
  * enter — Attendance History is approved IA for both (`01-product.md` §9:
  * "Allow Admin and Instructors to review attendance"; `02-ux.md`'s
@@ -24,8 +26,8 @@ export default async function AttendanceHistoryLayout({ children }) {
   const user = await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
 
   return (
-    <AppShell role={user.role} user={user}>
-      <Container>{children}</Container>
+    <AppShell role={user.role} user={user} mobileTitle="Attendance History">
+      {children}
     </AppShell>
   );
 }

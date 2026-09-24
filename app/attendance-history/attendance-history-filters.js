@@ -19,6 +19,7 @@ import { ListToolbar } from "@/components/layout/list-page";
 import { ATTENDANCE_STATUSES } from "@/lib/attendance/validation";
 import { buildListHref } from "@/lib/url-params";
 import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 const ATTENDANCE_STATUS_LABELS = { present: "Present", absent: "Absent" };
 const ATTENDANCE_STATUS_OPTIONS = [
@@ -53,12 +54,28 @@ function optionLabel(options, value) {
  * route, `hideBatchFilter` drops the (redundant) Batch filter and chip, and
  * `searchPlaceholder` narrows the search hint. The defaults are Attendance
  * History's own.
+ *
+ * Attendance History itself passes `showDateFilters={false}`: its date range
+ * lives in the page header's range control (`HistoryDateRange`), so the drawer
+ * carries no From / To, the range gets no chip, "Clear" leaves the range (and
+ * the calendar month) untouched, and `toolbarClassName` drops the card frame
+ * so the row sits directly on the page as in the finalized reference.
+ *
+ * `responsiveLayoutDefault` (Attendance History only) is the finalized default
+ * view rule: with no `layout` in the URL (`layout` is `""`), Table is the
+ * default from `lg` up and Cards below it. The switcher then draws the default
+ * by CSS, and *both* segments link with an explicit `?layout=`, so a choice is
+ * always kept — including choosing what would have been the default. Callers
+ * without it (Batch Details → Attendance) keep Table as the only default.
  */
 export default function AttendanceHistoryFilters({
   variant,
   layout,
   basePath = "/attendance-history",
   hideBatchFilter = false,
+  showDateFilters = true,
+  responsiveLayoutDefault = false,
+  toolbarClassName,
   searchPlaceholder = "Search by student name or batch",
   defaultQuery,
   defaultDateFrom,
@@ -101,8 +118,8 @@ export default function AttendanceHistoryFilters({
   const appliedStatus = defaultAttendanceStatus;
 
   const activeFilterCount = [
-    Boolean(appliedFrom),
-    Boolean(appliedTo),
+    showDateFilters && Boolean(appliedFrom),
+    showDateFilters && Boolean(appliedTo),
     !hideBatchFilter && appliedBatchId !== "all",
     !isInstructor && appliedInstructorId !== "all",
     appliedStatus !== "all",
@@ -111,8 +128,9 @@ export default function AttendanceHistoryFilters({
   const layoutItems = LAYOUTS.map((item) => ({
     ...item,
     href: buildListHref(basePath, searchParams, {
-      layout: item.key === "table" ? "" : item.key,
+      layout: item.key === "table" && !responsiveLayoutDefault ? "" : item.key,
     }),
+    autoActive: responsiveLayoutDefault ? (item.key === "table" ? "lg" : "below-lg") : undefined,
   }));
 
   function pushParams(mutate) {
@@ -134,10 +152,12 @@ export default function AttendanceHistoryFilters({
     pushParams((params) => {
       if (query.trim()) params.set("q", query.trim());
       else params.delete("q");
-      if (dateFrom) params.set("from", dateFrom);
-      else params.delete("from");
-      if (dateTo) params.set("to", dateTo);
-      else params.delete("to");
+      if (showDateFilters) {
+        if (dateFrom) params.set("from", dateFrom);
+        else params.delete("from");
+        if (dateTo) params.set("to", dateTo);
+        else params.delete("to");
+      }
       if (batchId !== "all") params.set("batch", batchId);
       else params.delete("batch");
       if (!isInstructor) {
@@ -157,8 +177,10 @@ export default function AttendanceHistoryFilters({
     setInstructorId("all");
     setAttendanceStatus("all");
     pushParams((params) => {
-      params.delete("from");
-      params.delete("to");
+      if (showDateFilters) {
+        params.delete("from");
+        params.delete("to");
+      }
       params.delete("batch");
       params.delete("instructor");
       params.delete("status");
@@ -173,7 +195,18 @@ export default function AttendanceHistoryFilters({
     setBatchId("all");
     setInstructorId("all");
     setAttendanceStatus("all");
-    router.push(pathname);
+    if (showDateFilters) {
+      router.push(pathname);
+    } else {
+      // Keep the header's range and the calendar's month; clear everything else.
+      const params = new URLSearchParams();
+      for (const key of ["from", "to", "month", "layout"]) {
+        const value = searchParams.get(key);
+        if (value) params.set(key, value);
+      }
+      const qs = params.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname);
+    }
     setFiltersOpen(false);
   }
 
@@ -198,7 +231,9 @@ export default function AttendanceHistoryFilters({
   }
 
   const chips = [];
-  if (appliedFrom && appliedTo) {
+  if (!showDateFilters) {
+    // The range is shown by the header control, not as a chip.
+  } else if (appliedFrom && appliedTo) {
     chips.push({ key: "range", label: `${formatDate(appliedFrom)} – ${formatDate(appliedTo)}` });
   } else if (appliedFrom) {
     chips.push({ key: "from", label: `From: ${formatDate(appliedFrom)}` });
@@ -224,11 +259,12 @@ export default function AttendanceHistoryFilters({
   return (
     <>
       <ListToolbar
+        className={toolbarClassName}
         chips={
           <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
         }
       >
-        <form onSubmit={applySearch} className="min-w-0 flex-1">
+        <form onSubmit={applySearch} className={cn("min-w-0 flex-1", showDateFilters && "sm:max-w-sm")}>
           <SearchInput
             id="attendance-history-search"
             value={query}
@@ -238,9 +274,22 @@ export default function AttendanceHistoryFilters({
           />
         </form>
 
-        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
+        {/* Attendance History (no date filters) keeps Filters and Cards / Table on
+            one row on mobile, as the reference draws it; other callers stack. */}
+        <div className={cn("flex items-center gap-3", showDateFilters ? "contents" : "sm:contents")}>
+          <FilterBar
+            activeCount={activeFilterCount}
+            onClick={() => setFiltersOpen(true)}
+            className={showDateFilters ? undefined : "flex-1 justify-center sm:flex-none"}
+          />
 
-        <ViewSwitcher items={layoutItems} active={layout} ariaLabel="Attendance history views" />
+          <ViewSwitcher
+            items={layoutItems}
+            active={layout || undefined}
+            ariaLabel="Attendance history views"
+            className={showDateFilters ? undefined : "flex-[2] sm:flex-none [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none"}
+          />
+        </div>
       </ListToolbar>
 
       <FilterSheet
@@ -250,6 +299,7 @@ export default function AttendanceHistoryFilters({
         onSubmit={applyFilters}
         onClearAll={clearAllIncludingSearch}
       >
+        {showDateFilters ? (
         <div className="grid grid-cols-2 gap-3">
           <FilterSection id="attendance-history-date-from" label="From">
             <Input
@@ -270,6 +320,7 @@ export default function AttendanceHistoryFilters({
             />
           </FilterSection>
         </div>
+        ) : null}
 
         {!hideBatchFilter ? (
           <FilterSection id="attendance-history-batch" label={batchLabel}>

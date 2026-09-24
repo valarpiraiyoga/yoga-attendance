@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, LogOut } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -12,9 +12,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import NavList from "@/components/global/NavList";
-import { signOut } from "@/lib/auth/actions";
+import UtilityRow from "@/components/global/UtilityRow";
 
-export default function MobileMenu({ role }) {
+export default function MobileMenu({ role, user }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -42,15 +42,9 @@ export default function MobileMenu({ role }) {
           <NavList role={role} onNavigate={() => setOpen(false)} />
         </div>
 
-        <form action={signOut} className="shrink-0 border-t border-border/60 px-3 py-3">
-          <button
-            type="submit"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-background hover:text-text-primary"
-          >
-            <LogOut className="size-4 shrink-0" aria-hidden="true" />
-            Logout
-          </button>
-        </form>
+        <div className="shrink-0 border-t border-border/60 px-3 py-3">
+          <UtilityRow role={role} name={user?.name} />
+        </div>
       </SheetContent>
     </Sheet>
   );
