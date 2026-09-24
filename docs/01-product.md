@@ -183,7 +183,7 @@ that overrides any date-derived status.
 
 Membership start and end dates are calendar dates, both inclusive, and "the current
 date" is the date at the centre, evaluated in the centre timezone
-(**Asia/Kolkata**, §7A) — never the server's UTC date. A membership that starts and
+(the centre's configured time zone, §7A and §11 Regional Settings) — never the server's UTC date. A membership that starts and
 ends on the same day is Active for that day and Expired from the next centre day,
 so the membership status, days left and progress shown on Membership screens agree
 with attendance eligibility, which compares the same dates against the class
@@ -402,7 +402,7 @@ Upcoming and Ongoing are therefore never stored — they are readings of the sam
 Completed is different: it has both a stored form and a purely displayed one, and the two must not be confused. A `scheduled` session whose end time has passed is *shown* as Completed the moment anyone looks at it, but its stored status stays `scheduled` — nothing about looking at a session, or the clock simply moving past its end time, ever writes to the database. The stored value only becomes `completed` when attendance is saved for the session (§8), a separate, explicit, later event. Conflating "displays as Completed" with "is recorded as completed" would let the clock silently change a stored value, which is exactly what §12's Historical Integrity rules forbid elsewhere in this product.
 
 ### Centre Timezone
-Upcoming, Ongoing and the displayed-Completed reading above all depend on what time it is *at the centre*, so all three are derived against a single fixed yoga-centre timezone: **Asia/Kolkata**. There is no per-user, per-branch or per-schedule timezone — multi-branch management is explicitly outside V1 (§13).
+Upcoming, Ongoing and the displayed-Completed reading above all depend on what time it is *at the centre*, so all three are derived against the **centre's timezone** — a single Center Setting (§11 "Regional Settings"), an IANA identifier such as `Asia/Kolkata` or `America/New_York`, whose daylight-saving rules come from the IANA time zone database. It defaults to **Asia/Kolkata**, which is what an existing centre keeps. The timezone belongs to the centre: it never depends on the browser, device or location of the admin, instructor or student viewing the app. There is no per-user, per-branch or per-schedule timezone — multi-branch management is explicitly outside V1 (§13).
 
 ### Snapshot and Historical Integrity
 When a session is materialized it snapshots its batch, instructor, date, start time and end time. Those snapshot values are authoritative for that session from then on:
@@ -577,6 +577,15 @@ Admin can manage:
 
 Center profile information can also be used in exported reports.
 
+### Regional Settings
+Part of Center Profile. Admin can set:
+- **Time Zone** — the centre's IANA time zone (searchable by country, city or identifier). Default **Asia/Kolkata**. It is the business timezone for every date the application derives: today, session status, membership validity, attendance eligibility, schedule dates (§7A "Centre Timezone").
+- **Currency** — the centre's ISO 4217 currency code (searchable by code, name or symbol). Default **INR**. It controls how amounts are displayed, and which currency **new** memberships are priced in.
+
+Changing the currency never converts an amount. Each membership records the currency it was priced in (existing memberships are INR), so past amounts keep their original meaning after the centre changes currency; a renewal starts blank rather than carrying over an amount priced in a different currency.
+
+The Logo is uploaded from Center Profile (PNG, JPG or WebP, up to 2 MB) and appears in the application's brand slot and on receipts.
+
 ### Instructors
 Admin can:
 - Add instructor
@@ -697,7 +706,7 @@ Versioning schedule edits is what makes "future changes only" true: a schedule t
 - Inactive or ended schedule versions produce no further unmaterialized occurrences.
 - Materialized sessions are retained and never deleted.
 - Persisted session states are scheduled, completed, cancelled and holiday.
-- Upcoming, Ongoing, and a displayed Completed reading of a scheduled session past its end time are all derived from the session's date and time in the Asia/Kolkata centre timezone, never stored.
+- Upcoming, Ongoing, and a displayed Completed reading of a scheduled session past its end time are all derived from the session's date and time in the centre timezone (§7A), never stored.
 - A scheduled session past its end time is never automatically persisted as completed — only displayed as Completed.
 - A session's stored status becomes completed only when its attendance is saved.
 - Duration is derived from start and end time.

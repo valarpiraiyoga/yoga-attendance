@@ -30,7 +30,8 @@ import { batchToday, currentSchedulesOf, summarizeCurrentSchedules } from "@/lib
 import { listSchedulesForBatch } from "@/lib/schedules/data";
 import { listEnrollmentsForBatch } from "@/lib/enrollments/data";
 import { getBatchAttendanceReport } from "@/lib/reports/data";
-import { DAY_LABELS, addDaysUTC, todayDateString } from "@/lib/schedules/validation";
+import { DAY_LABELS, addDaysUTC } from "@/lib/schedules/validation";
+import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { formatDateWithWeekday, formatTimeRange } from "@/lib/format";
 import BatchHeader from "@/app/batches/[id]/batch-header";
 import BatchStudentRow from "@/app/batches/[id]/batch-student-row";
@@ -91,7 +92,9 @@ export default async function BatchDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const today = todayDateString();
+  // The centre's own day (Center Settings) - one "today" for the recent
+  // attendance window and for which schedules are current.
+  const today = batchToday(new Date(), await getCenterTimezone());
   const [schedules, enrollments, recentAttendance] = await Promise.all([
     listSchedulesForBatch(id),
     listEnrollmentsForBatch(id),
@@ -99,10 +102,9 @@ export default async function BatchDetailsPage({ params, searchParams }) {
   ]);
   // The batch's current schedules — the same set (same definition, same centre
   // date) the Batches card and table summarise; the Schedules tab lists every row.
-  const scheduleToday = batchToday();
-  const currentSchedules = currentSchedulesOf(schedules, scheduleToday);
+  const currentSchedules = currentSchedulesOf(schedules, today);
   const upcomingScheduleCount = schedules.filter(
-    (schedule) => schedule.status === "active" && schedule.effective_from > scheduleToday
+    (schedule) => schedule.status === "active" && schedule.effective_from > today
   ).length;
   const activeEnrollments = enrollments.filter((enrollment) => enrollment.status === "active");
   const summary = summarizeCurrentSchedules(currentSchedules);

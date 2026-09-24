@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Eye, IndianRupee } from "lucide-react";
+import { CalendarDays, Eye, Banknote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import EntityCard from "@/components/ui/entity-card";
 import Progress from "@/components/ui/progress";
-import { formatAmount, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { formatCurrency } from "@/lib/currencies";
 import { MEMBERSHIP_STATUS, PAYMENT_STATUS } from "@/lib/status";
 import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/validity";
 import { cn } from "@/lib/utils";
@@ -75,14 +76,14 @@ export default function MembershipCardItem({ membership, today }) {
       meta={[
         { icon: CalendarDays, label: period, title: period },
         {
-          icon: IndianRupee,
+          icon: Banknote,
           label: (
             <>
-              <span className="font-medium text-text-primary">{formatAmount(membership.amount)}</span>{" "}
+              <span className="font-medium text-text-primary">{formatCurrency(membership.amount, membership.currency)}</span>{" "}
               <Badge variant={payment.variant}>{payment.label}</Badge>
             </>
           ),
-          title: `${formatAmount(membership.amount)} · ${payment.label}`,
+          title: `${formatCurrency(membership.amount, membership.currency)} · ${payment.label}`,
         },
       ]}
     >

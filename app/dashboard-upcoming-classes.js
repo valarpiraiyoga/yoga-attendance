@@ -127,8 +127,8 @@ function sessionHref(session) {
   return `/attendance/${session.schedule_id}/${session.session_date}`;
 }
 
-function ClassCard({ session, showInstructor }) {
-  const displayStatus = deriveDisplayStatus(session);
+function ClassCard({ session, showInstructor, timeZone }) {
+  const displayStatus = deriveDisplayStatus(session, new Date(), timeZone);
   const studentCount = session.attendanceSummary?.eligibleCount ?? 0;
   const batch = session.batches;
   const code = batch?.code || "?";
@@ -180,7 +180,7 @@ function ClassCard({ session, showInstructor }) {
  * on the meta row because these sessions are not all today. ACTION remains
  * "View Details" to Session Details (no attendance tab).
  */
-export default function DashboardUpcomingClasses({ sessions, showInstructor }) {
+export default function DashboardUpcomingClasses({ sessions, showInstructor, timeZone }) {
   return (
     <div className="flex flex-col gap-3" aria-label="Upcoming Classes">
       {sessions.map((session) => (
@@ -188,6 +188,7 @@ export default function DashboardUpcomingClasses({ sessions, showInstructor }) {
           key={session.id ?? `${session.schedule_id}:${session.session_date}`}
           session={session}
           showInstructor={showInstructor}
+          timeZone={timeZone}
         />
       ))}
     </div>

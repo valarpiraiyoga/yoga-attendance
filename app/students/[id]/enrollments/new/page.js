@@ -6,7 +6,7 @@ import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listCurrentSchedules } from "@/lib/schedules/data";
-import { todayDateString } from "@/lib/schedules/validation";
+import { getCentreToday } from "@/lib/center-profile/settings";
 import { createEnrollment } from "@/lib/enrollments/actions";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
 import EnrollmentForm from "@/app/students/[id]/enrollments/enrollment-form";
@@ -132,7 +132,7 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
           action={createEnrollmentForStudent}
           batchOptions={batchOptions}
           currentSchedules={currentSchedules}
-          todayDate={todayDateString()}
+          todayDate={await getCentreToday()}
           guided={isGuided}
           submitLabel="Save Enrollment"
           pendingLabel="Saving…"

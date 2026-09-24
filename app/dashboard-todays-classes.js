@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   deriveDisplayStatus,
-  todayInCentreTimezone,
   DISPLAY_STATUS_LABELS,
   DISPLAY_STATUS_BADGE_VARIANTS,
 } from "@/lib/class-sessions/validation";
@@ -151,8 +150,8 @@ function StatusPill({ status }) {
   );
 }
 
-function ClassCard({ session, showInstructor, today }) {
-  const displayStatus = deriveDisplayStatus(session);
+function ClassCard({ session, showInstructor, today, timeZone }) {
+  const displayStatus = deriveDisplayStatus(session, new Date(), timeZone);
   const studentCount = session.attendanceSummary?.eligibleCount ?? 0;
   const batch = session.batches;
   const code = batch?.code || "?";
@@ -199,8 +198,9 @@ export default function DashboardTodaysClasses({
   showInstructor,
   isAdmin,
   description,
+  today,
+  timeZone,
 }) {
-  const today = todayInCentreTimezone();
   const count = sessions.length;
 
   return (
@@ -259,6 +259,7 @@ export default function DashboardTodaysClasses({
               session={session}
               showInstructor={showInstructor}
               today={today}
+              timeZone={timeZone}
             />
           ))}
         </div>

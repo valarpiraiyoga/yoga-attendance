@@ -1,5 +1,6 @@
 import Header from "@/components/global/Header";
 import Sidebar from "@/components/global/Sidebar";
+import { getCenterSettings } from "@/lib/center-profile/settings";
 
 /**
  * Reusable application-level layout.
@@ -24,14 +25,23 @@ import Sidebar from "@/components/global/Sidebar";
  *
  * `mobileTitle` (optional) names the section in the mobile top bar in place of
  * the app name — see `Header`.
+ *
+ * The centre's logo (Center Settings) appears in the shell's one brand slot -
+ * the Sidebar and the mobile menu's header - when one has been uploaded; the
+ * layout is otherwise unchanged. A logo that cannot be read never fails the
+ * page: the shell just renders without it.
  */
-export default function AppShell({ role, user, mobileTitle, children }) {
+export default async function AppShell({ role, user, mobileTitle, children }) {
+  const logoUrl = await getCenterSettings()
+    .then((settings) => settings.logoUrl)
+    .catch(() => null);
+
   return (
     <div className="flex h-dvh overflow-hidden bg-background print:block print:h-auto print:overflow-visible">
-      <Sidebar role={role} user={user} />
+      <Sidebar role={role} user={user} logoUrl={logoUrl} />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <Header role={role} user={user} mobileTitle={mobileTitle} />
+        <Header role={role} user={user} mobileTitle={mobileTitle} logoUrl={logoUrl} />
         <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 print:overflow-visible print:p-0">
           {children}
         </main>

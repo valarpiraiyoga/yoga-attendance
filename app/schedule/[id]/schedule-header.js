@@ -29,7 +29,7 @@ function describe(schedule) {
  * Deactivate actions. The parent stacks this with the summary tiles and the
  * tabs (`gap-6`).
  */
-export default function ScheduleHeader({ schedule }) {
+export default function ScheduleHeader({ schedule, today }) {
   const { isActive, status, batchName, batchCode, dayLabel, timeLabel, instructorName } = describe(schedule);
 
   return (
@@ -73,7 +73,7 @@ export default function ScheduleHeader({ schedule }) {
               <Pencil className="size-4" aria-hidden="true" />
               Edit Schedule
             </Button>
-            <DeactivateSchedule scheduleId={schedule.id} isActive={isActive} />
+            <DeactivateSchedule scheduleId={schedule.id} isActive={isActive} today={today} />
           </>
         }
       />

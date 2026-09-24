@@ -6,7 +6,8 @@ import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { formatAmount, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { formatCurrency } from "@/lib/currencies";
 import { MEMBERSHIP_STATUS, PLAN } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import MembershipCardMenu from "@/app/memberships/membership-card-menu";
@@ -33,7 +34,7 @@ export default function MembershipHistoryRow({ entry }) {
       <TableCell className="whitespace-nowrap text-text-secondary">
         {formatDate(entry.start_date)} – {formatDate(entry.end_date)}
       </TableCell>
-      <TableCell className="whitespace-nowrap text-text-secondary">{formatAmount(entry.amount)}</TableCell>
+      <TableCell className="whitespace-nowrap text-text-secondary">{formatCurrency(entry.amount, entry.currency)}</TableCell>
       <TableCell>
         <Badge variant={status.variant}>{status.label}</Badge>
       </TableCell>

@@ -6,6 +6,7 @@ import { getMembership } from "@/lib/memberships/data";
 import { createMembership } from "@/lib/memberships/actions";
 import { calculateMembershipEndDate, addOneDayUTC } from "@/lib/memberships/validation";
 import MembershipForm from "@/app/memberships/membership-form";
+import { getCenterCurrency } from "@/lib/center-profile/settings";
 
 /**
  * Renew Membership (02-ux.md Flow 09). Renewal always creates a NEW
@@ -30,12 +31,17 @@ export default async function RenewMembershipPage({ params }) {
     notFound();
   }
 
+  const currency = await getCenterCurrency();
   const defaultStartDate = addOneDayUTC(previous.end_date);
   const initialValues = {
     plan: previous.plan,
     start_date: defaultStartDate,
     end_date: calculateMembershipEndDate(previous.plan, defaultStartDate) || defaultStartDate,
-    amount: previous.amount,
+    // A renewal is priced in the centre's CURRENT currency. The previous amount
+    // is only a sensible starting point when it was priced in that same currency;
+    // otherwise (the centre changed currency since) it is left blank rather than
+    // silently re-labelled.
+    amount: previous.currency === currency ? previous.amount : "",
     payment_status: "pending",
     notes: "",
   };
@@ -60,6 +66,7 @@ export default async function RenewMembershipPage({ params }) {
       <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
         <MembershipForm
           action={createRenewal}
+          currency={currency}
           student={previous.students}
           initialValues={initialValues}
           requireConfirmation

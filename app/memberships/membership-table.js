@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatAmount, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { formatCurrency } from "@/lib/currencies";
 import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/validity";
 import { cn } from "@/lib/utils";
@@ -72,7 +73,7 @@ function MembershipRow({ membership, today }) {
         {formatDate(membership.start_date)} {"\u2013"} {formatDate(membership.end_date)}
       </TableCell>
       <TableCell className={cn("px-2 py-3 whitespace-nowrap text-text-secondary", PAYMENT_ONLY)}>
-        {formatAmount(membership.amount)}
+        {formatCurrency(membership.amount, membership.currency)}
       </TableCell>
       <TableCell className={cn("px-2 py-3", PAYMENT_ONLY)}>
         <Badge variant={payment.variant}>{payment.label}</Badge>

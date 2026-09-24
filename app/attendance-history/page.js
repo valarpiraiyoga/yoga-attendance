@@ -16,7 +16,7 @@ import { groupSessionsByDate, isValidDateString } from "@/lib/attendance-history
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { ATTENDANCE_STATUSES } from "@/lib/attendance/validation";
-import { todayInCentreTimezone } from "@/lib/class-sessions/validation";
+import { getCentreToday } from "@/lib/center-profile/settings";
 import AttendanceHistoryFilters from "@/app/attendance-history/attendance-history-filters";
 import DateNavigator from "@/components/layout/DateNavigator";
 import HistoryDateRange from "@/app/attendance-history/history-date-range";
@@ -60,7 +60,7 @@ export default async function AttendanceHistoryPage({ searchParams }) {
   const requestedTo = isValidDateString(rawParams.to) ? rawParams.to : "";
   const month = isValidMonth(rawParams.month)
     ? rawParams.month
-    : monthOf(requestedFrom || requestedTo || todayInCentreTimezone());
+    : monthOf(requestedFrom || requestedTo || (await getCentreToday()));
   const defaultRange = monthRange(month);
   let rangeFrom = requestedFrom || defaultRange.from;
   let rangeTo = requestedTo || defaultRange.to;

@@ -5,7 +5,7 @@ import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listCurrentSchedules } from "@/lib/schedules/data";
-import { todayDateString } from "@/lib/schedules/validation";
+import { getCentreToday } from "@/lib/center-profile/settings";
 import { getEnrollment, listScheduleAssignmentsForEnrollment, isScheduleAssignmentActive } from "@/lib/enrollments/data";
 import { updateEnrollment } from "@/lib/enrollments/actions";
 import EnrollmentForm from "@/app/students/[id]/enrollments/enrollment-form";
@@ -31,7 +31,7 @@ export default async function EditEnrollmentPage({ params }) {
     notFound();
   }
 
-  const today = todayDateString();
+  const today = await getCentreToday();
   const allAssignments = await listScheduleAssignmentsForEnrollment(enrollmentId);
   // The form pre-checks and diffs against currently-active assignments
   // only — a historical, already-ended one is not part of "what this

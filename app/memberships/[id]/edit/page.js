@@ -45,6 +45,7 @@ export default async function EditMembershipPage({ params }) {
       <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
         <MembershipForm
           action={updateMembershipById}
+          currency={membership.currency}
           student={membership.students}
           membership={membership}
           requireConfirmation={false}

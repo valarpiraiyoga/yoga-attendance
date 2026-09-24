@@ -10,7 +10,7 @@ import SessionTable from "@/app/attendance/session-table";
  * date opens onto the same session cards and table Today's Sessions uses. The
  * date is the group header, so neither draws it again.
  */
-export default function SessionTimeline({ groups, selectedDate, layout = "", today }) {
+export default function SessionTimeline({ groups, selectedDate, layout = "", today, timeZone }) {
   return (
     <DateGroupTimeline
       groups={groups.map((group) => ({ date: group.date, items: group.sessions }))}
@@ -19,13 +19,14 @@ export default function SessionTimeline({ groups, selectedDate, layout = "", tod
       ariaLabel="All sessions by date"
       renderCards={(group) =>
         group.items.map((session) => (
-          <SessionCardItem key={session.id ?? `${session.schedule_id}:${session.session_date}`} session={session} today={today} />
+          <SessionCardItem key={session.id ?? `${session.schedule_id}:${session.session_date}`} session={session} today={today} timeZone={timeZone} />
         ))
       }
       renderTable={(group) => (
         <SessionTable
           sessions={group.items}
           today={today}
+          timeZone={timeZone}
           ariaLabel={`Sessions for ${formatDateWithWeekday(group.date)}`}
         />
       )}

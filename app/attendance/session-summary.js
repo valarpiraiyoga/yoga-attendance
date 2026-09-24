@@ -17,8 +17,8 @@ import { formatDate, formatTimeRange } from "@/lib/format";
  * sessions have no attendance, a completed one is viewed, and a session
  * that has started (or is today's and not yet started) is taken.
  */
-export function summarizeSession(session, today) {
-  const displayStatus = deriveDisplayStatus(session);
+export function summarizeSession(session, today, timeZone) {
+  const displayStatus = deriveDisplayStatus(session, new Date(), timeZone);
   const isCompleted = session.status === "completed";
 
   let actionLabel = "View Session";

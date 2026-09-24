@@ -11,10 +11,10 @@ import { MOBILE_HEADER_ACTIONS_ID } from "@/components/layout/MobileHeaderAction
  * live in the Sidebar, so the bar is removed and the page starts at the top of
  * the workspace.
  */
-export default function Header({ role, user, mobileTitle }) {
+export default function Header({ role, user, mobileTitle, logoUrl }) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-4 md:px-6 lg:hidden print:hidden">
-      <MobileMenu role={role} user={user} />
+      <MobileMenu role={role} user={user} logoUrl={logoUrl} />
       {mobileTitle ? (
         <span className="min-w-0 truncate text-body font-semibold text-text-primary">{mobileTitle}</span>
       ) : (

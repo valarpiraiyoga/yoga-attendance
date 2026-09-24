@@ -47,6 +47,7 @@ export function useProfilePhoto() {
  * @param {string} [props.label] - the field's label ("Profile Photo").
  * @param {string} [props.noun] - the file's name in buttons and messages ("Photo").
  * @param {(url: string|null) => import("react").ReactNode} [props.preview] - draws the preview for the shown URL (default: the person's `Avatar`).
+ * @param {boolean} [props.hideLabel] - keep the label for assistive technology only, when the field already sits under a visible heading.
  * @param {string|null} [props.currentUrl] - the saved photo, if any.
  * @param {ReturnType<typeof useProfilePhoto>["photo"]} props.photo
  * @param {(photo: object) => void} props.onChange
@@ -56,6 +57,7 @@ export function useProfilePhoto() {
 export default function ProfilePhotoField({
   name,
   label = "Profile Photo",
+  hideLabel = false,
   noun = "Photo",
   preview,
   currentUrl = null,
@@ -102,7 +104,7 @@ export default function ProfilePhotoField({
 
   return (
     <div className="flex flex-col gap-2">
-      <span id={labelId} className="text-body font-medium text-text-primary">
+      <span id={labelId} className={hideLabel ? "sr-only" : "text-body font-medium text-text-primary"}>
         {label}
       </span>
 

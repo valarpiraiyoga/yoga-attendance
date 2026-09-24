@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/sheet";
 import NavList from "@/components/global/NavList";
 import UtilityRow from "@/components/global/UtilityRow";
+import CenterLogo from "@/components/global/CenterLogo";
 
-export default function MobileMenu({ role, user }) {
+export default function MobileMenu({ role, user, logoUrl }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -29,9 +30,12 @@ export default function MobileMenu({ role, user }) {
 
       <SheetContent side="left" className="sidebar-surface flex w-72 flex-col p-0">
         <SheetHeader className="border-b border-border/70">
-          <SheetTitle className="flex flex-col items-start text-left leading-tight">
-            <span className="text-sm font-semibold text-text-primary">Yoga Center</span>
-            <span className="text-xs font-normal text-text-secondary">Attendance System</span>
+          <SheetTitle className="flex items-center gap-3 text-left leading-tight">
+            <CenterLogo url={logoUrl} />
+            <span className="flex flex-col items-start">
+              <span className="text-sm font-semibold text-text-primary">Yoga Center</span>
+              <span className="text-xs font-normal text-text-secondary">Attendance System</span>
+            </span>
           </SheetTitle>
           <SheetDescription className="sr-only">
             Application navigation menu

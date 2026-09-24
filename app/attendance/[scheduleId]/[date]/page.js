@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getSessionOccurrence } from "@/lib/class-sessions/data";
 import { isValidDateString } from "@/lib/schedules/validation";
-import { deriveDisplayStatus } from "@/lib/class-sessions/validation";
+import { deriveDisplayStatus, todayInCentreTimezone } from "@/lib/class-sessions/validation";
+import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { listEligibleStudents, getAttendanceForSession, getAttendanceSummary } from "@/lib/attendance/data";
 import SessionHeader from "@/app/attendance/[scheduleId]/[date]/session-header";
 import SessionOverview from "@/app/attendance/[scheduleId]/[date]/session-overview";
@@ -42,7 +43,8 @@ export default async function SessionDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const displayStatus = deriveDisplayStatus(session);
+  const timeZone = await getCenterTimezone();
+  const displayStatus = deriveDisplayStatus(session, new Date(), timeZone);
   const rawParams = await searchParams;
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
   const activeTab =
@@ -105,6 +107,7 @@ export default async function SessionDetailsPage({ params, searchParams }) {
           date={date}
           eligibleStudents={eligibleStudents}
           initialMarks={initialAttendanceMarks}
+          today={todayInCentreTimezone(new Date(), timeZone)}
         />
       ) : null}
     </div>

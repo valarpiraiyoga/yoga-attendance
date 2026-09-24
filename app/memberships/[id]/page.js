@@ -9,7 +9,7 @@ import {
   Gauge,
   Hash,
   History,
-  IndianRupee,
+  Banknote,
   Layers,
   Mail,
   Pencil,
@@ -35,7 +35,10 @@ import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getMembership, listMembershipsForStudent, listCoveredEnrollments, todayDateString } from "@/lib/memberships/data";
 import { getMembershipValidity } from "@/lib/memberships/validity";
-import { formatAmount, formatDate, formatDateShort } from "@/lib/format";
+import { formatDate, formatDateShort } from "@/lib/format";
+import { formatCurrency } from "@/lib/currencies";
+import { centreDateOf } from "@/lib/class-sessions/validation";
+import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import CancelMembership from "@/app/memberships/[id]/cancel-membership";
 import CoveredEnrollmentRow from "@/app/memberships/[id]/covered-enrollment-row";
@@ -121,8 +124,8 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
   const period = formatPeriod(membership.start_date, membership.end_date);
 
   // The same "today" the Memberships list derived each row's status and validity from:
-  // the centre's date (Asia/Kolkata), not the server's UTC date.
-  const validity = getMembershipValidity(membership, todayDateString());
+  // the centre's date (its time zone from Center Settings), not the server's UTC date.
+  const validity = getMembershipValidity(membership, await todayDateString());
   const showProgress = validity.status !== "cancelled";
   const used = usedDays(validity);
 
@@ -140,7 +143,7 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
   const statusCaption =
     membership.status === "cancelled"
       ? membership.cancelled_at
-        ? `Cancelled ${formatDate(String(membership.cancelled_at).slice(0, 10))}`
+        ? `Cancelled ${formatDate(centreDateOf(membership.cancelled_at, await getCenterTimezone()))}`
         : "Cancelled"
       : membership.status === "expired"
         ? `Ended ${formatDate(membership.end_date)}`
@@ -236,9 +239,9 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
           <StatTile compact icon={CalendarDays} label="Validity" value={period} caption={durationLabel} tone="neutral" />
           <StatTile
             compact
-            icon={IndianRupee}
+            icon={Banknote}
             label="Payment"
-            value={formatAmount(membership.amount)}
+            value={formatCurrency(membership.amount, membership.currency)}
             caption={payment.label}
             tone={membership.payment_status === "paid" ? "success" : "warning"}
           />

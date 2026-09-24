@@ -1,7 +1,6 @@
 import { CardGrid, ResultsHeader } from "@/components/layout/list-page";
 import SortSelect from "@/components/ui/sort-select";
 import { DEFAULT_SESSION_SORT } from "@/lib/class-sessions/data";
-import { todayInCentreTimezone } from "@/lib/class-sessions/validation";
 import { cn } from "@/lib/utils";
 import SessionCardItem from "@/app/attendance/session-card-item";
 import SessionTable from "@/app/attendance/session-table";
@@ -17,8 +16,7 @@ function sessionKey(session) {
  * in the URL): then both are rendered and CSS shows Cards below `lg` and Table
  * from `lg` up, the same finalized default rule as Attendance History.
  */
-export default function SessionList({ sessions, layout = "", total, sort, sortOptions }) {
-  const today = todayInCentreTimezone();
+export default function SessionList({ sessions, layout = "", total, sort, sortOptions, today, timeZone }) {
   const ariaLabel = "Today's Sessions";
 
   return (
@@ -35,13 +33,13 @@ export default function SessionList({ sessions, layout = "", total, sort, sortOp
       {layout !== "table" ? (
         <CardGrid ariaLabel={ariaLabel} className={cn("xl:grid-cols-3", layout === "" && "lg:hidden")}>
           {sessions.map((session) => (
-            <SessionCardItem key={sessionKey(session)} session={session} today={today} />
+            <SessionCardItem key={sessionKey(session)} session={session} today={today} timeZone={timeZone} />
           ))}
         </CardGrid>
       ) : null}
       {layout !== "cards" ? (
         <div className={cn(layout === "" && "hidden lg:block")}>
-          <SessionTable sessions={sessions} today={today} ariaLabel={ariaLabel} />
+          <SessionTable sessions={sessions} today={today} timeZone={timeZone} ariaLabel={ariaLabel} />
         </div>
       ) : null}
     </div>

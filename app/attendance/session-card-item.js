@@ -41,9 +41,9 @@ function StartTimeTile({ startTime, label }) {
  * outline "View Attendance" / "View Session" to the same routes the eye and
  * menu use. Composed from `EntityCard`; only the menu-open tint is local state.
  */
-export default function SessionCardItem({ session, today }) {
+export default function SessionCardItem({ session, today, timeZone }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const summary = summarizeSession(session, today);
+  const summary = summarizeSession(session, today, timeZone);
   const canTake = summary.actionLabel === "Take Attendance";
 
   return (

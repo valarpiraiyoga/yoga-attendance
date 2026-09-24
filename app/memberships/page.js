@@ -71,7 +71,7 @@ export default async function MembershipsPage({ searchParams }) {
 
   // The same "today" `listMemberships` derived each row's status from, so a
   // card's status and its days-left always agree.
-  const today = todayDateString();
+  const today = await todayDateString();
 
   const isFiltered =
     Boolean(q) || plan !== "all" || paymentStatus !== "all" || membershipStatus !== "all" || Boolean(fromDate) || Boolean(toDate);

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getSchedule, projectUpcomingSessions } from "@/lib/schedules/data";
+import { getCentreToday } from "@/lib/center-profile/settings";
 import ScheduleDetailsTabs from "@/app/schedule/[id]/schedule-details-tabs";
 import ScheduleHeader, { ScheduleSummary } from "@/app/schedule/[id]/schedule-header";
 
@@ -30,7 +31,8 @@ export default async function ScheduleDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const upcomingSessions = projectUpcomingSessions(schedule);
+  const today = await getCentreToday();
+  const upcomingSessions = projectUpcomingSessions(schedule, { today });
   const rawParams = await searchParams;
   const baseMessage = SUCCESS_MESSAGES[rawParams?.success] ?? null;
   // `added=N`: Edit Schedule also created N schedules on extra weekdays.
@@ -42,7 +44,7 @@ export default async function ScheduleDetailsPage({ params, searchParams }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <ScheduleHeader schedule={schedule} />
+      <ScheduleHeader schedule={schedule} today={today} />
 
       <ScheduleSummary schedule={schedule} />
 

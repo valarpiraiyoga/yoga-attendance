@@ -3,7 +3,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ListToolbar } from "@/components/layout/list-page";
 import { formatTime, formatTimeRangeCompactParts } from "@/lib/format";
-import { todayInCentreTimezone } from "@/lib/class-sessions/validation";
 import { DAYS_OF_WEEK, DAY_LABELS, addDaysUTC, timeToMinutes, scheduleAppliesOn } from "@/lib/schedules/validation";
 import WeeklyScheduleCard from "@/app/schedule/weekly-schedule-card";
 
@@ -185,16 +184,15 @@ function layoutDayCards(cards) {
  * sibling components for those honest absences; this view has no data to
  * be honest or dishonest about, since it only draws `schedules` rows.
  */
-export default function WeeklySchedule({ weekStart, schedules }) {
+export default function WeeklySchedule({ weekStart, schedules, today }) {
   const weekEnd = addDaysUTC(weekStart, 6);
   const todayHref = "/schedule?view=weekly";
   const previousWeekHref = `/schedule?view=weekly&week=${addDaysUTC(weekStart, -7)}`;
   const nextWeekHref = `/schedule?view=weekly&week=${addDaysUTC(weekStart, 7)}`;
 
-  // "Today" is the centre's business date (Asia/Kolkata), the same one
-  // Attendance and the Dashboard use — not the UTC date, which is still
-  // yesterday for the first five and a half hours of every centre day.
-  const today = todayInCentreTimezone();
+  // `today` is the centre's business date (its time zone from Center Settings),
+  // the same one Attendance and the Dashboard use — not the UTC date, which is
+  // still yesterday for part of every centre day.
 
   const days = DAYS_OF_WEEK.map((dayOfWeek, index) => {
     const date = addDaysUTC(weekStart, index);

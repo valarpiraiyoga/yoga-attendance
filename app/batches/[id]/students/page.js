@@ -11,6 +11,7 @@ import EmptyState from "@/components/ui/empty-state";
 import { PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getBatch } from "@/lib/batches/data";
+import { getCentreToday } from "@/lib/center-profile/settings";
 import { listEnrollmentsForBatch, listScheduleAssignmentsForEnrollment, isScheduleAssignmentActive } from "@/lib/enrollments/data";
 import BatchHeader from "@/app/batches/[id]/batch-header";
 import BatchEnrollmentRow from "@/app/batches/[id]/batch-enrollment-row";
@@ -46,6 +47,7 @@ export default async function BatchStudentsPage({ params }) {
     notFound();
   }
 
+  const today = await getCentreToday();
   const enrollments = await listEnrollmentsForBatch(id);
   const assignmentsByEnrollmentId = new Map(
     await Promise.all(
@@ -85,7 +87,7 @@ export default async function BatchStudentsPage({ params }) {
                     key={enrollment.id}
                     enrollment={enrollment}
                     activeAssignments={(assignmentsByEnrollmentId.get(enrollment.id) ?? []).filter((assignment) =>
-                      isScheduleAssignmentActive(assignment)
+                      isScheduleAssignmentActive(assignment, today)
                     )}
                   />
                 ))}

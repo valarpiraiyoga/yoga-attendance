@@ -5,6 +5,7 @@ import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent, listStudentOptions } from "@/lib/students/data";
 import { createMembership } from "@/lib/memberships/actions";
 import MembershipForm from "@/app/memberships/membership-form";
+import { getCenterCurrency } from "@/lib/center-profile/settings";
 import SelectStudentStep from "@/app/memberships/new/select-student-step";
 
 /**
@@ -70,6 +71,7 @@ export default async function NewMembershipPage({ searchParams }) {
       <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
         <MembershipForm
           action={createMembershipForStudent}
+          currency={await getCenterCurrency()}
           student={student}
           requireConfirmation
           submitLabel="Save Membership"

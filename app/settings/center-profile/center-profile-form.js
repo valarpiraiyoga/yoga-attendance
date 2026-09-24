@@ -7,7 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import FormField from "@/components/ui/form-field";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
+import ProfilePhotoField, { useProfilePhoto } from "@/components/ui/profile-photo-field";
+import TimeZoneSelect from "@/components/forms/TimeZoneSelect";
+import CurrencySelect from "@/components/forms/CurrencySelect";
 import { validateCenterProfileInput } from "@/lib/center-profile/validation";
+import { DEFAULT_TIMEZONE } from "@/lib/timezones";
+import { DEFAULT_CURRENCY } from "@/lib/currencies";
 
 const BLUR_VALIDATED_FIELDS = new Set(["name", "address", "phone", "email"]);
 
@@ -29,22 +34,36 @@ const BLUR_VALIDATED_FIELDS = new Set(["name", "address", "phone", "email"]);
  * navigates nowhere and saves nothing — there is no separate view mode to
  * return to.
  *
- * No Logo upload control: no upload mechanism exists yet (no Storage
- * bucket, no upload UI) — deferred, matching how Instructor Photo and
- * Student Profile Photo were both explicitly deferred. The Logo panel keeps
- * the reference's position and says so plainly. `center_profile.logo_url`
- * exists in the schema for forward compatibility only
- * (0018_center_profile.sql). The reference's Website and Time Zone fields
- * have no column in that schema either and are not shown.
+ * Regional Settings (time zone, currency) sit beneath the centre's details
+ * and are real settings, not display: the whole app reads them
+ * (`getCenterSettings`, lib/center-profile/settings.js). The Logo panel is the
+ * upload control for `center_profile.logo_url`, reusing the photo field the
+ * Student, Instructor and Batch forms use (Upload / Change / Remove, validated
+ * and previewed locally, uploaded with the form). The reference's Website
+ * field has no column and is not shown.
  */
 export default function CenterProfileForm({ action, profile }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const [fieldErrors, setFieldErrors] = useState(state?.fieldErrors ?? {});
+  const { photo: logo, setPhoto: setLogo, appendTo } = useProfilePhoto();
 
   const [prevState, setPrevState] = useState(state);
   if (state !== prevState) {
     setPrevState(state);
     setFieldErrors(state?.fieldErrors ?? {});
+  }
+
+  // React resets the form's DOM inputs when an action runs, so the logo (kept
+  // in state, not in a named input) is added to the submission here. It is
+  // uploaded by the server action, and only when the form saves.
+  function submitForm(formData) {
+    appendTo(formData);
+    formAction(formData);
+  }
+
+  function handleReset() {
+    setFieldErrors({});
+    setLogo({ file: null, previewUrl: null, removed: false });
   }
 
   function handleBlur(event) {
@@ -57,6 +76,8 @@ export default function CenterProfileForm({ action, profile }) {
       address: formData.get("address"),
       phone: formData.get("phone"),
       email: formData.get("email"),
+      timezone: formData.get("timezone"),
+      currency: formData.get("currency"),
     });
 
     if (result.success || !result.errors[name]) {
@@ -71,9 +92,9 @@ export default function CenterProfileForm({ action, profile }) {
 
   return (
     <form
-      action={formAction}
+      action={submitForm}
       onBlur={handleBlur}
-      onReset={() => setFieldErrors({})}
+      onReset={handleReset}
       className="flex flex-col gap-6"
       noValidate
     >
@@ -87,7 +108,8 @@ export default function CenterProfileForm({ action, profile }) {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <Panel className="flex flex-col gap-5 lg:col-span-3">
+        <div className="flex flex-col gap-6 lg:col-span-3">
+        <Panel className="flex flex-col gap-5">
           <FormField id="name" label="Yoga Center Name" required error={fieldErrors.name}>
             {(field) => (
               <Input
@@ -144,19 +166,69 @@ export default function CenterProfileForm({ action, profile }) {
           </FormField>
         </Panel>
 
+        <Panel className="flex flex-col gap-5">
+          <PanelHeader
+            className="mb-0"
+            title="Regional Settings"
+            description="The center's time zone and currency, used across the application."
+          />
+
+          <FormField
+            id="timezone"
+            label="Time Zone"
+            error={fieldErrors.timezone}
+            help="Session dates, Today and membership validity follow this time zone, whatever a user's own device is set to."
+          >
+            {(field) => (
+              <TimeZoneSelect
+                {...field}
+                disabled={isPending}
+                defaultValue={state?.values?.timezone ?? profile?.timezone ?? DEFAULT_TIMEZONE}
+              />
+            )}
+          </FormField>
+
+          <FormField
+            id="currency"
+            label="Currency"
+            error={fieldErrors.currency}
+            help="Amounts are shown in this currency, and new memberships are priced in it. Existing amounts are never converted."
+          >
+            {(field) => (
+              <CurrencySelect
+                {...field}
+                disabled={isPending}
+                defaultValue={state?.values?.currency ?? profile?.currency ?? DEFAULT_CURRENCY}
+              />
+            )}
+          </FormField>
+        </Panel>
+        </div>
+
         <Panel className="self-start lg:col-span-2">
-          <PanelHeader title="Logo" description="This logo will be used in the application and exported reports." />
-          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-8 text-center">
-            <span
-              aria-hidden="true"
-              className="flex size-10 items-center justify-center rounded-lg bg-brand/10 text-brand"
-            >
-              <ImageIcon className="size-5" aria-hidden="true" />
-            </span>
-            <p className="text-body text-text-secondary">
-              Not available yet — logo upload is part of a later phase.
-            </p>
-          </div>
+          <PanelHeader title="Center Logo" description="This logo is used in the application and on receipts." />
+          <ProfilePhotoField
+            name={profile?.name ?? ""}
+            label="Center Logo"
+            hideLabel
+            noun="Logo"
+            currentUrl={profile?.logo_url ?? null}
+            photo={logo}
+            onChange={setLogo}
+            error={fieldErrors.photo}
+            disabled={isPending}
+            preview={(url) => (
+              <div className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-background">
+                {url ? (
+                  // A plain <img>: the same tradeoff as every other stored image here (see Avatar).
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={url} alt="Center logo preview" className="size-full object-contain p-1.5" />
+                ) : (
+                  <ImageIcon className="size-8 text-text-secondary" aria-hidden="true" />
+                )}
+              </div>
+            )}
+          />
         </Panel>
       </div>
 

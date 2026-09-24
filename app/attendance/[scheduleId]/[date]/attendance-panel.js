@@ -22,7 +22,6 @@ import {
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { saveSessionAttendance } from "@/lib/attendance/actions";
 import { computeAttendanceSummary } from "@/lib/attendance/validation";
-import { todayInCentreTimezone } from "@/lib/class-sessions/validation";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -53,8 +52,7 @@ const ROW_TONE = { present: "bg-success/5 hover:bg-success/5", absent: "bg-dange
  * (0011_attendance.sql), so there is no per-student note field and no
  * notification option here.
  */
-export default function AttendancePanel({ session, scheduleId, date, eligibleStudents, initialMarks }) {
-  const today = todayInCentreTimezone();
+export default function AttendancePanel({ session, scheduleId, date, eligibleStudents, initialMarks, today }) {
   const isException = session.status === "cancelled" || session.status === "holiday";
   const isFuture = session.status === "scheduled" && session.session_date > today;
   const isCompleted = session.status === "completed";

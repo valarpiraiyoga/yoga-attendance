@@ -5,6 +5,7 @@ import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getSessionOccurrence } from "@/lib/class-sessions/data";
 import { isValidDateString } from "@/lib/schedules/validation";
 import { deriveDisplayStatus } from "@/lib/class-sessions/validation";
+import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { updateClassSession } from "@/lib/class-sessions/actions";
 import SessionForm from "@/app/attendance/session-form";
@@ -39,7 +40,7 @@ export default async function EditSessionPage({ params }) {
     notFound();
   }
 
-  if (deriveDisplayStatus(session) !== "upcoming") {
+  if (deriveDisplayStatus(session, new Date(), await getCenterTimezone()) !== "upcoming") {
     redirect(`/attendance/${scheduleId}/${date}`);
   }
 

@@ -12,7 +12,7 @@ import {
   listSchedules,
   listSchedulesForWeek,
 } from "@/lib/schedules/data";
-import { todayInCentreTimezone } from "@/lib/class-sessions/validation";
+import { getCentreToday } from "@/lib/center-profile/settings";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import {
@@ -84,10 +84,13 @@ export default async function SchedulePage({ searchParams }) {
   // explicitly asks for the List View below. `?week=` names any date inside
   // the displayed week (defaults to today), normalized to that week's Monday.
   if (rawParams.view !== "list") {
+    // The centre's own day (Center Settings) - the default week and the
+    // highlighted "today" - never the viewer's.
+    const today = await getCentreToday();
     const requestedDate =
       typeof rawParams.week === "string" && isValidDateString(rawParams.week)
         ? rawParams.week
-        : todayInCentreTimezone();
+        : today;
     const weekStart = getMondayOfWeek(requestedDate);
     const weekEnd = addDaysUTC(weekStart, 6);
 
@@ -100,7 +103,7 @@ export default async function SchedulePage({ searchParams }) {
         <Container>
           <ScheduleTabs active="weekly" />
 
-          <WeeklySchedule weekStart={weekStart} schedules={schedules} />
+          <WeeklySchedule weekStart={weekStart} schedules={schedules} today={today} />
         </Container>
       </>
     );

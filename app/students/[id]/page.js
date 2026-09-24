@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getCentreToday } from "@/lib/center-profile/settings";
 import {
   ArrowLeft,
   ArrowRight,
@@ -30,7 +31,8 @@ import {
 } from "@/lib/enrollments/data";
 import { DAY_LABELS, DAYS_OF_WEEK } from "@/lib/schedules/validation";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
-import { formatAmount, formatDate, formatDateShort, formatTimeRange } from "@/lib/format";
+import { formatDate, formatDateShort, formatTimeRange } from "@/lib/format";
+import { formatCurrency } from "@/lib/currencies";
 import { cn } from "@/lib/utils";
 import { ENTITY_STATUS, MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import StudentStatusButton from "@/app/students/[id]/student-status-button";
@@ -121,6 +123,7 @@ export default async function StudentDetailsPage({ params, searchParams }) {
   await requireRole(ROLES.ADMIN);
 
   const { id } = await params;
+  const today = await getCentreToday();
   const student = await getStudent(id);
 
   if (!student) {
@@ -296,7 +299,7 @@ export default async function StudentDetailsPage({ params, searchParams }) {
               {enrollments.map((enrollment) => {
                 const schedules = sortAssignmentsByWeek(
                   (assignmentsByEnrollmentId.get(enrollment.id) ?? []).filter((assignment) =>
-                    isScheduleAssignmentActive(assignment)
+                    isScheduleAssignmentActive(assignment, today)
                   )
                 );
                 const batchName = enrollment.batches?.name ?? "Unknown batch";
@@ -459,7 +462,7 @@ export default async function StudentDetailsPage({ params, searchParams }) {
                   <InfoRow label="Validity" className="col-span-2 @md:col-span-1">
                     {formatPeriod(currentMembership.start_date, currentMembership.end_date)}
                   </InfoRow>
-                  <InfoRow label="Amount">{formatAmount(currentMembership.amount)}</InfoRow>
+                  <InfoRow label="Amount">{formatCurrency(currentMembership.amount, currentMembership.currency)}</InfoRow>
                   <div className="grid min-w-0 content-start gap-0.5">
                     <dt className="text-small text-text-secondary">Payment</dt>
                     <dd>

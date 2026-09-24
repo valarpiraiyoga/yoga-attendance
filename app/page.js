@@ -8,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import { requireUser, ROLES } from "@/lib/auth/dal";
 import { listSessionsForDate, listSessions } from "@/lib/class-sessions/data";
-import { todayInCentreTimezone, CENTRE_TIMEZONE } from "@/lib/class-sessions/validation";
+import { todayInCentreTimezone, hourInCentreTimezone } from "@/lib/class-sessions/validation";
+import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { addDaysUTC } from "@/lib/schedules/validation";
 import { getAttendanceSummaries } from "@/lib/attendance/data";
 import { getActiveStudentCount } from "@/lib/students/data";
@@ -37,17 +38,16 @@ function formatHeadingDate(value) {
 
 /**
  * "Good morning/afternoon/evening" (approved wireframes p.2, p.8).
- * Read against `CENTRE_TIMEZONE`, the same clock every other date/time
- * derivation in this codebase is required to use (§7A "Centre Timezone").
+ * Read in the centre's timezone (Center Settings), the same clock every other
+ * date/time derivation in this codebase is required to use (§7A "Centre
+ * Timezone") - never the viewer's own clock.
  *
  * Identity is presentation-only from `user.name`. A real name stays in the
  * title. An email (fallback when `full_name` is empty) is shown on its own
  * line so it can wrap at `@` / `.` instead of through the local part.
  */
-function getGreetingPresentation(name) {
-  const hour = Number(
-    new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: CENTRE_TIMEZONE }).format(new Date())
-  );
+function getGreetingPresentation(name, timeZone) {
+  const hour = hourInCentreTimezone(new Date(), timeZone);
   const partOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
   const identity = String(name || "").trim();
   const firstToken = identity.split(/\s+/).filter(Boolean)[0] || identity;
@@ -195,7 +195,7 @@ function DashboardSkeleton({ isAdmin }) {
  * occurrences, two batched summary calls), 8 for an Admin (the same plus
  * the two counts) — independent of how many sessions exist on either list.
  */
-async function DashboardContent({ isAdmin, today }) {
+async function DashboardContent({ isAdmin, today, timeZone }) {
   const upcomingFrom = addDaysUTC(today, 1);
   const upcomingTo = addDaysUTC(today, UPCOMING_WINDOW_DAYS);
 
@@ -290,6 +290,8 @@ async function DashboardContent({ isAdmin, today }) {
         sessions={todaysSessions}
         showInstructor={isAdmin}
         isAdmin={isAdmin}
+        today={today}
+        timeZone={timeZone}
         description={isAdmin ? "All classes scheduled for today." : "Your assigned yoga classes for today."}
       />
 
@@ -318,7 +320,7 @@ async function DashboardContent({ isAdmin, today }) {
           <EmptyState>No upcoming classes in the next {UPCOMING_WINDOW_DAYS} days.</EmptyState>
         ) : (
           <div className="mt-4">
-            <DashboardUpcomingClasses sessions={upcoming.sessions} showInstructor={isAdmin} />
+            <DashboardUpcomingClasses sessions={upcoming.sessions} showInstructor={isAdmin} timeZone={timeZone} />
           </div>
         )}
       </DashboardSection>
@@ -347,8 +349,10 @@ export default async function Home() {
   // Authorization boundary — the proxy is only a first-pass check.
   const user = await requireUser();
   const isAdmin = user.role === ROLES.ADMIN;
-  const today = todayInCentreTimezone();
-  const greeting = getGreetingPresentation(user.name);
+  // The centre's own day and zone (Center Settings), never the viewer's.
+  const timeZone = await getCenterTimezone();
+  const today = todayInCentreTimezone(new Date(), timeZone);
+  const greeting = getGreetingPresentation(user.name, timeZone);
 
   return (
     <AppShell role={user.role} user={user}>
@@ -409,7 +413,7 @@ export default async function Home() {
         </header>
 
         <Suspense fallback={<DashboardSkeleton isAdmin={isAdmin} />}>
-          <DashboardContent isAdmin={isAdmin} today={today} />
+          <DashboardContent isAdmin={isAdmin} today={today} timeZone={timeZone} />
         </Suspense>
         </div>
       </Container>

@@ -14,7 +14,10 @@ import {
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getMembership, todayDateString } from "@/lib/memberships/data";
 import { getCenterProfile } from "@/lib/center-profile/data";
-import { formatAmount, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { formatCurrency } from "@/lib/currencies";
+import { centreDateOf } from "@/lib/class-sessions/validation";
+import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { formatPhone } from "@/lib/phone";
@@ -63,7 +66,12 @@ export default async function MembershipReceiptPage({ params }) {
   await requireRole(ROLES.ADMIN);
 
   const { id } = await params;
-  const [membership, center] = await Promise.all([getMembership(id), getCenterProfile()]);
+  const [membership, center, timeZone, today] = await Promise.all([
+    getMembership(id),
+    getCenterProfile(),
+    getCenterTimezone(),
+    todayDateString(),
+  ]);
 
   if (!membership) {
     notFound();
@@ -73,9 +81,11 @@ export default async function MembershipReceiptPage({ params }) {
   const status = MEMBERSHIP_STATUS[membership.status] ?? { label: membership.status, variant: "neutral" };
   const payment = PAYMENT_STATUS[membership.payment_status] ?? PAYMENT_STATUS.pending;
   const planLabel = PLAN[membership.plan] ?? membership.plan;
-  const amount = formatAmount(membership.amount);
-  const receiptDate = membership.created_at ? formatDate(String(membership.created_at).slice(0, 10)) : "—";
-  const cancelledOn = membership.cancelled_at ? formatDate(String(membership.cancelled_at).slice(0, 10)) : null;
+  // The amount in the currency the membership was priced in (0024), not whatever the centre uses now.
+  const amount = formatCurrency(membership.amount, membership.currency);
+  // Dates of stored instants are the centre's calendar dates.
+  const receiptDate = membership.created_at ? formatDate(centreDateOf(membership.created_at, timeZone)) : "—";
+  const cancelledOn = membership.cancelled_at ? formatDate(centreDateOf(membership.cancelled_at, timeZone)) : null;
 
   const whatsAppMessage = [
     center?.name ? `${center.name} – Membership Receipt` : "Membership Receipt",
@@ -130,6 +140,15 @@ export default async function MembershipReceiptPage({ params }) {
       >
         <header className="flex flex-col gap-6 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
+            {center?.logo_url ? (
+              // A plain <img>: the same tradeoff as every other stored image here (see Avatar).
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={center.logo_url}
+                alt={`${center.name} logo`}
+                className="mb-3 h-12 w-auto max-w-40 object-contain"
+              />
+            ) : null}
             <p className="text-page-title font-semibold break-words text-text-primary">
               {center?.name ?? "Membership Receipt"}
             </p>
@@ -221,7 +240,7 @@ export default async function MembershipReceiptPage({ params }) {
         <footer className="flex flex-col gap-1 pt-6 text-small text-text-secondary sm:flex-row sm:items-center sm:justify-between">
           <span>{center?.name ?? "Membership Receipt"}</span>
           <span>
-            Receipt {membership.membership_code} · Generated {formatDate(todayDateString())}
+            Receipt {membership.membership_code} · Generated {formatDate(today)}
           </span>
         </footer>
       </article>

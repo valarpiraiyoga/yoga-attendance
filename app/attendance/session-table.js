@@ -20,9 +20,9 @@ const ELIGIBLE_ONLY = "hidden @[38rem]:table-cell";
 
 const HEAD_CLASS = "h-10 px-2 text-small tracking-normal";
 
-function SessionRow({ session, today }) {
+function SessionRow({ session, today, timeZone }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const summary = summarizeSession(session, today);
+  const summary = summarizeSession(session, today, timeZone);
 
   return (
     <TableRow className={cn(menuOpen && "bg-brand/10 hover:bg-brand/10")}>
@@ -78,7 +78,7 @@ function SessionRow({ session, today }) {
  * primary "Take Attendance" action lives on the card and in the row's eye /
  * menu, not as a button in the row.
  */
-export default function SessionTable({ sessions, today, ariaLabel }) {
+export default function SessionTable({ sessions, today, timeZone, ariaLabel }) {
   return (
     <div className="@container overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
       <Table aria-label={ariaLabel}>
@@ -93,7 +93,7 @@ export default function SessionTable({ sessions, today, ariaLabel }) {
         </TableHeader>
         <TableBody>
           {sessions.map((session) => (
-            <SessionRow key={session.id ?? `${session.schedule_id}:${session.session_date}`} session={session} today={today} />
+            <SessionRow key={session.id ?? `${session.schedule_id}:${session.session_date}`} session={session} today={today} timeZone={timeZone} />
           ))}
         </TableBody>
       </Table>

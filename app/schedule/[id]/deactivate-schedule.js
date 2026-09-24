@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { deactivateSchedule } from "@/lib/schedules/actions";
-import { todayDateString } from "@/lib/schedules/validation";
 
 /**
  * Deactivate Schedule (02-ux.md Flow 05: "Deactivate → Set Effective Until
@@ -20,9 +19,9 @@ import { todayDateString } from "@/lib/schedules/validation";
  * directly via `useTransition`, matching the same direct-action-call
  * pattern as every other quick status action in this project.
  */
-export default function DeactivateSchedule({ scheduleId, isActive }) {
+export default function DeactivateSchedule({ scheduleId, isActive, today }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [effectiveUntil, setEffectiveUntil] = useState(todayDateString());
+  const [effectiveUntil, setEffectiveUntil] = useState(today);
   const [feedback, setFeedback] = useState(null);
   const [isPending, startTransition] = useTransition();
 

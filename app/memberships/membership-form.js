@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import { formatCurrency } from "@/lib/currencies";
 import { validateMembershipInput, calculateMembershipEndDate } from "@/lib/memberships/validation";
 
 const PLAN_OPTIONS = [
@@ -60,6 +61,7 @@ function paymentStatusLabel(status) {
  */
 export default function MembershipForm({
   action,
+  currency,
   student,
   membership,
   initialValues,
@@ -268,7 +270,7 @@ export default function MembershipForm({
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="amount">Amount</Label>
+            <Label htmlFor="amount">Amount ({currency})</Label>
             <Input
               id="amount"
               name="amount"
@@ -400,7 +402,7 @@ export default function MembershipForm({
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-body text-text-secondary">Amount</dt>
-                <dd className="text-body font-medium text-text-primary">{reviewData.amount}</dd>
+                <dd className="text-body font-medium text-text-primary">{formatCurrency(reviewData.amount, currency)}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-body text-text-secondary">Payment status</dt>

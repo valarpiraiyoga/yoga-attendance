@@ -19,6 +19,7 @@ import {
 import { isValidMonth, monthOf, monthRange } from "@/lib/attendance-history/calendar";
 import { groupSessionsByDate, isValidDateString } from "@/lib/attendance-history/grouping";
 import { todayInCentreTimezone, DISPLAY_STATUSES } from "@/lib/class-sessions/validation";
+import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { getAttendanceSummaries } from "@/lib/attendance/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
@@ -135,7 +136,9 @@ export default async function AttendancePage({ searchParams }) {
   await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
 
   const rawParams = await searchParams;
-  const today = todayInCentreTimezone();
+  // The centre's own day and zone (Center Settings), never the viewer's.
+  const timeZone = await getCenterTimezone();
+  const today = todayInCentreTimezone(new Date(), timeZone);
 
   const q = typeof rawParams.q === "string" ? rawParams.q : "";
   const batchId = typeof rawParams.batch === "string" ? rawParams.batch : "";
@@ -158,7 +161,7 @@ export default async function AttendancePage({ searchParams }) {
     const allToday = await withAttendanceSummaries(todaysSessions);
     const totals = summarizeTodaysSessions(allToday);
 
-    const matching = sortSessions(filterSessions(allToday, { q, batchId, instructorId, status }), sort);
+    const matching = sortSessions(filterSessions(allToday, { q, batchId, instructorId, status, timeZone }), sort);
     const total = matching.length;
     const sessions = matching.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -251,6 +254,8 @@ export default async function AttendancePage({ searchParams }) {
                     total={total}
                     sort={sort}
                     sortOptions={TODAY_SORT_OPTIONS}
+                    today={today}
+                    timeZone={timeZone}
                   />
 
                   <Pagination
@@ -384,7 +389,7 @@ export default async function AttendancePage({ searchParams }) {
                 />
               ) : (
                 <>
-                  <SessionTimeline groups={groups} selectedDate={selectedDate} layout={layout} today={today} />
+                  <SessionTimeline groups={groups} selectedDate={selectedDate} layout={layout} today={today} timeZone={timeZone} />
                   {total > sessions.length ? (
                     <p className="mt-4 text-small text-text-secondary">
                       Showing the first {sessions.length} of {total} sessions. Narrow the date range to see the rest.
