@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Layers, Plus, UserCheck, UserX, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/ui/pagination";
@@ -43,7 +44,8 @@ export default async function StudentsPage({ searchParams }) {
   const batchId = typeof rawParams.batch === "string" ? rawParams.batch : "";
   const membershipFilter = MEMBERSHIP_FILTERS.includes(rawParams.membership) ? rawParams.membership : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
-  const view = rawParams.view === "table" ? "table" : "cards";
+  // "" = no explicit choice: Table from `lg` up, Cards below (resolved in CSS).
+  const view = rawParams.view === "cards" || rawParams.view === "table" ? rawParams.view : "";
   const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort)
     ? rawParams.sort
     : DEFAULT_STUDENT_SORT;
@@ -75,8 +77,9 @@ export default async function StudentsPage({ searchParams }) {
   return (
     <>
       <PageHeader
+        compact
         title="Students"
-        description="Manage student profiles, memberships, and batch enrollments."
+        description="Manage your students, view status and membership details."
         icon={<Users className="size-6" />}
         actions={
           <>
@@ -87,8 +90,22 @@ export default async function StudentsPage({ searchParams }) {
             </Button>
           </>
         }
+        mobileActions={
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Add Student"
+            className="text-brand hover:bg-brand/10 hover:text-brand"
+            render={<Link href="/students/new" />}
+            nativeButton={false}
+          >
+            <Plus className="size-5" aria-hidden="true" />
+          </Button>
+        }
       />
 
+      <Container>
+      <div className="max-lg:hidden">
       <KpiStrip pageKey="students">
         <StatTileGroup className="mb-6" ariaLabel="Student summary">
           <StatTile valueFirst decorativeChart icon={Users} label="Total Students" value={totalStudentCount} tone="brand" />
@@ -113,6 +130,7 @@ export default async function StudentsPage({ searchParams }) {
           <StatTile valueFirst decorativeChart icon={Layers} label="Total Batches" value={totalBatchCount} tone="info" />
         </StatTileGroup>
       </KpiStrip>
+      </div>
 
       <StudentFilters
         key={`${status}:${batchId}:${membershipFilter}`}
@@ -174,6 +192,7 @@ export default async function StudentsPage({ searchParams }) {
           />
         </>
       )}
+      </Container>
     </>
   );
 }

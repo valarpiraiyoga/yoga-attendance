@@ -1,77 +1,54 @@
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Panel } from "@/components/layout/Panel";
 import { CardGrid, ResultsHeader } from "@/components/layout/list-page";
 import SortSelect from "@/components/ui/sort-select";
 import { DEFAULT_STUDENT_SORT } from "@/lib/students/data";
+import { cn } from "@/lib/utils";
 import StudentCardItem from "@/app/students/student-card-item";
-import StudentTableRow from "@/app/students/student-table-row";
-
-// 3 columns at the widest — CardGrid's own default goes to 4 at `xl`, wider
-// than these compact cards need (docs/ui-reference/02/students.png: 3 at
-// desktop, 2 at narrower desktop/tablet, 1 on mobile — the `sm`/`lg` steps
-// CardGrid already provides).
-function StudentCards({ students }) {
-  return (
-    <CardGrid ariaLabel="Students" className="xl:grid-cols-3">
-      {students.map((student) => (
-        <StudentCardItem key={student.id} student={student} />
-      ))}
-    </CardGrid>
-  );
-}
-
-function StudentTable({ students }) {
-  return (
-    <Panel className="overflow-hidden p-0 sm:p-0">
-      <Table aria-label="Students">
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead>Student</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Batch</TableHead>
-            <TableHead>Membership</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {students.map((student) => (
-            <StudentTableRow key={student.id} student={student} />
-          ))}
-        </TableBody>
-      </Table>
-    </Panel>
-  );
-}
+import StudentTable from "@/app/students/student-table";
 
 /**
- * Student results — Cards / Table view is a page-level `view` param
- * decided by `StudentFilters`' `ViewSwitcher`, not client state here.
+ * Student results: the summary row ("N Students", with "Sort by" on its right
+ * — below the toolbar, the finalized pattern) over either the card grid or the
+ * table. `view` is `"cards"`, `"table"`, or `""` (no explicit choice in the
+ * URL, the page-level `view` param decided by `StudentFilters`'
+ * `ViewSwitcher`): then both are rendered and CSS shows Cards below `lg` and
+ * Table from `lg` up — the same finalized default rule as Attendance, Schedule
+ * and Batches.
+ *
+ * Cards: 3 columns at the widest — CardGrid's own default goes to 4 at `xl`,
+ * wider than these compact cards need (docs/ui-reference/02/students.png: 3 at
+ * desktop, 2 at narrower desktop/tablet, 1 on mobile).
  */
-export default function StudentList({ students, view = "cards", total, sort, sortOptions }) {
+export default function StudentList({ students, view = "", total, sort, sortOptions }) {
   return (
-    <div className="mt-6">
+    <div className="mt-5">
       <ResultsHeader
         count={total}
         label={total === 1 ? "Student" : "Students"}
-        viewLabel={view === "table" ? "Table view" : "Card list view"}
+        className="mb-3 flex-row items-center justify-between"
         aside={
           <SortSelect
             id="student-sort"
             options={sortOptions}
             value={sort}
             defaultValue={DEFAULT_STUDENT_SORT}
+            compactOnMobile
           />
         }
       />
 
-      {view === "table" ? <StudentTable students={students} /> : <StudentCards students={students} />}
+      {view !== "table" ? (
+        <CardGrid ariaLabel="Students" className={cn("xl:grid-cols-3", view === "" && "lg:hidden")}>
+          {students.map((student) => (
+            <StudentCardItem key={student.id} student={student} />
+          ))}
+        </CardGrid>
+      ) : null}
+
+      {view !== "cards" ? (
+        <div className={cn(view === "" && "hidden lg:block")}>
+          <StudentTable students={students} />
+        </div>
+      ) : null}
     </div>
   );
 }

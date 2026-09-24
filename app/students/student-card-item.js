@@ -11,6 +11,14 @@ import { cn } from "@/lib/utils";
 import { ENTITY_STATUS, MEMBERSHIP_SUMMARY } from "@/lib/status";
 import StudentCardMenu from "@/app/students/student-card-menu";
 
+/**
+ * Student list card (finalized reference): the photo (initials when there is
+ * none), the name primary with the student code beneath it, View + menu with
+ * the student's status stacked under them, then a divider and compact
+ * icon rows — phone, batch, membership. All values come from the list query
+ * (the membership summary is derived in the data layer against the centre
+ * timezone), and the statuses from the shared badge maps.
+ */
 export default function StudentCardItem({ student }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const batchValue = student.batchCodes.length > 0 ? student.batchCodes.join(", ") : "—";
@@ -21,7 +29,7 @@ export default function StudentCardItem({ student }) {
     <EntityCard
       className={cn(menuOpen && "border-brand/40 bg-brand/5")}
       avatar={<Avatar name={student.full_name} src={student.photo_url} size="lg" bordered />}
-      title={<span className="text-brand">{student.full_name}</span>}
+      title={student.full_name}
       subtitle={student.student_code}
       status={<Badge variant={entityStatus.variant}>{entityStatus.label}</Badge>}
       statusPlacement="actions"
@@ -57,16 +65,16 @@ export default function StudentCardItem({ student }) {
           <Phone className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
           <span className="min-w-0 truncate">{student.phone || "—"}</span>
         </span>
-        <span className="inline-flex min-w-0 items-center gap-1.5" title={`Batch: ${batchValue}`}>
+        <span className="inline-flex min-w-0 items-center gap-1.5" title={`Batch ${batchValue}`}>
           <Layers className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
           <span className="min-w-0 truncate">
-            Batch: <span className="font-medium text-text-primary">{batchValue}</span>
+            Batch <span className="ml-1.5 font-semibold text-text-primary">{batchValue}</span>
           </span>
         </span>
-        <span className="inline-flex min-w-0 items-center gap-1.5" title={`Membership: ${membershipStatus.label}`}>
+        <span className="inline-flex min-w-0 items-center gap-1.5" title={`Membership ${membershipStatus.label}`}>
           <Users className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
           <span className="min-w-0 truncate">
-            Membership: <Badge variant={membershipStatus.variant}>{membershipStatus.label}</Badge>
+            Membership <Badge variant={membershipStatus.variant} className="ml-1.5">{membershipStatus.label}</Badge>
           </span>
         </span>
       </div>

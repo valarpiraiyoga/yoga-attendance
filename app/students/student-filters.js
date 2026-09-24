@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LayoutGrid, Table2 } from "lucide-react";
 import {
@@ -38,6 +38,18 @@ const VIEWS = [
   { key: "table", label: "Table", icon: Table2 },
 ];
 
+// The full search hint is too long for a phone's search field; below `sm` it
+// reads "Search by name, phone or batch...". `matchMedia` has no server value,
+// so the server (and first client) render use the full hint.
+const NARROW_QUERY = "(max-width: 639px)";
+function subscribeNarrow(callback) {
+  const media = window.matchMedia(NARROW_QUERY);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+const getNarrow = () => window.matchMedia(NARROW_QUERY).matches;
+const getNarrowServer = () => false;
+
 function optionLabel(options, value) {
   return options.find((option) => option.value === value)?.label ?? value;
 }
@@ -51,6 +63,13 @@ function optionLabel(options, value) {
  * the same `q` / `status` / `batch` / `membership` URL params as before
  * (wireframe p9; keyed remount from the page). View switching is a plain
  * URL change, not client state.
+ *
+ * Now the finalized toolbar (as Schedule and Batches): Search, Filters, Cards
+ * and Table are four individual surfaces (white, subtle border, one 36px
+ * height) with no frame around them, and "Sort by" sits on the results row
+ * below (`StudentList`). With no `view` in the URL (`view` is `""`), Table is
+ * the default from `lg` up and Cards below it — drawn by CSS in the switcher —
+ * and both segments link with an explicit `?view=`, so a choice is always kept.
  */
 export default function StudentFilters({
   defaultQuery,
@@ -68,6 +87,7 @@ export default function StudentFilters({
   const [batchId, setBatchId] = useState(defaultBatchId);
   const [membershipFilter, setMembershipFilter] = useState(defaultMembershipFilter);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const isNarrow = useSyncExternalStore(subscribeNarrow, getNarrow, getNarrowServer);
 
   const batchSelectOptions = [
     { value: "all", label: "All Batches" },
@@ -84,7 +104,8 @@ export default function StudentFilters({
 
   const viewItems = VIEWS.map((item) => ({
     ...item,
-    href: buildListHref("/students", searchParams, { view: item.key === "cards" ? "" : item.key }),
+    href: buildListHref("/students", searchParams, { view: item.key }),
+    autoActive: item.key === "table" ? "lg" : "below-lg",
   }));
 
   function pushParams(mutate) {
@@ -182,6 +203,7 @@ export default function StudentFilters({
   return (
     <>
       <ListToolbar
+        className="border-0 bg-transparent p-0 shadow-none"
         chips={
           <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
         }
@@ -192,13 +214,27 @@ export default function StudentFilters({
             value={query}
             onChange={(event) => searchFor(event.target.value)}
             onClear={() => searchFor("")}
-            placeholder="Search by student name or phone"
+            placeholder={isNarrow ? "Search by name, phone or batch..." : "Search by student name, phone number or batch..."}
+            inputClassName="h-9 bg-surface"
           />
         </form>
 
-        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
+        {/* Filters and Cards / Table share one row on mobile. */}
+        <div className="flex items-center gap-3 sm:contents">
+          <FilterBar
+            activeCount={activeFilterCount}
+            onClick={() => setFiltersOpen(true)}
+            className="flex-1 justify-center bg-surface sm:flex-none"
+          />
 
-        <ViewSwitcher items={viewItems} active={view} ariaLabel="Student list views" />
+          <ViewSwitcher
+            items={viewItems}
+            active={view || undefined}
+            ariaLabel="Student list views"
+            separate
+            className="flex-[2] sm:flex-none [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none"
+          />
+        </div>
       </ListToolbar>
 
       <FilterSheet
