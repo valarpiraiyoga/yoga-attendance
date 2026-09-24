@@ -61,7 +61,8 @@ export default async function BatchAttendanceReportPage({ searchParams }) {
     results = <ReportEmptyState>That batch could not be found. Select a batch from the list.</ReportEmptyState>;
   } else {
     results = (
-      <Suspense key={`${batchId}:${dateFrom}:${dateTo}`} fallback={<ReportResultsSkeleton />}>
+      // The filters and this boundary are siblings, so their keys differ by role prefix.
+      <Suspense key={`results:${batchId}:${dateFrom}:${dateTo}`} fallback={<ReportResultsSkeleton />}>
         <BatchAttendanceResults
           batchId={batchId}
           batchLabel={`${selectedBatch.name} (${selectedBatch.code})`}
@@ -83,7 +84,7 @@ export default async function BatchAttendanceReportPage({ searchParams }) {
 
       <ReportTabs active="batch">
         <BatchAttendanceFilters
-          key={`${batchId}:${dateFrom}:${dateTo}`}
+          key={`filters:${batchId}:${dateFrom}:${dateTo}`}
           defaultBatchId={batchId}
           defaultDateFrom={dateFrom}
           defaultDateTo={dateTo}

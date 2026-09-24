@@ -66,7 +66,8 @@ export default async function ReportsPage({ searchParams }) {
     results = <ReportEmptyState>That student could not be found. Select a student from the list.</ReportEmptyState>;
   } else {
     results = (
-      <Suspense key={`${studentId}:${dateFrom}:${dateTo}`} fallback={<ReportResultsSkeleton />}>
+      // The filters and this boundary are siblings, so their keys differ by role prefix.
+      <Suspense key={`results:${studentId}:${dateFrom}:${dateTo}`} fallback={<ReportResultsSkeleton />}>
         <StudentAttendanceResults
           studentId={studentId}
           studentLabel={selectedStudent.full_name}
@@ -88,7 +89,7 @@ export default async function ReportsPage({ searchParams }) {
 
       <ReportTabs active="student">
         <StudentAttendanceFilters
-          key={`${studentId}:${dateFrom}:${dateTo}`}
+          key={`filters:${studentId}:${dateFrom}:${dateTo}`}
           defaultStudentId={studentId}
           defaultDateFrom={dateFrom}
           defaultDateTo={dateTo}

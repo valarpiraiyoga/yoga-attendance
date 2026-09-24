@@ -58,7 +58,8 @@ export default async function AttendanceSummaryReportPage({ searchParams }) {
     results = <ReportEmptyState>{range.error}</ReportEmptyState>;
   } else {
     results = (
-      <Suspense key={`${dateFrom}:${dateTo}`} fallback={<ReportResultsSkeleton />}>
+      // The filters and this boundary are siblings, so their keys differ by role prefix.
+      <Suspense key={`results:${dateFrom}:${dateTo}`} fallback={<ReportResultsSkeleton />}>
         <AttendanceSummaryResults dateFrom={range.data.dateFrom} dateTo={range.data.dateTo} page={page} />
       </Suspense>
     );
@@ -74,7 +75,7 @@ export default async function AttendanceSummaryReportPage({ searchParams }) {
 
       <ReportTabs active="summary">
         <AttendanceSummaryFilters
-          key={`${dateFrom}:${dateTo}`}
+          key={`filters:${dateFrom}:${dateTo}`}
           defaultDateFrom={dateFrom}
           defaultDateTo={dateTo}
         />
