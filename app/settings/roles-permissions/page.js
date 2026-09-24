@@ -7,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import DataTableShell from "@/components/ui/data-table-shell";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import TabContentHeading from "@/components/layout/TabContentHeading";
 import { NAV_ITEMS, ROLE_LABELS } from "@/app/data/navigation";
@@ -65,13 +64,19 @@ export default async function RolesPermissionsPage() {
         </div>
       </div>
 
-      <DataTableShell>
+      {/* The finalized compact table surface; the matrix is three columns, so it
+          fits a phone, and any overflow would scroll inside this card only. */}
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
         <Table aria-label="Roles and Permissions">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Product Area</TableHead>
-              <TableHead className="text-center">{ROLE_LABELS[ROLES.ADMIN]}</TableHead>
-              <TableHead className="text-center">{ROLE_LABELS[ROLES.INSTRUCTOR]}</TableHead>
+              <TableHead className="h-10 pl-4 text-small tracking-normal">Product Area</TableHead>
+              <TableHead className="h-10 px-2 text-center text-small tracking-normal">
+                {ROLE_LABELS[ROLES.ADMIN]}
+              </TableHead>
+              <TableHead className="h-10 px-2 pr-4 text-center text-small tracking-normal">
+                {ROLE_LABELS[ROLES.INSTRUCTOR]}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -88,22 +93,36 @@ export default async function RolesPermissionsPage() {
 
               return (
                 <TableRow key={item.href}>
-                  <TableCell className="font-medium text-text-primary">{item.label}</TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="py-3 pl-4 text-body font-medium text-text-primary">{item.label}</TableCell>
+                  <TableCell className="px-2 py-3 text-center">
+                    {/* A check and a dash, each with a text alternative — the
+                        state never rests on color alone. */}
                     {item.roles.includes(ROLES.ADMIN) ? (
-                      <Check className="mx-auto size-4 text-success" aria-label="Access granted" />
+                      <>
+                        <Check className="mx-auto size-4 text-success" aria-hidden="true" />
+                        <span className="sr-only">Access granted</span>
+                      </>
                     ) : (
-                      <Minus className="mx-auto size-4 text-text-secondary/50" aria-label="No access" />
+                      <>
+                        <Minus className="mx-auto size-4 text-text-secondary/50" aria-hidden="true" />
+                        <span className="sr-only">No access</span>
+                      </>
                     )}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="px-2 py-3 pr-4 text-center">
                     {item.roles.includes(ROLES.INSTRUCTOR) ? (
                       <span className="inline-flex items-center gap-1">
-                        <Check className="size-4 text-success" aria-label="Access granted" />
+                        <Check className="size-4 text-success" aria-hidden="true" />
+                        <span className="sr-only">
+                          {instructorHasFullAccess ? "Access granted" : "Access granted, limited to assigned classes"}
+                        </span>
                         {!instructorHasFullAccess ? <span aria-hidden="true">*</span> : null}
                       </span>
                     ) : (
-                      <Minus className="mx-auto size-4 text-text-secondary/50" aria-label="No access" />
+                      <>
+                        <Minus className="mx-auto size-4 text-text-secondary/50" aria-hidden="true" />
+                        <span className="sr-only">No access</span>
+                      </>
                     )}
                   </TableCell>
                 </TableRow>
@@ -111,7 +130,7 @@ export default async function RolesPermissionsPage() {
             })}
           </TableBody>
         </Table>
-      </DataTableShell>
+      </div>
 
       <p className="text-small mt-3 text-text-secondary">
         * Instructor access is limited to assigned classes / relevant attendance history. Instructors have

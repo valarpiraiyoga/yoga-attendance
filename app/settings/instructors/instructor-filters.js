@@ -35,7 +35,11 @@ function optionLabel(options, value) {
 /**
  * Search + Filters + Cards/Table toggle in one toolbar row (the finalized
  * list-page composition shared with Students / Memberships / Batches /
- * Schedule / Attendance), for the Instructor list (wireframe p39). Search is
+ * Schedule / Attendance): four individual surfaces (white, subtle border, one
+ * 36px height) with no frame around them, "Sort by" on the results row below
+ * (`InstructorList`), and — with no `view` in the URL (`view` is `""`) — Table
+ * from `lg` up and Cards below (drawn by CSS in the switcher; both segments
+ * link with an explicit `?view=`), for the Instructor list (wireframe p39). Search is
  * independent of the filter drawer; view switching is a plain URL change;
  * Apply Filters writes the same `q` / `status` URL params as before, and any
  * change resets pagination to page 1. The parent page keys this component by
@@ -56,7 +60,8 @@ export default function InstructorFilters({ defaultQuery, defaultStatus, view })
 
   const viewItems = VIEWS.map((item) => ({
     ...item,
-    href: buildListHref("/settings/instructors", searchParams, { view: item.key === "cards" ? "" : item.key }),
+    href: buildListHref("/settings/instructors", searchParams, { view: item.key }),
+    autoActive: item.key === "table" ? "lg" : "below-lg",
   }));
 
   function pushParams(mutate) {
@@ -114,6 +119,7 @@ export default function InstructorFilters({ defaultQuery, defaultStatus, view })
   return (
     <>
       <ListToolbar
+        className="border-0 bg-transparent p-0 shadow-none"
         chips={
           <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
         }
@@ -125,12 +131,26 @@ export default function InstructorFilters({ defaultQuery, defaultStatus, view })
             onChange={(event) => searchFor(event.target.value)}
             onClear={() => searchFor("")}
             placeholder="Search by instructor name"
+            inputClassName="h-9 bg-surface"
           />
         </form>
 
-        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
+        {/* Filters and Cards / Table share one row on mobile. */}
+        <div className="flex items-center gap-3 sm:contents">
+          <FilterBar
+            activeCount={activeFilterCount}
+            onClick={() => setFiltersOpen(true)}
+            className="flex-1 justify-center bg-surface sm:flex-none"
+          />
 
-        <ViewSwitcher items={viewItems} active={view} ariaLabel="Instructor list views" />
+          <ViewSwitcher
+            items={viewItems}
+            active={view || undefined}
+            ariaLabel="Instructor list views"
+            separate
+            className="flex-[2] sm:flex-none [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none"
+          />
+        </div>
       </ListToolbar>
 
       <FilterSheet

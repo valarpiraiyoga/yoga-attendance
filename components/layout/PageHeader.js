@@ -27,12 +27,26 @@ import { cn } from "@/lib/utils";
  * names the page there (`AppShell`'s `mobileTitle`), so the strip keeps its
  * `<h1>` for assistive tech only and drops its frame and description.
  *
+ * `collapseOnMobile` drops the strip's frame below `lg` the same way
+ * `mobileActions` does, for a page that has no mobile top-bar control of its
+ * own (Settings): the mobile top bar names the page and nothing sits under it.
+ * It defaults to whether `mobileActions` was given.
+ *
  * `mobileActions` puts a page-level control in the mobile top bar's right-hand
  * slot (`MobileHeaderAction`) — a compact icon-sized control; the `actions`
  * node then shows only from `lg` up. Without it, `actions` show at every
  * width (below `lg`, alone in the strip under the top bar).
  */
-export default function PageHeader({ title, description, actions, mobileActions, compact = false, className }) {
+export default function PageHeader({
+  title,
+  description,
+  actions,
+  mobileActions,
+  collapseOnMobile,
+  compact = false,
+  className,
+}) {
+  const collapseMobile = collapseOnMobile ?? Boolean(mobileActions);
   const heading = (
     <div className="min-w-0">
       <h1 className={cn("text-section-title font-semibold break-words text-text-primary", compact && "max-lg:sr-only")}>
@@ -59,14 +73,14 @@ export default function PageHeader({ title, description, actions, mobileActions,
       <div
         className={cn(
           "-mx-4 -mt-6 mb-4 border-b border-border bg-surface sm:-mx-6 lg:-mx-8",
-          mobileActions && "max-lg:-mt-2 max-lg:mb-0 max-lg:border-0 max-lg:bg-transparent",
+          collapseMobile && "max-lg:-mt-2 max-lg:mb-0 max-lg:border-0 max-lg:bg-transparent",
           className
         )}
       >
         <div
           className={cn(
             "mx-auto flex max-w-[1264px] flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8 lg:py-3",
-            mobileActions && "max-lg:sr-only"
+            collapseMobile && "max-lg:sr-only"
           )}
         >
           {heading}

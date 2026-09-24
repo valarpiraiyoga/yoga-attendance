@@ -31,11 +31,12 @@ export default function InstructorCardItem({ instructor, isUpdating, disabled, o
     <EntityCard
       className={cn((menuOpen || isUpdating) && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
-      avatar={<Avatar name={instructor.full_name} src={instructor.photo_url} bordered />}
+      avatar={<Avatar name={instructor.full_name} src={instructor.photo_url} size="lg" bordered />}
       title={instructor.full_name}
       status={<Badge variant={status.variant}>{status.label}</Badge>}
+      statusPlacement="actions"
       actions={
-        <>
+        <div className="flex items-center">
           <Button
             type="button"
             variant="ghost"
@@ -56,12 +57,20 @@ export default function InstructorCardItem({ instructor, isUpdating, disabled, o
             onToggleStatus={onToggleStatus}
             onOpenChange={setMenuOpen}
           />
-        </>
+        </div>
       }
-      meta={[
-        { icon: Phone, label: phone, title: phone },
-        { icon: Mail, label: email, title: email },
-      ]}
-    />
+    >
+      {/* Divider, then compact icon rows — the same shape as the Students card. */}
+      <div className="flex flex-col gap-1.5 border-t border-border pt-3 text-small text-text-secondary">
+        <span className="inline-flex min-w-0 items-center gap-1.5" title={phone}>
+          <Phone className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
+          <span className="min-w-0 truncate">{phone}</span>
+        </span>
+        <span className="inline-flex min-w-0 items-center gap-1.5" title={email}>
+          <Mail className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
+          <span className="min-w-0 truncate">{email}</span>
+        </span>
+      </div>
+    </EntityCard>
   );
 }

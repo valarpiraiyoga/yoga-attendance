@@ -2,19 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Panel } from "@/components/layout/Panel";
 import { CardGrid, ResultsHeader } from "@/components/layout/list-page";
 import SortSelect from "@/components/ui/sort-select";
 import { setInstructorStatus } from "@/lib/instructors/actions";
+import { cn } from "@/lib/utils";
 import InstructorCardItem from "@/app/settings/instructors/instructor-card-item";
-import InstructorTableRow from "@/app/settings/instructors/instructor-table-row";
+import InstructorTable from "@/app/settings/instructors/instructor-table";
 
 /**
  * The Instructor table plus the success banner and the Activate/Deactivate
@@ -30,13 +23,16 @@ import InstructorTableRow from "@/app/settings/instructors/instructor-table-row"
  * from each card's / row's overflow menu.
  *
  * Cards / Table is the `view` URL param decided by `InstructorFilters`'
- * `ViewSwitcher` (cards by default, as on every finalized list page); both
- * layouts show the same instructors and offer the same actions.
+ * `ViewSwitcher`: `"cards"`, `"table"`, or `""` (no explicit choice) — then both
+ * are rendered and CSS shows Cards below `lg` and Table from `lg` up, the
+ * finalized default rule shared with the other list pages. Both layouts show
+ * the same instructors and offer the same actions. The results row ("N
+ * Instructors", "Sort by" on its right) sits below the toolbar.
  */
 export default function InstructorList({
   instructors,
   total,
-  view = "cards",
+  view = "",
   sort,
   sortOptions,
   defaultSort,
@@ -62,8 +58,15 @@ export default function InstructorList({
     });
   }
 
+  // Each row / card's update state and toggle handler.
+  const rowProps = (instructor) => ({
+    isUpdating: isPending && pendingId === instructor.id,
+    disabled: isPending,
+    onToggleStatus: () => handleToggleStatus(instructor),
+  });
+
   return (
-    <div className="mt-6">
+    <div className="mt-5">
       {feedback ? (
         <div
           role="status"
@@ -92,48 +95,31 @@ export default function InstructorList({
       <ResultsHeader
         count={total}
         label={total === 1 ? "Instructor" : "Instructors"}
-        viewLabel={view === "table" ? "Table view" : "Card list view"}
-        aside={<SortSelect id="instructor-sort" options={sortOptions} value={sort} defaultValue={defaultSort} />}
+        className="mb-3 flex-row items-center justify-between"
+        aside={
+          <SortSelect
+            id="instructor-sort"
+            options={sortOptions}
+            value={sort}
+            defaultValue={defaultSort}
+            compactOnMobile
+          />
+        }
       />
 
-      {view === "table" ? (
-        <Panel className="overflow-hidden p-0 sm:p-0">
-          <Table aria-label="Instructors">
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Instructor</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {instructors.map((instructor) => (
-                <InstructorTableRow
-                  key={instructor.id}
-                  instructor={instructor}
-                  isUpdating={isPending && pendingId === instructor.id}
-                  disabled={isPending}
-                  onToggleStatus={() => handleToggleStatus(instructor)}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </Panel>
-      ) : (
-        <CardGrid ariaLabel="Instructors">
+      {view !== "table" ? (
+        <CardGrid ariaLabel="Instructors" className={cn("xl:grid-cols-3", view === "" && "lg:hidden")}>
           {instructors.map((instructor) => (
-            <InstructorCardItem
-              key={instructor.id}
-              instructor={instructor}
-              isUpdating={isPending && pendingId === instructor.id}
-              disabled={isPending}
-              onToggleStatus={() => handleToggleStatus(instructor)}
-            />
+            <InstructorCardItem key={instructor.id} instructor={instructor} {...rowProps(instructor)} />
           ))}
         </CardGrid>
-      )}
+      ) : null}
+
+      {view !== "cards" ? (
+        <div className={cn(view === "" && "hidden lg:block")}>
+          <InstructorTable instructors={instructors} renderRowProps={rowProps} />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -32,7 +32,7 @@ export default function SettingsTabs({ children }) {
 
   return (
     <>
-      <Tabs as="link" items={TABS} active={active} ariaLabel="Settings sections" className="mb-6" />
+      <Tabs as="link" items={TABS} active={active} ariaLabel="Settings sections" className="mb-5" />
       {children}
     </>
   );

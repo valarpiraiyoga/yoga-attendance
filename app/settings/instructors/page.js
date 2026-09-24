@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Plus, Users } from "lucide-react";
+import MobileHeaderAction from "@/components/layout/MobileHeaderAction";
 import { Button } from "@/components/ui/button";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import TabContentHeading from "@/components/layout/TabContentHeading";
@@ -41,7 +42,8 @@ export default async function InstructorsPage({ searchParams }) {
   const q = typeof rawParams.q === "string" ? rawParams.q : "";
   const status = STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
-  const view = rawParams.view === "table" ? "table" : "cards";
+  // "" = no explicit choice: Table from `lg` up, Cards below (resolved in CSS).
+  const view = rawParams.view === "cards" || rawParams.view === "table" ? rawParams.view : "";
   const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort)
     ? rawParams.sort
     : DEFAULT_INSTRUCTOR_SORT;
@@ -70,10 +72,24 @@ export default async function InstructorsPage({ searchParams }) {
           title="Instructors"
           description="Manage instructors who conduct yoga classes."
         />
-        <Button render={<Link href="/settings/instructors/new" />} nativeButton={false}>
+        {/* Desktop: the Add action beside the section heading. Mobile: the same
+            link as the top bar's `+` (MobileHeaderAction), like the other list pages. */}
+        <Button className="max-lg:hidden" render={<Link href="/settings/instructors/new" />} nativeButton={false}>
           <Plus className="size-4" aria-hidden="true" />
           Add Instructor
         </Button>
+        <MobileHeaderAction>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Add Instructor"
+            className="text-brand hover:bg-brand/10 hover:text-brand"
+            render={<Link href="/settings/instructors/new" />}
+            nativeButton={false}
+          >
+            <Plus className="size-5" aria-hidden="true" />
+          </Button>
+        </MobileHeaderAction>
       </div>
 
       <InstructorFilters key={status} defaultQuery={q} defaultStatus={status} view={view} />
