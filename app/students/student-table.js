@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import { ENTITY_STATUS, MEMBERSHIP_SUMMARY } from "@/lib/status";
+import { formatPhone } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import StudentCardMenu from "@/app/students/student-card-menu";
 
@@ -47,7 +48,7 @@ function StudentRow({ student }) {
         </div>
       </TableCell>
       <TableCell className={cn("px-2 py-3 whitespace-nowrap text-text-secondary", MID_ONLY)}>
-        {student.phone || "\u2014"}
+        {formatPhone(student.phone, student.phone_country_code)}
       </TableCell>
       <TableCell className={cn("px-2 py-3 text-text-secondary", WIDE_ONLY)}>{batchValue}</TableCell>
       <TableCell className={cn("px-2 py-3", MID_ONLY)}>

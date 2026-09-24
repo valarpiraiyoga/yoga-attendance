@@ -17,6 +17,7 @@ import { getCenterProfile } from "@/lib/center-profile/data";
 import { formatAmount, formatDate } from "@/lib/format";
 import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { formatPhone } from "@/lib/phone";
 import PrintReceiptButton from "@/app/memberships/[id]/receipt/print-receipt-button";
 
 function Detail({ label, children }) {
@@ -86,7 +87,7 @@ export default async function MembershipReceiptPage({ params }) {
     `Amount: ${amount}`,
     `Payment Status: ${payment.label}`,
   ].join("\n");
-  const whatsAppUrl = buildWhatsAppUrl(student?.phone, whatsAppMessage);
+  const whatsAppUrl = buildWhatsAppUrl(student?.phone, whatsAppMessage, student?.phone_country_code);
   const noNumberLabel = "Send WhatsApp is unavailable: this student has no registered mobile number";
 
   return (
@@ -159,7 +160,9 @@ export default async function MembershipReceiptPage({ params }) {
             </h2>
             <p className="text-body mt-1 font-semibold break-words text-text-primary">{student?.full_name ?? "—"}</p>
             <p className="text-small break-words text-text-secondary">Student ID: {student?.student_code ?? "—"}</p>
-            {student?.phone ? <ContactLine icon={Phone}>{student.phone}</ContactLine> : null}
+            {student?.phone ? (
+              <ContactLine icon={Phone}>{formatPhone(student.phone, student.phone_country_code)}</ContactLine>
+            ) : null}
             {student?.email ? <ContactLine icon={Mail}>{student.email}</ContactLine> : null}
           </div>
 

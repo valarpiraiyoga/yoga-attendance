@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import { ENTITY_STATUS } from "@/lib/status";
+import { formatPhone } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import InstructorRowMenu from "@/app/settings/instructors/instructor-row-menu";
 
@@ -41,7 +42,7 @@ function InstructorRow({ instructor, isUpdating, disabled, onToggleStatus }) {
         </div>
       </TableCell>
       <TableCell className={cn("px-2 py-3 whitespace-nowrap text-text-secondary", PHONE_ONLY)}>
-        {instructor.phone || "\u2014"}
+        {formatPhone(instructor.phone, instructor.phone_country_code)}
       </TableCell>
       <TableCell className={cn("px-2 py-3 text-text-secondary", EMAIL_ONLY)}>{instructor.email || "\u2014"}</TableCell>
       <TableCell className="px-2 py-3">

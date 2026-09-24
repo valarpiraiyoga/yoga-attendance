@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPhone } from "@/lib/phone";
 import { ArrowLeft, ArrowRight, Check, UserPlus, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -63,7 +64,7 @@ export default function GuidedComplete({ student, membership, enrollment }) {
             <p className="text-body font-semibold break-words text-text-primary">{student.full_name}</p>
             <p className="text-small break-words text-text-secondary">
               {student.student_code}
-              {student.phone ? ` | ${student.phone}` : ""}
+              {student.phone ? ` | ${formatPhone(student.phone, student.phone_country_code)}` : ""}
             </p>
             {summaryLine.length > 0 ? (
               <p className="text-small break-words text-text-secondary">{summaryLine.join(" | ")}</p>

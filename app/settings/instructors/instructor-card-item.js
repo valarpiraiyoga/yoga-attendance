@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import EntityCard from "@/components/ui/entity-card";
 import { ENTITY_STATUS } from "@/lib/status";
+import { formatPhone } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import InstructorRowMenu from "@/app/settings/instructors/instructor-row-menu";
 
@@ -24,7 +25,7 @@ import InstructorRowMenu from "@/app/settings/instructors/instructor-row-menu";
 export default function InstructorCardItem({ instructor, isUpdating, disabled, onToggleStatus }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const status = ENTITY_STATUS[instructor.status] ?? ENTITY_STATUS.inactive;
-  const phone = instructor.phone || "—";
+  const phone = formatPhone(instructor.phone, instructor.phone_country_code);
   const email = instructor.email || "—";
 
   return (

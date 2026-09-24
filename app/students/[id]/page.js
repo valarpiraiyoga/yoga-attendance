@@ -36,6 +36,7 @@ import { ENTITY_STATUS, MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/st
 import StudentStatusButton from "@/app/students/[id]/student-status-button";
 import StudentCardMenu from "@/app/students/student-card-menu";
 import GuidedComplete from "@/app/students/guided-complete";
+import { formatPhone } from "@/lib/phone";
 
 const SUCCESS_MESSAGES = {
   updated: "Student updated successfully.",
@@ -254,7 +255,7 @@ export default async function StudentDetailsPage({ params, searchParams }) {
         <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
           <InfoRow label="Full Name">{student.full_name}</InfoRow>
           <InfoRow label="Student ID">{student.student_code}</InfoRow>
-          <InfoRow label="Phone">{student.phone || "—"}</InfoRow>
+          <InfoRow label="Phone">{formatPhone(student.phone, student.phone_country_code)}</InfoRow>
           <InfoRow label="Email" valueClassName="break-all">
             {student.email || "—"}
           </InfoRow>

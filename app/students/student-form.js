@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProfilePhotoField, { useProfilePhoto } from "@/components/ui/profile-photo-field";
 import { Textarea } from "@/components/ui/textarea";
+import FormField from "@/components/ui/form-field";
+import PhoneInput from "@/components/forms/PhoneInput";
 import {
   Select,
   SelectContent,
@@ -68,10 +70,6 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
     formAction(formData);
   }
 
-  function handlePhoneInput(event) {
-    event.target.value = event.target.value.replace(/\D/g, "");
-  }
-
   function handleBlur(event) {
     const { name } = event.target;
     if (!BLUR_VALIDATED_FIELDS.has(name)) return;
@@ -80,6 +78,7 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
     const result = validateStudentInput({
       full_name: formData.get("full_name"),
       phone: formData.get("phone"),
+      phone_country_code: formData.get("phone_country_code"),
       email: formData.get("email"),
       date_of_birth: formData.get("date_of_birth"),
       gender: formData.get("gender"),
@@ -87,14 +86,16 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
       notes: formData.get("notes"),
     });
 
-    if (result.success || !result.errors[name]) {
-      setFieldErrors((current) => {
-        if (!(name in current)) return current;
-        const next = { ...current };
-        delete next[name];
-        return next;
-      });
-    }
+    // The phone number and its country code are one field to the user: a valid
+    // recheck clears whichever of the two errors is no longer true.
+    const names = name === "phone" ? ["phone", "phone_country_code"] : [name];
+    setFieldErrors((current) => {
+      const stale = names.filter((key) => key in current && (result.success || !result.errors[key]));
+      if (stale.length === 0) return current;
+      const next = { ...current };
+      for (const key of stale) delete next[key];
+      return next;
+    });
   }
 
   const cancelHref = student ? `/students/${student.id}` : "/students";
@@ -141,29 +142,19 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="phone">Phone</Label>
-          <Input
-            id="phone"
-            name="phone"
-            type="tel"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            autoComplete="tel"
-            required
-            disabled={isPending}
-            defaultValue={state?.values?.phone ?? student?.phone ?? ""}
-            onChange={handlePhoneInput}
-            placeholder="Enter phone number"
-            aria-invalid={Boolean(fieldErrors.phone)}
-            aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
-          />
-          {fieldErrors.phone ? (
-            <p id="phone-error" role="alert" className="text-small text-danger">
-              {fieldErrors.phone}
-            </p>
-          ) : null}
-        </div>
+        <FormField id="phone" label="Phone" error={fieldErrors.phone ?? fieldErrors.phone_country_code}>
+          {(field) => (
+            <PhoneInput
+              {...field}
+              name="phone"
+              required
+              disabled={isPending}
+              defaultValue={state?.values?.phone ?? student?.phone ?? ""}
+              defaultCountryCode={state?.values?.phone_country_code ?? student?.phone_country_code ?? undefined}
+              placeholder="Enter phone number"
+            />
+          )}
+        </FormField>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="email">Email</Label>

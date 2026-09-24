@@ -9,6 +9,7 @@ import Avatar from "@/components/ui/avatar";
 import EntityCard from "@/components/ui/entity-card";
 import { cn } from "@/lib/utils";
 import { ENTITY_STATUS, MEMBERSHIP_SUMMARY } from "@/lib/status";
+import { formatPhone } from "@/lib/phone";
 import StudentCardMenu from "@/app/students/student-card-menu";
 
 /**
@@ -21,6 +22,7 @@ import StudentCardMenu from "@/app/students/student-card-menu";
  */
 export default function StudentCardItem({ student }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const phone = formatPhone(student.phone, student.phone_country_code);
   const batchValue = student.batchCodes.length > 0 ? student.batchCodes.join(", ") : "—";
   const entityStatus = ENTITY_STATUS[student.status] ?? ENTITY_STATUS.inactive;
   const membershipStatus = MEMBERSHIP_SUMMARY[student.membershipSummary] ?? MEMBERSHIP_SUMMARY.none;
@@ -61,9 +63,9 @@ export default function StudentCardItem({ student }) {
           replicates the same icon + label row markup here, scoped to just
           this card, with the divider the reference adds above it. */}
       <div className="flex flex-col gap-1.5 border-t border-border pt-3 text-small text-text-secondary">
-        <span className="inline-flex min-w-0 items-center gap-1.5" title={student.phone || undefined}>
+        <span className="inline-flex min-w-0 items-center gap-1.5" title={student.phone ? phone : undefined}>
           <Phone className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
-          <span className="min-w-0 truncate">{student.phone || "—"}</span>
+          <span className="min-w-0 truncate">{phone}</span>
         </span>
         <span className="inline-flex min-w-0 items-center gap-1.5" title={`Batch ${batchValue}`}>
           <Layers className="size-3.5 shrink-0 text-brand" aria-hidden="true" />

@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ProfilePhotoField, { useProfilePhoto } from "@/components/ui/profile-photo-field";
 import { Switch } from "@/components/ui/switch";
+import FormField from "@/components/ui/form-field";
+import PhoneInput from "@/components/forms/PhoneInput";
 import { validateInstructorInput } from "@/lib/instructors/validation";
 
 // The three text fields a blur can revalidate. Status is a binary switch,
@@ -64,18 +66,6 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
     formAction(formData);
   }
 
-  // Strips anything but digits from the Phone field as it changes — typed,
-  // pasted, dropped, or autofilled all fire the same input event, so one
-  // handler covers every source. The field stays uncontrolled (no `value`
-  // prop); this only corrects the DOM value already there, the same way a
-  // native constraint would, without introducing a phone-formatting library.
-  // Not a replacement for server-side validation: a request built without a
-  // browser never runs this at all, which is exactly why
-  // lib/instructors/validation.js checks the digit format too.
-  function handlePhoneInput(event) {
-    event.target.value = event.target.value.replace(/\D/g, "");
-  }
-
   // Lightweight UX-only recheck: reuses the same validator the server runs
   // (lib/instructors/validation.js) to clear one field's stale error once
   // its current value is actually valid — it introduces no second set of
@@ -90,16 +80,19 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
       full_name: formData.get("full_name"),
       email: formData.get("email"),
       phone: formData.get("phone"),
+      phone_country_code: formData.get("phone_country_code"),
     });
 
-    if (result.success || !result.errors[name]) {
-      setFieldErrors((current) => {
-        if (!(name in current)) return current;
-        const next = { ...current };
-        delete next[name];
-        return next;
-      });
-    }
+    // The phone number and its country code are one field to the user: a valid
+    // recheck clears whichever of the two errors is no longer true.
+    const names = name === "phone" ? ["phone", "phone_country_code"] : [name];
+    setFieldErrors((current) => {
+      const stale = names.filter((key) => key in current && (result.success || !result.errors[key]));
+      if (stale.length === 0) return current;
+      const next = { ...current };
+      for (const key of stale) delete next[key];
+      return next;
+    });
   }
 
   return (
@@ -143,28 +136,18 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="phone">Phone</Label>
-        <Input
-          id="phone"
-          name="phone"
-          type="tel"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete="tel"
-          disabled={isPending}
-          defaultValue={state?.values?.phone ?? instructor?.phone ?? ""}
-          onChange={handlePhoneInput}
-          placeholder="Enter phone number (optional)"
-          aria-invalid={Boolean(fieldErrors.phone)}
-          aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
-        />
-        {fieldErrors.phone ? (
-          <p id="phone-error" role="alert" className="text-small text-danger">
-            {fieldErrors.phone}
-          </p>
-        ) : null}
-      </div>
+      <FormField id="phone" label="Phone" error={fieldErrors.phone ?? fieldErrors.phone_country_code}>
+        {(field) => (
+          <PhoneInput
+            {...field}
+            name="phone"
+            disabled={isPending}
+            defaultValue={state?.values?.phone ?? instructor?.phone ?? ""}
+            defaultCountryCode={state?.values?.phone_country_code ?? instructor?.phone_country_code ?? undefined}
+            placeholder="Enter phone number (optional)"
+          />
+        )}
+      </FormField>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="email">Email</Label>
