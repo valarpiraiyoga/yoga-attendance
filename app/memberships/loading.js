@@ -1,10 +1,41 @@
-import ListPageSkeleton from "@/components/layout/ListPageSkeleton";
+import Container from "@/components/layout/Container";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * Memberships list loading state (app/memberships/page.js: header with an
- * "Add Membership" action, filters, a nine-column table, and server-side
- * pagination).
+ * Memberships list loading state (app/memberships/page.js), in the
+ * proportions of the finalized layout: the header strip, the toolbar, the
+ * summary row and a few membership cards. Serves the `new` and `[id]` routes
+ * too, which sit under the same loading boundary.
  */
 export default function Loading() {
-  return <ListPageSkeleton columns={9} filters={3} label="Loading memberships" />;
+  return (
+    <div role="status" aria-busy="true">
+      <span className="sr-only">Loading memberships</span>
+
+      {/* Header strip: bleeds through the shell padding like PageHeader's compact form. */}
+      <div className="-mx-4 -mt-2 mb-0 sm:-mx-6 lg:-mx-8 lg:-mt-6 lg:mb-4 lg:border-b lg:border-border lg:bg-surface">
+        <div className="mx-auto hidden max-w-[1264px] flex-row items-center justify-between px-8 py-3 lg:flex">
+          <div className="min-w-0">
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="mt-1.5 h-3.5 w-80 max-w-full" />
+          </div>
+          <Skeleton className="h-9 w-56 rounded-md" />
+        </div>
+      </div>
+
+      <Container>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Skeleton className="h-9 flex-1 rounded-md" />
+          <Skeleton className="h-9 w-24 rounded-md" />
+          <Skeleton className="h-9 w-36 rounded-md" />
+        </div>
+        <Skeleton className="mt-5 h-6 w-32" />
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <Skeleton className="h-52 rounded-card" />
+          <Skeleton className="h-52 rounded-card" />
+          <Skeleton className="hidden h-52 rounded-card xl:block" />
+        </div>
+      </Container>
+    </div>
+  );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LayoutGrid, Table2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -45,13 +45,29 @@ const VIEWS = [
   { key: "table", label: "Table", icon: Table2 },
 ];
 
+// The full search hint is too long for a phone's search field; below `sm` it
+// reads "Search by student or membership ID...". `matchMedia` has no server
+// value, so the server (and first client) render use the full hint.
+const NARROW_QUERY = "(max-width: 639px)";
+function subscribeNarrow(callback) {
+  const media = window.matchMedia(NARROW_QUERY);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+const getNarrow = () => window.matchMedia(NARROW_QUERY).matches;
+const getNarrowServer = () => false;
+
 function optionLabel(options, value) {
   return options.find((option) => option.value === value)?.label ?? value;
 }
 
 /**
- * Search + Filters + Cards/Table toggle in one toolbar row (the same
- * composition as `StudentFilters`). Search is independent of the filter
+ * Search + Filters + Cards/Table toggle in one toolbar row — the finalized
+ * toolbar shared with Students, Batches and Schedule: four individual
+ * surfaces (white, subtle border, one 36px height) with no frame around them,
+ * "Sort by" on the results row below (`MembershipList`), and, with no `view`
+ * in the URL (`view` is `""`), Table from `lg` up and Cards below (drawn by CSS
+ * in the switcher; both segments link with an explicit `?view=`). Search is independent of the filter
  * drawer and live: every keystroke writes the `q` URL param (replacing the
  * history entry, so typing does not pile up back-button steps), and the
  * server re-runs the same `listMemberships` search, so filtering, sorting and
@@ -82,6 +98,7 @@ export default function MembershipFilters({
   const [fromDate, setFromDate] = useState(defaultFromDate);
   const [toDate, setToDate] = useState(defaultToDate);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const isNarrow = useSyncExternalStore(subscribeNarrow, getNarrow, getNarrowServer);
 
   const appliedPlan = defaultPlan;
   const appliedPayment = defaultPaymentStatus;
@@ -99,7 +116,8 @@ export default function MembershipFilters({
 
   const viewItems = VIEWS.map((item) => ({
     ...item,
-    href: buildListHref("/memberships", searchParams, { view: item.key === "cards" ? "" : item.key }),
+    href: buildListHref("/memberships", searchParams, { view: item.key }),
+    autoActive: item.key === "table" ? "lg" : "below-lg",
   }));
 
   function pushParams(mutate) {
@@ -203,6 +221,7 @@ export default function MembershipFilters({
   return (
     <>
       <ListToolbar
+        className="border-0 bg-transparent p-0 shadow-none"
         chips={
           <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
         }
@@ -213,13 +232,29 @@ export default function MembershipFilters({
             value={query}
             onChange={(event) => searchFor(event.target.value)}
             onClear={() => searchFor("")}
-            placeholder="Search student or membership ID"
+            placeholder={
+              isNarrow ? "Search by student or membership ID..." : "Search by student name or membership ID..."
+            }
+            inputClassName="h-9 bg-surface"
           />
         </form>
 
-        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
+        {/* Filters and Cards / Table share one row on mobile. */}
+        <div className="flex items-center gap-3 sm:contents">
+          <FilterBar
+            activeCount={activeFilterCount}
+            onClick={() => setFiltersOpen(true)}
+            className="flex-1 justify-center bg-surface sm:flex-none"
+          />
 
-        <ViewSwitcher items={viewItems} active={view} ariaLabel="Membership list views" />
+          <ViewSwitcher
+            items={viewItems}
+            active={view || undefined}
+            ariaLabel="Membership list views"
+            separate
+            className="flex-[2] sm:flex-none [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none"
+          />
+        </div>
       </ListToolbar>
 
       <FilterSheet

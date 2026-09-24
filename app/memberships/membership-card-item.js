@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Eye, Receipt, IndianRupee } from "lucide-react";
+import { CalendarDays, Eye, IndianRupee } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -14,22 +14,21 @@ import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/valid
 import { cn } from "@/lib/utils";
 import MembershipCardMenu from "@/app/memberships/membership-card-menu";
 
-/**
- * Validity bar colour: red once Expired, orange while payment is still
- * Pending (as the reference shows), otherwise green.
- */
-function validityTone(membership, validity) {
-  if (validity.status === "expired") return "danger";
-  if (membership.payment_status === "pending") return "warning";
-  return "success";
+/** Validity bar colour: red once Expired, otherwise the brand teal. */
+function validityTone(validity) {
+  return validity.status === "expired" ? "danger" : "brand";
 }
 
 /**
- * Membership list card (`05 Memberships card view.png`): student identity +
- * status, then period / amount+payment, then a validity
- * footer (days left + progress bar). Card actions follow the finalized
- * Students pattern: eye icon (View) + overflow menu. Composed from
- * `EntityCard`; only the interactive menu-open tint is local state.
+ * Membership list card (finalized reference): the student's avatar, name
+ * (primary) and the membership ID beneath it, View + menu with the membership
+ * status stacked under them, then the period, the amount with its payment
+ * badge, and a validity footer — "N days left" with "N / total days" and the
+ * progress bar while it runs, or a red "Expired" block with a full red bar.
+ * Everything comes from the existing validity helpers and status maps. Card
+ * actions follow the finalized pattern: eye icon (View) + overflow menu (which
+ * also has the receipt). Composed from `EntityCard`; only the interactive
+ * menu-open tint is local state.
  */
 export default function MembershipCardItem({ membership, today }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -40,34 +39,21 @@ export default function MembershipCardItem({ membership, today }) {
   const validity = getMembershipValidity(membership, today);
   const validityLabel = getValidityLabel(validity);
   const isExpired = validity.status === "expired";
+  const isActive = validity.status === "active";
   const showBar = validity.status !== "cancelled";
   const period = `${formatDate(membership.start_date)} – ${formatDate(membership.end_date)}`;
 
   return (
     <EntityCard
-      className={cn(
-        "h-auto",
-        isExpired && "border-danger/20 bg-danger/5",
-        menuOpen && "border-brand/40 bg-brand/5"
-      )}
+      className={cn("h-auto", menuOpen && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
-      avatar={<Avatar name={student?.full_name} src={student?.photo_url} bordered />}
+      avatar={<Avatar name={student?.full_name} src={student?.photo_url} size="lg" bordered />}
       title={student?.full_name ?? "—"}
-      subtitle={student?.student_code}
+      subtitle={membership.membership_code}
       status={<Badge variant={status.variant}>{status.label}</Badge>}
+      statusPlacement="actions"
       actions={
-        <>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`View receipt for ${membership.membership_code}`}
-            render={<Link href={`/memberships/${membership.id}/receipt`} />}
-            nativeButton={false}
-          >
-            <Receipt className="size-4" aria-hidden="true" />
-          </Button>
+        <div className="flex items-center">
           <Button
             type="button"
             variant="ghost"
@@ -84,7 +70,7 @@ export default function MembershipCardItem({ membership, today }) {
             studentId={student?.id}
             onOpenChange={setMenuOpen}
           />
-        </>
+        </div>
       }
       meta={[
         { icon: CalendarDays, label: period, title: period },
@@ -100,25 +86,27 @@ export default function MembershipCardItem({ membership, today }) {
         },
       ]}
     >
-      {/* Validity footer: days-left label over the progress bar. */}
-      <div className="mt-auto flex flex-col gap-1.5">
-        {/* Literal class strings, deliberately not through `cn()` — see StatTile. */}
-        <p
-          className={
-            validityLabel.tone === "danger"
-              ? "text-small font-medium text-danger"
-              : "text-small font-normal text-text-secondary"
-          }
-        >
-          {validityLabel.text}
-        </p>
-        {showBar ? (
-          <Progress
-            value={validity.percentUsed}
-            tone={validityTone(membership, validity)}
-            label="Membership validity used"
-          />
-        ) : null}
+      {/* Validity footer: the label (and, while it runs, "N / total days") over
+          the progress bar; an Expired membership gets a red-tinted block. */}
+      <div className={cn("mt-auto flex flex-col gap-1.5", isExpired && "rounded-lg bg-danger/10 px-3 py-2")}>
+        <div className="flex items-baseline justify-between gap-2">
+          {/* Literal class strings, deliberately not through `cn()` — see StatTile. */}
+          <p
+            className={
+              validityLabel.tone === "danger"
+                ? "text-body font-semibold text-danger"
+                : "text-small font-normal text-text-secondary"
+            }
+          >
+            {validityLabel.text}
+          </p>
+          {isActive ? (
+            <p className="text-small font-normal text-text-secondary tabular-nums">
+              {validity.daysLeft} / {validity.totalDays} days
+            </p>
+          ) : null}
+        </div>
+        {showBar ? <Progress value={validity.percentUsed} tone={validityTone(validity)} label="Membership validity used" /> : null}
       </div>
     </EntityCard>
   );

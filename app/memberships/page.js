@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CircleCheck, CreditCard, Hourglass, CalendarX, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/ui/pagination";
@@ -47,7 +48,8 @@ export default async function MembershipsPage({ searchParams }) {
   const fromDate = typeof rawParams.from === "string" && DATE_PATTERN.test(rawParams.from) ? rawParams.from : "";
   const toDate = typeof rawParams.to === "string" && DATE_PATTERN.test(rawParams.to) ? rawParams.to : "";
   const page = Math.max(1, Number(rawParams.page) || 1);
-  const view = rawParams.view === "table" ? "table" : "cards";
+  // "" = no explicit choice: Table from `lg` up, Cards below (resolved in CSS).
+  const view = rawParams.view === "cards" || rawParams.view === "table" ? rawParams.view : "";
   const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort)
     ? rawParams.sort
     : DEFAULT_MEMBERSHIP_SORT;
@@ -78,6 +80,7 @@ export default async function MembershipsPage({ searchParams }) {
   return (
     <>
       <PageHeader
+        compact
         title="Memberships"
         description="Manage student memberships, plans, validity, and payment status."
         icon={<CreditCard className="size-6" />}
@@ -90,11 +93,26 @@ export default async function MembershipsPage({ searchParams }) {
             </Button>
           </>
         }
+        mobileActions={
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Add Membership"
+            className="text-brand hover:bg-brand/10 hover:text-brand"
+            render={<Link href="/memberships/new" />}
+            nativeButton={false}
+          >
+            <Plus className="size-5" aria-hidden="true" />
+          </Button>
+        }
       />
+
+      <Container>
 
       {/* Center-wide counts, independent of the search/filters below.
           Shares are derived from the counts. Expiring Soon = Active with
           EXPIRING_SOON_DAYS or fewer days left. */}
+      <div className="max-lg:hidden">
       <KpiStrip pageKey="memberships">
         <StatTileGroup className="mb-6" ariaLabel="Membership summary">
           <StatTile
@@ -134,6 +152,7 @@ export default async function MembershipsPage({ searchParams }) {
           />
         </StatTileGroup>
       </KpiStrip>
+      </div>
 
       <MembershipFilters
         key={`${plan}:${paymentStatus}:${membershipStatus}:${fromDate}:${toDate}`}
@@ -191,6 +210,7 @@ export default async function MembershipsPage({ searchParams }) {
           />
         </>
       )}
+      </Container>
     </>
   );
 }
