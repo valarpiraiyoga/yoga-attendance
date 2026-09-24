@@ -20,6 +20,12 @@ import { cn } from "@/lib/utils";
  * choice in the URL), that item is drawn active by CSS alone — from `lg` up or
  * below it — so the highlight follows the viewport with no client state and no
  * first-paint flash. An explicit `active` key always wins.
+ *
+ * `separate` draws each segment as its own bordered control (white surface,
+ * subtle border, the standard button radius and height) instead of segments
+ * inside one shared frame — the toolbar treatment where Search, Filters and
+ * each view button are individual surfaces. The active segment keeps the
+ * brand fill. Off by default; every other screen keeps the framed switcher.
  */
 // Full literal class strings, deliberately NOT passed through `cn()`:
 // tailwind-merge does not know our custom type tokens and treats
@@ -32,6 +38,18 @@ import { cn } from "@/lib/utils";
 const SEGMENT_BASE = "inline-flex items-center gap-1.5 rounded-md px-3 text-button font-medium transition-colors";
 const SEGMENT_ACTIVE = `${SEGMENT_BASE} bg-brand text-surface shadow-sm`;
 const SEGMENT_INACTIVE = `${SEGMENT_BASE} text-text-secondary hover:bg-surface hover:text-text-primary`;
+
+// `separate`: one bordered control per segment (same 36px height and 14px label
+// as the Filters button beside them). Literal strings, for the same reason as above.
+const SEPARATE_BASE =
+  "inline-flex h-9 items-center gap-1.5 rounded-button border px-3 text-button font-medium transition-colors";
+const SEPARATE_ACTIVE = `${SEPARATE_BASE} border-brand bg-brand text-surface`;
+const SEPARATE_INACTIVE = `${SEPARATE_BASE} border-border bg-surface text-text-secondary hover:bg-muted hover:text-text-primary`;
+const SEPARATE_AUTO = {
+  lg: `${SEPARATE_BASE} lg:border-brand lg:bg-brand lg:text-surface max-lg:border-border max-lg:bg-surface max-lg:text-text-secondary max-lg:hover:bg-muted max-lg:hover:text-text-primary`,
+  "below-lg": `${SEPARATE_BASE} max-lg:border-brand max-lg:bg-brand max-lg:text-surface lg:border-border lg:bg-surface lg:text-text-secondary lg:hover:bg-muted lg:hover:text-text-primary`,
+};
+
 const SEGMENT_AUTO = {
   lg: `${SEGMENT_BASE} lg:bg-brand lg:text-surface lg:shadow-sm max-lg:text-text-secondary max-lg:hover:bg-surface max-lg:hover:text-text-primary`,
   "below-lg": `${SEGMENT_BASE} max-lg:bg-brand max-lg:text-surface max-lg:shadow-sm lg:text-text-secondary lg:hover:bg-surface lg:hover:text-text-primary`,
@@ -42,12 +60,17 @@ const SEGMENT_AUTO = {
  * container (the `default` step of the button size scale, same as Filters)
  * with 26px segments and the same 14px/20px label.
  */
-export default function ViewSwitcher({ items, active, ariaLabel = "Views", className }) {
+export default function ViewSwitcher({ items, active, ariaLabel = "Views", separate = false, className }) {
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={cn("inline-flex h-9 shrink-0 items-stretch gap-1 rounded-lg border border-border bg-background/60 p-1", className)}
+      className={cn(
+        separate
+          ? "inline-flex shrink-0 items-stretch gap-2"
+          : "inline-flex h-9 shrink-0 items-stretch gap-1 rounded-lg border border-border bg-background/60 p-1",
+        className
+      )}
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -60,7 +83,19 @@ export default function ViewSwitcher({ items, active, ariaLabel = "Views", class
             href={item.href}
             role="tab"
             aria-selected={isAuto ? undefined : isActive}
-            className={isAuto ? SEGMENT_AUTO[item.autoActive] : isActive ? SEGMENT_ACTIVE : SEGMENT_INACTIVE}
+            className={
+              separate
+                ? isAuto
+                  ? SEPARATE_AUTO[item.autoActive]
+                  : isActive
+                    ? SEPARATE_ACTIVE
+                    : SEPARATE_INACTIVE
+                : isAuto
+                  ? SEGMENT_AUTO[item.autoActive]
+                  : isActive
+                    ? SEGMENT_ACTIVE
+                    : SEGMENT_INACTIVE
+            }
           >
             {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden="true" /> : null}
             {item.label}

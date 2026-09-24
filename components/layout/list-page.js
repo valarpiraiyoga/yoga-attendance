@@ -34,7 +34,7 @@ export function ResultsHeader({ count, label, viewLabel, aside, className }) {
   return (
     <div className={cn("mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", className)}>
       <div>
-        <p className="text-body font-medium text-text-primary">
+        <p className="text-body font-medium whitespace-nowrap text-text-primary">
           {count} {label}
         </p>
         {viewLabel ? <p className="text-small text-text-secondary">{viewLabel}</p> : null}

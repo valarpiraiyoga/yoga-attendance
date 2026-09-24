@@ -1,9 +1,11 @@
 import AppShell from "@/components/layout/AppShell";
-import Container from "@/components/layout/Container";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 
 /**
- * Shared Schedule shell: auth boundary + shared page chrome. Mirrors
+ * Shared Schedule shell: auth boundary + shared page chrome. No `Container`
+ * here: the list page's full-bleed header strip must be a direct child of the
+ * shell's `<main>`, so the list page wraps its own body in `Container` and the
+ * `new` and `[id]` routes get theirs from their own layouts. Mirrors
  * app/batches/layout.js, app/students/layout.js and app/memberships/layout.js
  * exactly.
  *
@@ -16,8 +18,8 @@ export default async function ScheduleLayout({ children }) {
   const user = await requireRole(ROLES.ADMIN);
 
   return (
-    <AppShell role={user.role} user={user}>
-      <Container>{children}</Container>
+    <AppShell role={user.role} user={user} mobileTitle="Schedule">
+      {children}
     </AppShell>
   );
 }

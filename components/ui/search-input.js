@@ -55,7 +55,7 @@ export default function SearchInput({ id, label = "Search", className, inputClas
           // Keep focus in the input while the pointer is down on the button.
           onMouseDown={(event) => event.preventDefault()}
           onClick={handleClear}
-          className="absolute top-0 right-0 flex h-10 w-10 items-center justify-center rounded-input text-text-secondary outline-none hover:text-text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="absolute inset-y-0 right-0 flex h-full w-10 items-center justify-center rounded-input text-text-secondary outline-none hover:text-text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <XIcon className="size-4" aria-hidden="true" />
         </button>

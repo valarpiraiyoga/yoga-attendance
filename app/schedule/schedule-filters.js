@@ -40,6 +40,12 @@ function optionLabel(options, value) {
  * View only). Every write keeps `view=list` so the admin stays on List View
  * (Weekly is the bare `/schedule` default); Cards/Table is the `layout`
  * param because `view` belongs to the Weekly Schedule / List View tabs.
+ *
+ * Follows the finalized responsive default rule (as Attendance): with no
+ * `layout` in the URL (`layout` is `""`), Table is the default from `lg` up
+ * and Cards below it — drawn by CSS in the switcher — and both segments link
+ * with an explicit `?layout=`, so a choice is always kept. ("Sort by" is not
+ * in this row: it sits on the results summary row below, in `ScheduleList`.)
  */
 export default function ScheduleFilters({
   defaultQuery,
@@ -89,8 +95,9 @@ export default function ScheduleFilters({
     ...item,
     href: buildListHref("/schedule", searchParams, {
       view: "list",
-      layout: item.key === "cards" ? "" : item.key,
+      layout: item.key,
     }),
+    autoActive: item.key === "table" ? "lg" : "below-lg",
   }));
 
   function pushParams(mutate) {
@@ -182,6 +189,7 @@ export default function ScheduleFilters({
   return (
     <>
       <ListToolbar
+        className="border-0 bg-transparent p-0 shadow-none"
         chips={
           <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
         }
@@ -192,13 +200,28 @@ export default function ScheduleFilters({
             value={query}
             onChange={(event) => searchFor(event.target.value)}
             onClear={() => searchFor("")}
-            placeholder="Search by batch or instructor"
+            placeholder="Search by batch name, instructor or day..."
+            inputClassName="h-9 bg-surface"
           />
         </form>
 
-        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
+        {/* Search, Filters, Cards and Table are four individual surfaces (white, subtle
+            border, one 36px height); Filters and Cards / Table share one row on mobile. */}
+        <div className="flex items-center gap-3 sm:contents">
+          <FilterBar
+            activeCount={activeFilterCount}
+            onClick={() => setFiltersOpen(true)}
+            className="flex-1 justify-center bg-surface sm:flex-none"
+          />
 
-        <ViewSwitcher items={layoutItems} active={layout} ariaLabel="Schedule list views" />
+          <ViewSwitcher
+            items={layoutItems}
+            active={layout || undefined}
+            ariaLabel="Schedule list views"
+            separate
+            className="flex-[2] sm:flex-none [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none"
+          />
+        </div>
       </ListToolbar>
 
       <FilterSheet

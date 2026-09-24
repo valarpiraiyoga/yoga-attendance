@@ -1,35 +1,51 @@
 import Link from "next/link";
 import { Calendar, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
-import Pagination from "@/components/ui/pagination";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { DEFAULT_SCHEDULE_SORT, listSchedules, listSchedulesForWeek } from "@/lib/schedules/data";
+import {
+  DEFAULT_SCHEDULE_SORT,
+  SCHEDULE_LIST_LIMIT,
+  SCHEDULE_SORTS,
+  listSchedules,
+  listSchedulesForWeek,
+} from "@/lib/schedules/data";
+import { todayInCentreTimezone } from "@/lib/class-sessions/validation";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
-import { buildListHref } from "@/lib/url-params";
-import { isValidDateString, getMondayOfWeek, addDaysUTC, todayDateString } from "@/lib/schedules/validation";
+import {
+  isValidDateString,
+  getMondayOfWeek,
+  addDaysUTC,
+  groupSchedulesByBatch,
+  sortBatchGroups,
+} from "@/lib/schedules/validation";
 import ScheduleFilters from "@/app/schedule/schedule-filters";
 import ScheduleList from "@/app/schedule/schedule-list";
 import ScheduleTabs from "@/app/schedule/schedule-tabs";
 import WeeklySchedule from "@/app/schedule/weekly-schedule";
 
-const PAGE_SIZE = 10;
 const STATUSES = ["active", "inactive"];
 
 // Labels for the "Sort by" control. Every `value` must be a key of
 // `SCHEDULE_SORTS` (lib/schedules/data.js), which owns the column and direction.
 const SORT_OPTIONS = [
+  { value: "batch_asc", label: "Batch (A–Z)" },
+  { value: "batch_desc", label: "Batch (Z–A)" },
   { value: "newest", label: "Newest First" },
   { value: "oldest", label: "Oldest First" },
 ];
 
 // The page heading, description and Add Schedule action stay the same across
-// Weekly Schedule and List View (02-ux.md "Schedule screens").
+// Weekly Schedule and List View (02-ux.md "Schedule screens"): the compact
+// header strip on desktop, and on mobile the top bar (`mobileTitle`
+// "Schedule", set by app/schedule/layout.js) with an Add icon on its right.
 function ScheduleHeader() {
   return (
     <PageHeader
+      compact
       title="Schedule"
       description="View and manage recurring weekly schedules."
       icon={<Calendar className="size-6" />}
@@ -37,6 +53,18 @@ function ScheduleHeader() {
         <Button render={<Link href="/schedule/new" />} nativeButton={false}>
           <Plus className="size-4" aria-hidden="true" />
           Add Schedule
+        </Button>
+      }
+      mobileActions={
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Add Schedule"
+          className="text-brand hover:bg-brand/10 hover:text-brand"
+          render={<Link href="/schedule/new" />}
+          nativeButton={false}
+        >
+          <Plus className="size-5" aria-hidden="true" />
         </Button>
       }
     />
@@ -59,7 +87,7 @@ export default async function SchedulePage({ searchParams }) {
     const requestedDate =
       typeof rawParams.week === "string" && isValidDateString(rawParams.week)
         ? rawParams.week
-        : todayDateString();
+        : todayInCentreTimezone();
     const weekStart = getMondayOfWeek(requestedDate);
     const weekEnd = addDaysUTC(weekStart, 6);
 
@@ -69,9 +97,11 @@ export default async function SchedulePage({ searchParams }) {
       <>
         <ScheduleHeader />
 
-        <ScheduleTabs active="weekly" />
+        <Container>
+          <ScheduleTabs active="weekly" />
 
-        <WeeklySchedule weekStart={weekStart} schedules={schedules} />
+          <WeeklySchedule weekStart={weekStart} schedules={schedules} />
+        </Container>
       </>
     );
   }
@@ -80,30 +110,32 @@ export default async function SchedulePage({ searchParams }) {
   const batchId = typeof rawParams.batch === "string" ? rawParams.batch : "";
   const instructorId = typeof rawParams.instructor === "string" ? rawParams.instructor : "";
   const status = STATUSES.includes(rawParams.status) ? rawParams.status : "all";
-  const page = Math.max(1, Number(rawParams.page) || 1);
   // `created=N` marks the redirect after Add Schedule created several
   // weekday schedules at once. It is not list state, so it is kept out of the
   // pagination links below.
   const createdCount = Math.min(7, Math.max(0, Math.floor(Number(rawParams.created)) || 0));
-  const { created: _created, ...listParams } = rawParams;
-  const layout = rawParams.layout === "table" ? "table" : "cards";
+  // "" = no explicit choice: Table from `lg` up, Cards below (resolved in CSS).
+  const layout = rawParams.layout === "cards" || rawParams.layout === "table" ? rawParams.layout : "";
   const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort)
     ? rawParams.sort
     : DEFAULT_SCHEDULE_SORT;
 
   const [{ schedules, total }, batchOptions, instructorOptions] = await Promise.all([
-    listSchedules({ q, batchId, instructorId, status, sort, page, pageSize: PAGE_SIZE }),
+    listSchedules({ q, batchId, instructorId, status, sort, page: 1, pageSize: SCHEDULE_LIST_LIMIT }),
     listBatchOptions(),
     listInstructorOptions(),
   ]);
 
   const isFiltered = Boolean(q) || Boolean(batchId) || Boolean(instructorId) || status !== "all";
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Every matching schedule, grouped by batch and ordered by the Sort control
+  // (the query's own order stands for Newest / Oldest First).
+  const groups = sortBatchGroups(groupSchedulesByBatch(schedules), SCHEDULE_SORTS[sort]?.batchOrder);
 
   return (
     <>
       <ScheduleHeader />
 
+      <Container>
       <ScheduleTabs active="list" />
 
       {createdCount > 0 ? (
@@ -151,25 +183,20 @@ export default async function SchedulePage({ searchParams }) {
       ) : (
         <>
           <ScheduleList
-            schedules={schedules}
+            groups={groups}
+            scheduleCount={total}
             layout={layout}
-            total={total}
             sort={sort}
             sortOptions={SORT_OPTIONS}
           />
-
-          <Pagination
-            className="mt-4"
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            pageSize={PAGE_SIZE}
-            itemLabel="schedules"
-            ariaLabel="Schedule list pagination"
-            getHref={(targetPage) => buildListHref("/schedule", listParams, { page: targetPage })}
-          />
+          {total > schedules.length ? (
+            <p className="mt-4 text-small text-text-secondary">
+              Showing the first {schedules.length} of {total} schedules. Narrow the search or filters to see the rest.
+            </p>
+          ) : null}
         </>
       )}
+      </Container>
     </>
   );
 }

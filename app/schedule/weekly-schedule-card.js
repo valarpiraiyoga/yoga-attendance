@@ -20,8 +20,16 @@ import ConfirmDialog from "@/components/ui/confirm-dialog";
  * shape already used elsewhere in this app for a plain "here's more detail,
  * Close" disclosure (e.g. Delete Schedule's "couldn't check this schedule"
  * state), rather than introducing a new popover component.
+ *
+ * Below `sm` the card has a little more to say: a second line with the short
+ * time range (`shortTimeParts`, "6:30–7:30 AM") under the avatar and code,
+ * since a phone has no room for the popup to be the only place the time lives.
+ * The range is never truncated: in a narrow (overlapping) card it wraps between
+ * the numbers and the period instead, and a session too short to hold the
+ * second line (`showShortTime` false) shows only its code. From `sm` up it is
+ * exactly the single avatar-and-code row it always was.
  */
-export default function WeeklyScheduleCard({ schedule, style, dayLabel, timeRange, instructor }) {
+export default function WeeklyScheduleCard({ schedule, style, dayLabel, timeRange, shortTimeParts, showShortTime, instructor }) {
   const [open, setOpen] = useState(false);
   const code = schedule.batches?.code ?? "—";
   const batchName = schedule.batches?.name ?? code;
@@ -32,7 +40,7 @@ export default function WeeklyScheduleCard({ schedule, style, dayLabel, timeRang
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="absolute flex items-center overflow-hidden rounded-md border border-l-4 border-brand/30 border-l-brand bg-brand/10 px-1.5 py-1 text-left text-small outline-none transition-colors hover:bg-brand/15 focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="absolute flex flex-col justify-center overflow-hidden rounded-md border border-l-4 border-brand/30 border-l-brand bg-brand/10 px-1.5 py-1 text-left text-small outline-none sm:flex-row sm:items-center sm:justify-start transition-colors hover:bg-brand/15 focus-visible:ring-3 focus-visible:ring-ring/50"
         style={style}
         aria-label={`${batchName}, ${dayLabel} ${timeRange}, ${instructor}`}
       >
@@ -40,6 +48,16 @@ export default function WeeklyScheduleCard({ schedule, style, dayLabel, timeRang
           <Avatar name={instructor} src={photoUrl} className="size-4 shrink-0" />
           <span className="truncate font-semibold text-text-primary">{code}</span>
         </span>
+        {showShortTime && shortTimeParts?.length ? (
+          <span className="mt-0.5 min-w-0 text-small leading-tight text-text-secondary sm:hidden">
+            {shortTimeParts.map((part, index) => (
+              <span key={index} className="whitespace-nowrap">
+                {index > 0 && !shortTimeParts[index - 1].endsWith("–") ? " " : ""}
+                {part}
+              </span>
+            ))}
+          </span>
+        ) : null}
       </button>
 
       <ConfirmDialog

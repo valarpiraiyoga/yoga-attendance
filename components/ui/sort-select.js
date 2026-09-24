@@ -21,10 +21,14 @@ import { cn } from "@/lib/utils";
  * `options`: `{ value, label }[]`. `value` is the currently applied key,
  * resolved by the server page from the URL — this component holds no state.
  *
+ * `triggerClassName` overrides the select's width (default `w-44`) and
+ * `labelClassName` adds to the "Sort by" label (e.g. `sr-only` for a tight row;
+ * the label still names the select for assistive tech).
+ *
  * The "Sort by" label is a literal-class span (not through `cn()`) so its
  * `text-small` can't be stripped by tailwind-merge — see `StatTile`.
  */
-export default function SortSelect({ id, options, value, defaultValue, className }) {
+export default function SortSelect({ id, options, value, defaultValue, className, triggerClassName, labelClassName }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -43,11 +47,11 @@ export default function SortSelect({ id, options, value, defaultValue, className
 
   return (
     <div className={cn("flex shrink-0 items-center gap-2", className)}>
-      <span id={`${id}-label`} className="text-small text-text-secondary">
+      <span id={`${id}-label`} className={cn("text-small text-text-secondary", labelClassName)}>
         Sort by
       </span>
       <Select items={options} value={value} onValueChange={handleChange}>
-        <SelectTrigger id={id} aria-labelledby={`${id}-label`} className="h-9 w-44">
+        <SelectTrigger id={id} aria-labelledby={`${id}-label`} className={cn("h-9 w-44", triggerClassName)}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent align="end">

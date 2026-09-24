@@ -1,13 +1,47 @@
-import ListPageSkeleton from "@/components/layout/ListPageSkeleton";
+import Container from "@/components/layout/Container";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * Schedule loading state (app/schedule/page.js).
+ * Schedule loading state (app/schedule/page.js), in the proportions of the
+ * finalized layout: the header strip, the view tabs, the toolbar, and a few
+ * batch groups.
  *
- * The page has two views — a weekly grid and an eight-column list — chosen
- * by a query param. This approximates the list view for both rather than
- * branching: `loading.js` cannot read search params, and a single calm
- * placeholder is better than guessing wrong half the time.
+ * The page has two views — a weekly grid and the grouped list — chosen by a
+ * query param. This approximates the list view for both rather than branching:
+ * `loading.js` cannot read search params, and a single calm placeholder is
+ * better than guessing wrong half the time. Serves the `new` and `[id]` routes
+ * too, which sit under the same loading boundary.
  */
 export default function Loading() {
-  return <ListPageSkeleton columns={8} filters={3} label="Loading schedule" />;
+  return (
+    <div role="status" aria-busy="true">
+      <span className="sr-only">Loading schedule</span>
+
+      {/* Header strip: bleeds through the shell padding like PageHeader's compact form. */}
+      <div className="-mx-4 -mt-2 mb-0 sm:-mx-6 lg:-mx-8 lg:-mt-6 lg:mb-4 lg:border-b lg:border-border lg:bg-surface">
+        <div className="mx-auto hidden max-w-[1264px] flex-row items-center justify-between px-8 py-3 lg:flex">
+          <div className="min-w-0">
+            <Skeleton className="h-6 w-28" />
+            <Skeleton className="mt-1.5 h-3.5 w-64 max-w-full" />
+          </div>
+          <Skeleton className="h-9 w-36 rounded-md" />
+        </div>
+      </div>
+
+      <Container>
+        <Skeleton className="mb-4 h-8 w-64 max-w-full" />
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Skeleton className="h-9 flex-1 rounded-md" />
+          <Skeleton className="h-9 w-24 rounded-md" />
+          <Skeleton className="h-9 w-36 rounded-md" />
+        </div>
+        <Skeleton className="mt-5 h-10 w-48" />
+        <div className="mt-4 flex flex-col gap-3">
+          <Skeleton className="h-56 rounded-card" />
+          <Skeleton className="h-16 rounded-card" />
+          <Skeleton className="h-16 rounded-card" />
+        </div>
+      </Container>
+    </div>
+  );
 }
