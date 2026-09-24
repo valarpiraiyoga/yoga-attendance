@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Avatar from "@/components/ui/avatar";
+import BatchAvatar from "@/components/ui/batch-avatar";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
 import FieldRow from "@/components/layout/FieldRow";
@@ -101,7 +101,7 @@ export default async function AttendanceDetailsPage({ params, searchParams }) {
 
       <EntityDetailHeader
         className="mb-0"
-        avatar={<Avatar name={batchName} shape="square" size="lg" />}
+        avatar={<BatchAvatar batch={{ ...session.batches, name: batchName }} size="lg" />}
         title={batchName}
         status={
           <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS.completed}>{DISPLAY_STATUS_LABELS.completed}</Badge>

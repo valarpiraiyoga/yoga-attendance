@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, CalendarDays, CircleCheck, Clock, Hash, Pencil, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Avatar from "@/components/ui/avatar";
+import BatchAvatar from "@/components/ui/batch-avatar";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
 import { formatTimeRange } from "@/lib/format";
@@ -44,7 +44,7 @@ export default function ScheduleHeader({ schedule, today }) {
 
       <EntityDetailHeader
         className="mb-0"
-        avatar={<Avatar name={batchName} shape="square" size="lg" />}
+        avatar={<BatchAvatar batch={{ ...schedule.batches, name: batchName }} size="lg" />}
         title={batchName}
         status={<Badge variant={status.variant}>{status.label}</Badge>}
         subMeta={

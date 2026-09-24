@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Avatar from "@/components/ui/avatar";
+import BatchAvatar from "@/components/ui/batch-avatar";
 import Tabs from "@/components/ui/tabs";
 import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
 import FieldRow from "@/components/layout/FieldRow";
@@ -71,7 +71,7 @@ export default function SessionHeader({
 
       <EntityDetailHeader
         className="mb-0"
-        avatar={<Avatar name={batchName} shape="square" size="lg" />}
+        avatar={<BatchAvatar batch={{ ...session.batches, name: batchName }} size="lg" />}
         title={batchName}
         status={
           <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS[displayStatus]}>{DISPLAY_STATUS_LABELS[displayStatus]}</Badge>

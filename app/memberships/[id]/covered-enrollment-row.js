@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Eye, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import Avatar from "@/components/ui/avatar";
+import BatchAvatar from "@/components/ui/batch-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +40,7 @@ export default function CoveredEnrollmentRow({ enrollment, studentId }) {
     >
       <TableCell>
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={batchName} shape="square" />
+          <BatchAvatar batch={{ ...batch, name: batchName }} />
           <div className="min-w-0">
             <p className="font-semibold whitespace-nowrap text-text-primary">{batchName}</p>
             <p className="text-small whitespace-nowrap text-text-secondary">{batch?.code ?? "—"}</p>
