@@ -37,11 +37,17 @@ function optionLabel(options, value) {
 }
 
 /**
- * Search + Filters + Cards/Table toggle in one toolbar row (the same
- * composition as `StudentFilters` / `MembershipFilters`). Search is
- * independent of the filter drawer; filter apply/clear still writes the same
- * `q` / `status` URL params (keyed remount from the page); view switching is
- * a plain URL change.
+ * Search + Filters + Cards/Table toggle in one toolbar row: four individual
+ * surfaces (white, subtle border, one 36px height) with no frame around them —
+ * the finalized Schedule toolbar. "Sort by" is not in this row; it sits on the
+ * results row below (`BatchList`). Search is independent of the filter drawer;
+ * filter apply/clear still writes the same `q` / `status` URL params (keyed
+ * remount from the page); view switching is a plain URL change.
+ *
+ * Follows the finalized responsive default rule: with no `view` in the URL
+ * (`view` is `""`), Table is the default from `lg` up and Cards below it —
+ * drawn by CSS in the switcher — and both segments link with an explicit
+ * `?view=`, so a choice is always kept.
  */
 export default function BatchFilters({ defaultQuery, defaultStatus, view }) {
   const router = useRouter();
@@ -56,7 +62,8 @@ export default function BatchFilters({ defaultQuery, defaultStatus, view }) {
 
   const viewItems = VIEWS.map((item) => ({
     ...item,
-    href: buildListHref("/batches", searchParams, { view: item.key === "cards" ? "" : item.key }),
+    href: buildListHref("/batches", searchParams, { view: item.key }),
+    autoActive: item.key === "table" ? "lg" : "below-lg",
   }));
 
   function pushParams(mutate) {
@@ -120,6 +127,7 @@ export default function BatchFilters({ defaultQuery, defaultStatus, view }) {
   return (
     <>
       <ListToolbar
+        className="border-0 bg-transparent p-0 shadow-none"
         chips={
           <FilterChips chips={chips} onRemove={removeAppliedFilter} onClearAll={clearFilters} className="mt-3" />
         }
@@ -130,13 +138,27 @@ export default function BatchFilters({ defaultQuery, defaultStatus, view }) {
             value={query}
             onChange={(event) => searchFor(event.target.value)}
             onClear={() => searchFor("")}
-            placeholder="Search by batch name or code"
+            placeholder="Search by batch name or code..."
+            inputClassName="h-9 bg-surface"
           />
         </form>
 
-        <FilterBar activeCount={activeFilterCount} onClick={() => setFiltersOpen(true)} />
+        {/* Filters and Cards / Table share one row on mobile. */}
+        <div className="flex items-center gap-3 sm:contents">
+          <FilterBar
+            activeCount={activeFilterCount}
+            onClick={() => setFiltersOpen(true)}
+            className="flex-1 justify-center bg-surface sm:flex-none"
+          />
 
-        <ViewSwitcher items={viewItems} active={view} ariaLabel="Batch list views" />
+          <ViewSwitcher
+            items={viewItems}
+            active={view || undefined}
+            ariaLabel="Batch list views"
+            separate
+            className="flex-[2] sm:flex-none [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none"
+          />
+        </div>
       </ListToolbar>
 
       <FilterSheet

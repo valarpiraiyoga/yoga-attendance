@@ -1,76 +1,53 @@
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Panel } from "@/components/layout/Panel";
 import { CardGrid, ResultsHeader } from "@/components/layout/list-page";
 import SortSelect from "@/components/ui/sort-select";
 import { DEFAULT_BATCH_SORT } from "@/lib/batches/data";
+import { cn } from "@/lib/utils";
 import BatchCardItem from "@/app/batches/batch-card-item";
-import BatchTableRow from "@/app/batches/batch-table-row";
-
-// 3 columns at the widest and `items-start` — the same card-grid behavior
-// already finalized for Students/Memberships, so a batch with a short
-// schedule summary doesn't stretch to match a taller sibling in the row.
-function BatchCards({ batches }) {
-  return (
-    <CardGrid ariaLabel="Batches" className="items-start xl:grid-cols-3">
-      {batches.map((batch) => (
-        <BatchCardItem key={batch.id} batch={batch} />
-      ))}
-    </CardGrid>
-  );
-}
-
-function BatchTable({ batches }) {
-  return (
-    <Panel className="overflow-hidden p-0 sm:p-0">
-      {/* Eight columns: tighter cell padding (12px vs the default 20px) so the
-          table fits a ~960px content column before it has to scroll. */}
-      <Table aria-label="Batches" className="[&_td]:px-3 [&_th]:px-3">
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead>Batch</TableHead>
-            <TableHead>Code</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Instructor</TableHead>
-            <TableHead>Days &amp; Time</TableHead>
-            <TableHead>Students</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {batches.map((batch) => (
-            <BatchTableRow key={batch.id} batch={batch} />
-          ))}
-        </TableBody>
-      </Table>
-    </Panel>
-  );
-}
+import BatchTable from "@/app/batches/batch-table";
 
 /**
- * Batch results — Cards / Table view is a page-level `view` param decided by
- * `BatchFilters`' `ViewSwitcher`, not client state here. Same data and View
- * action in both layouts; status changes remain on Edit Batch.
+ * Batch results: the summary row ("N Batches", with "Sort by" on its right —
+ * below the toolbar, the finalized pattern) over either the card grid or the
+ * table. `view` is `"cards"`, `"table"`, or `""` (no explicit choice in the
+ * URL, the page-level `view` param decided by `BatchFilters`' `ViewSwitcher`):
+ * then both are rendered and CSS shows Cards below `lg` and Table from `lg`
+ * up — the same finalized default rule as Attendance and Schedule. Same data
+ * and View action in both; status changes remain on Edit Batch.
+ *
+ * Cards: 3 columns at the widest and `items-start`, so a batch with a short
+ * schedule summary doesn't stretch to match a taller sibling in the row.
  */
-export default function BatchList({ batches, view = "cards", total, sort, sortOptions }) {
+export default function BatchList({ batches, view = "", total, sort, sortOptions }) {
   return (
-    <div className="mt-6">
+    <div className="mt-5">
       <ResultsHeader
         count={total}
         label={total === 1 ? "Batch" : "Batches"}
-        viewLabel={view === "table" ? "Table view" : "Card list view"}
+        className="mb-3 flex-row items-center justify-between"
         aside={
-          <SortSelect id="batch-sort" options={sortOptions} value={sort} defaultValue={DEFAULT_BATCH_SORT} />
+          <SortSelect
+            id="batch-sort"
+            options={sortOptions}
+            value={sort}
+            defaultValue={DEFAULT_BATCH_SORT}
+            compactOnMobile
+          />
         }
       />
 
-      {view === "table" ? <BatchTable batches={batches} /> : <BatchCards batches={batches} />}
+      {view !== "table" ? (
+        <CardGrid ariaLabel="Batches" className={cn("items-start xl:grid-cols-3", view === "" && "lg:hidden")}>
+          {batches.map((batch) => (
+            <BatchCardItem key={batch.id} batch={batch} />
+          ))}
+        </CardGrid>
+      ) : null}
+
+      {view !== "cards" ? (
+        <div className={cn(view === "" && "hidden lg:block")}>
+          <BatchTable batches={batches} />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarCheck, CircleCheck, Clock, Layers, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/ui/pagination";
@@ -35,7 +36,8 @@ export default async function BatchesPage({ searchParams }) {
   const q = typeof rawParams.q === "string" ? rawParams.q : "";
   const status = STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const page = Math.max(1, Number(rawParams.page) || 1);
-  const view = rawParams.view === "table" ? "table" : "cards";
+  // "" = no explicit choice: Table from `lg` up, Cards below (resolved in CSS).
+  const view = rawParams.view === "cards" || rawParams.view === "table" ? rawParams.view : "";
   const sort = SORT_OPTIONS.some((option) => option.value === rawParams.sort)
     ? rawParams.sort
     : DEFAULT_BATCH_SORT;
@@ -51,6 +53,7 @@ export default async function BatchesPage({ searchParams }) {
   return (
     <>
       <PageHeader
+        compact
         title="Batches"
         description="Manage yoga batches and their active status."
         icon={<Layers className="size-6" />}
@@ -63,12 +66,27 @@ export default async function BatchesPage({ searchParams }) {
             </Button>
           </>
         }
+        mobileActions={
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Add Batch"
+            className="text-brand hover:bg-brand/10 hover:text-brand"
+            render={<Link href="/batches/new" />}
+            nativeButton={false}
+          >
+            <Plus className="size-5" aria-hidden="true" />
+          </Button>
+        }
       />
+
+      <Container>
 
       {/* Center-wide counts, independent of the search/filters below, from the
           same derived statuses as the badge and the Status filter (Active /
           Upcoming / Completed come from each batch's schedules). Shares are
           derived from the counts. */}
+      <div className="max-lg:hidden">
       <KpiStrip pageKey="batches">
         <StatTileGroup className="mb-6" ariaLabel="Batch summary">
           <StatTile valueFirst decorativeChart icon={Layers} label="Total Batches" value={counts.total} tone="brand" />
@@ -101,6 +119,7 @@ export default async function BatchesPage({ searchParams }) {
           />
         </StatTileGroup>
       </KpiStrip>
+      </div>
 
       <BatchFilters key={status} defaultQuery={q} defaultStatus={status} view={view} />
 
@@ -140,6 +159,7 @@ export default async function BatchesPage({ searchParams }) {
           />
         </>
       )}
+      </Container>
     </>
   );
 }

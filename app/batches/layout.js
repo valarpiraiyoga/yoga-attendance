@@ -1,5 +1,4 @@
 import AppShell from "@/components/layout/AppShell";
-import Container from "@/components/layout/Container";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 
 /**
@@ -19,8 +18,8 @@ export default async function BatchesLayout({ children }) {
   const user = await requireRole(ROLES.ADMIN);
 
   return (
-    <AppShell role={user.role} user={user}>
-      <Container>{children}</Container>
+    <AppShell role={user.role} user={user} mobileTitle="Batches">
+      {children}
     </AppShell>
   );
 }

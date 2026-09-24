@@ -14,8 +14,10 @@ import BatchCardMenu from "@/app/batches/batch-card-menu";
 import BatchInstructorSummary from "@/app/batches/batch-instructor-summary";
 
 /**
- * Batch list card: identity (avatar, name, "Code: X", status), then a
- * compact schedule summary (Days + Time/count under one calendar icon), then
+ * Batch list card (finalized reference): identity (larger initials tile, the
+ * name primary, the code beneath it secondary, the status badge stacked under
+ * View + menu), then a compact schedule summary (Days + Time/count under one
+ * calendar icon), then
  * one row pairing Instructor (avatar, name, "Instructor" label — or
  * overlapping avatars + count when several — `BatchInstructorSummary`) with
  * a quiet Students figure. All three derive from the batch's current
@@ -45,12 +47,13 @@ export default function BatchCardItem({ batch }) {
     <EntityCard
       className={cn("h-auto", menuOpen && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
-      avatar={<Avatar name={batch.name} shape="square" bordered />}
+      avatar={<Avatar name={batch.name} shape="square" size="lg" bordered />}
       title={batch.name}
-      subtitle={`Code: ${batch.code}`}
+      subtitle={batch.code}
       status={<Badge variant={status.variant}>{status.label}</Badge>}
+      statusPlacement="actions"
       actions={
-        <>
+        <div className="flex items-center">
           <Button
             type="button"
             variant="ghost"
@@ -63,17 +66,17 @@ export default function BatchCardItem({ batch }) {
             <Eye className="size-4" aria-hidden="true" />
           </Button>
           <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} />
-        </>
+        </div>
       }
     >
-      <div className="flex flex-col gap-3 border-t border-border pt-3">
+      <div className="flex flex-col gap-3">
         <span
-          className="inline-flex min-w-0 items-start gap-1.5 text-small text-text-secondary"
+          className="inline-flex min-w-0 items-start gap-2 text-small text-text-secondary"
           title={summary.detail || summary.timeSummary}
         >
-          <CalendarDays className="mt-0.5 size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+          <CalendarDays className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
           <span className="min-w-0">
-            <p className="truncate font-semibold text-text-primary">{summary.days}</p>
+            <p className="truncate text-body font-semibold text-text-primary">{summary.days}</p>
             <p className="truncate">{summary.timeSummary}</p>
           </span>
         </span>
