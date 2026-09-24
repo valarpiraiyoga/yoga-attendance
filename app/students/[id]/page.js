@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -7,14 +6,11 @@ import {
   Calendar,
   CalendarDays,
   ClipboardList,
-  Clock,
   CreditCard,
   FileText,
   Hash,
   Layers,
-  Mail,
   Pencil,
-  Phone,
   Plus,
   UserRound,
 } from "lucide-react";
@@ -24,7 +20,6 @@ import Avatar from "@/components/ui/avatar";
 import EmptyState from "@/components/ui/empty-state";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
-import FieldRow from "@/components/layout/FieldRow";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
@@ -33,11 +28,13 @@ import {
   listScheduleAssignmentsForEnrollment,
   isScheduleAssignmentActive,
 } from "@/lib/enrollments/data";
-import { DAY_LABELS } from "@/lib/schedules/validation";
+import { DAY_LABELS, DAYS_OF_WEEK } from "@/lib/schedules/validation";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
-import { formatAmount, formatDate, formatTimeRange } from "@/lib/format";
+import { formatAmount, formatDate, formatDateShort, formatTimeRange } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { ENTITY_STATUS, MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
-import DeactivateStudent from "@/app/students/[id]/deactivate-student";
+import StudentStatusButton from "@/app/students/[id]/student-status-button";
+import StudentCardMenu from "@/app/students/student-card-menu";
 import GuidedComplete from "@/app/students/guided-complete";
 
 const SUCCESS_MESSAGES = {
@@ -47,25 +44,50 @@ const SUCCESS_MESSAGES = {
   membership_added: "Membership added successfully.",
 };
 
+// Enrollment schedule table columns: Day · Time · Instructor. Below `sm` the
+// header row is hidden and the instructor drops to its own line under the time.
+const SCHEDULE_COLUMNS =
+  "grid grid-cols-[3rem_minmax(0,1fr)] gap-x-4 sm:grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)]";
+
+/** "Hatha Yoga General" -> "HYG": the first letters of up to three words. */
+function batchAbbreviation(name) {
+  const letters = String(name ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((word) => word[0].toUpperCase())
+    .join("");
+  return letters || "?";
+}
+
+/** Monday-first, then by start time — a stable, readable order for the schedule table. */
+function sortAssignmentsByWeek(assignments) {
+  const dayIndex = (assignment) => {
+    const index = DAYS_OF_WEEK.indexOf(assignment.schedule?.day_of_week);
+    return index === -1 ? DAYS_OF_WEEK.length : index;
+  };
+  return [...assignments].sort(
+    (a, b) =>
+      dayIndex(a) - dayIndex(b) ||
+      String(a.schedule?.start_time ?? "").localeCompare(String(b.schedule?.start_time ?? ""))
+  );
+}
+
 /** A field's value — the one value style every detail panel uses. */
 function Value({ children, className }) {
   return (
-    <p className={`text-body font-semibold break-words text-text-primary ${className ?? ""}`}>{children}</p>
+    <p className={`text-body font-medium break-words text-text-primary ${className ?? ""}`}>{children}</p>
   );
 }
 
 /**
- * One Student Information row: icon + label on the left, value on the right
- * (the compact two-column information grid). Stacks label-over-value below
- * `sm`.
+ * One Student Information field: a small muted label above the value. The
+ * panel is full width, so the fields sit in a 1 / 2 / 4-column grid.
  */
-function InfoRow({ icon: Icon, label, children, valueClassName }) {
+function InfoRow({ label, children, valueClassName, className }) {
   return (
-    <div className="grid gap-1 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] sm:items-baseline sm:gap-4">
-      <dt className="flex items-center gap-1.5">
-        <Icon className="size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
-        <span className="text-small text-text-secondary">{label}</span>
-      </dt>
+    <div className={cn("grid min-w-0 content-start gap-0.5", className)}>
+      <dt className="text-small text-text-secondary">{label}</dt>
       <dd>
         <Value className={valueClassName}>{children}</Value>
       </dd>
@@ -73,14 +95,23 @@ function InfoRow({ icon: Icon, label, children, valueClassName }) {
   );
 }
 
+/** `Sep 1 – Sep 30, 2026` within a year; both years shown when the period crosses one. */
+function formatPeriod(startDate, endDate) {
+  return startDate.slice(0, 4) === endDate.slice(0, 4)
+    ? `${formatDateShort(startDate)} – ${formatDate(endDate)}`
+    : `${formatDate(startDate)} – ${formatDate(endDate)}`;
+}
+
 /**
  * Student Details (wireframe p10; `04 Student detail.png`) — a single page,
  * not tabs (02-ux.md: "Student Details is a single page, not tabs" — settled
  * explicitly to resolve the earlier IA/wireframe conflict, and confirmed for
- * this refinement). The header, the summary tiles, then two columns of panels
- * — left: Student Information (notes included) and Current Membership; right:
- * Batch Enrollments and Additional Information — and a full-width Recent
- * Attendance below. The Additional Information panel holds an honest empty
+ * this refinement). Hierarchy, top to bottom: the identity header (who; status,
+ * ID, gender, joined; actions) — the same compact header as Membership Details;
+ * four compact summary tiles; a full-width Student Information panel (notes
+ * included); one working row with Batch Enrollments (wider) and Current
+ * Membership (a summary and entry point); then the quiet secondary sections,
+ * Additional Information and Recent Attendance. Additional Information holds an honest empty
  * state: no supported student field is left to show there (notes live in
  * Student Information; the schema has no emergency contact, address or
  * medical fields).
@@ -119,10 +150,10 @@ export default async function StudentDetailsPage({ params, searchParams }) {
     );
   }
   const activeEnrollmentCount = enrollments.filter((enrollment) => enrollment.status === "active").length;
-  const studentStatus = ENTITY_STATUS[student.status] ?? ENTITY_STATUS.inactive;
   const membershipStatus = currentMembership
     ? (MEMBERSHIP_STATUS[currentMembership.status] ?? { label: currentMembership.status, variant: "neutral" })
     : null;
+  const studentStatus = ENTITY_STATUS[student.status] ?? ENTITY_STATUS.inactive;
   const isActive = student.status === "active";
 
   return (
@@ -135,8 +166,9 @@ export default async function StudentDetailsPage({ params, searchParams }) {
         Back to Students
       </Link>
 
-      <div className="flex flex-col gap-4">
+      <>
         <EntityDetailHeader
+          decorative={false}
           className="mb-0"
           avatar={<Avatar name={student.full_name} src={student.photo_url} size="lg" />}
           title={student.full_name}
@@ -145,7 +177,7 @@ export default async function StudentDetailsPage({ params, searchParams }) {
             <>
               <span className="inline-flex items-center gap-1.5">
                 <Hash className="size-3.5 shrink-0" aria-hidden="true" />
-                ID: {student.student_code}
+                Student ID: {student.student_code}
               </span>
               {student.gender ? (
                 <span className="inline-flex items-center gap-1.5 capitalize">
@@ -161,17 +193,27 @@ export default async function StudentDetailsPage({ params, searchParams }) {
           }
           actions={
             <>
+              <StudentStatusButton studentId={student.id} studentName={student.full_name} status={student.status} />
               <Button variant="outline" render={<Link href={`/students/${student.id}/edit`} />} nativeButton={false}>
                 <Pencil className="size-4" aria-hidden="true" />
                 Edit Student
               </Button>
-              <DeactivateStudent studentId={student.id} studentName={student.full_name} status={student.status} />
+              <StudentCardMenu
+                studentId={student.id}
+                membershipId={currentMembership?.id ?? null}
+                enrollmentId={enrollments.find((enrollment) => enrollment.status === "active")?.id ?? null}
+                triggerVariant="outline"
+                triggerSize="icon"
+                triggerClassName=""
+                triggerLabel={`More actions for ${student.full_name}`}
+              />
             </>
           }
         />
 
-        <StatTileGroup ariaLabel="Student summary" className="grid-cols-1 sm:grid-cols-2">
+        <StatTileGroup ariaLabel="Student summary" columns={2} className="-mt-2 grid-cols-1 xl:grid-cols-4">
           <StatTile
+            compact
             icon={Layers}
             label="Enrollments"
             value={activeEnrollmentCount}
@@ -179,6 +221,7 @@ export default async function StudentDetailsPage({ params, searchParams }) {
             tone="brand"
           />
           <StatTile
+            compact
             icon={CreditCard}
             label="Membership"
             value={membershipStatus ? membershipStatus.label : "None"}
@@ -186,15 +229,16 @@ export default async function StudentDetailsPage({ params, searchParams }) {
             tone="info"
           />
           <StatTile
+            compact
             icon={UserRound}
             label="Status"
             value={isActive ? "Active" : "Inactive"}
             caption="Student record"
             tone={isActive ? "success" : "danger"}
           />
-          <StatTile icon={Calendar} label="Joined" value={formatDate(student.join_date)} caption="Join date" tone="neutral" />
+          <StatTile compact icon={Calendar} label="Joined" value={formatDate(student.join_date)} caption="Join date" tone="neutral" />
         </StatTileGroup>
-      </div>
+      </>
 
       {message ? (
         <div
@@ -205,241 +249,246 @@ export default async function StudentDetailsPage({ params, searchParams }) {
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <div className="flex flex-col gap-6">
-          <Panel>
-            <PanelHeader icon={UserRound} title="Student Information" className="mb-4 min-h-8" />
-            <dl className="flex flex-col gap-3">
-              <InfoRow icon={UserRound} label="Full Name">
-                {student.full_name}
-              </InfoRow>
-              <InfoRow icon={Hash} label="Student ID">
-                {student.student_code}
-              </InfoRow>
-              <InfoRow icon={Phone} label="Phone">
-                {student.phone || "—"}
-              </InfoRow>
-              <InfoRow icon={Mail} label="Email">
-                {student.email || "—"}
-              </InfoRow>
-              <InfoRow icon={Calendar} label="Join Date">
-                {formatDate(student.join_date)}
-              </InfoRow>
-              <InfoRow icon={Calendar} label="Date of Birth">
-                {student.date_of_birth ? formatDate(student.date_of_birth) : "—"}
-              </InfoRow>
-              <InfoRow icon={UserRound} label="Gender" valueClassName="capitalize">
-                {student.gender || "—"}
-              </InfoRow>
-            </dl>
-            <div className="mt-4 border-t border-border pt-4">
-              <FieldRow icon={FileText} label="Notes">
-                <p className="text-body break-words whitespace-pre-line text-text-primary">
-                  {student.notes || "No notes."}
-                </p>
-              </FieldRow>
-            </div>
-          </Panel>
+      <Panel>
+        <PanelHeader icon={UserRound} title="Student Information" />
+        <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+          <InfoRow label="Full Name">{student.full_name}</InfoRow>
+          <InfoRow label="Student ID">{student.student_code}</InfoRow>
+          <InfoRow label="Phone">{student.phone || "—"}</InfoRow>
+          <InfoRow label="Email" valueClassName="break-all">
+            {student.email || "—"}
+          </InfoRow>
+          <InfoRow label="Join Date">{formatDate(student.join_date)}</InfoRow>
+          <InfoRow label="Date of Birth">{student.date_of_birth ? formatDate(student.date_of_birth) : "—"}</InfoRow>
+          <InfoRow label="Gender" valueClassName="capitalize">
+            {student.gender || "—"}
+          </InfoRow>
+        </dl>
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="text-small text-text-secondary">Notes</p>
+          <p className="text-body mt-0.5 break-words whitespace-pre-line text-text-primary">
+            {student.notes || "No notes."}
+          </p>
+        </div>
+      </Panel>
 
-          <Panel>
-            <PanelHeader
-              icon={CreditCard}
-              title="Current Membership"
-              className="mb-4 min-h-8 flex-col items-start sm:flex-row sm:items-center"
-              action={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  render={<Link href={`/students/${student.id}/memberships/new`} />}
-                  nativeButton={false}
-                >
-                  <Plus className="size-4" aria-hidden="true" />
-                  Add Membership
-                </Button>
-              }
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+        <Panel>
+          <PanelHeader
+            icon={Layers}
+            title="Batch Enrollments"
+            className="flex-col items-start sm:flex-row sm:items-center"
+            action={
+              <Button size="sm" render={<Link href={`/students/${student.id}/enrollments/new`} />} nativeButton={false}>
+                <Plus className="size-4" aria-hidden="true" />
+                Add Enrollment
+              </Button>
+            }
+          />
+          {enrollments.length === 0 ? (
+            <EmptyState
+              size="sm"
+              description="No batch enrollments yet. Add one to make this student eligible for attendance."
             />
-            {currentMembership ? (
-              <div className="overflow-hidden rounded-lg border border-info/20 bg-info/5">
-                <div className="border-b border-info/15 p-4">
-                  <div className="flex flex-wrap items-center gap-2">
+          ) : (
+            <ul className="flex flex-col divide-y divide-border">
+              {enrollments.map((enrollment) => {
+                const schedules = sortAssignmentsByWeek(
+                  (assignmentsByEnrollmentId.get(enrollment.id) ?? []).filter((assignment) =>
+                    isScheduleAssignmentActive(assignment)
+                  )
+                );
+                const batchName = enrollment.batches?.name ?? "Unknown batch";
+                const batchCode = enrollment.batches?.code ?? "—";
+                const enrollmentStatus = ENTITY_STATUS[enrollment.status] ?? ENTITY_STATUS.inactive;
+
+                return (
+                  <li key={enrollment.id} className="py-3 first:pt-0 last:pb-0">
+                    {/* One flat row per enrollment (no nested card): the batch tile, name with its status,
+                        code, and the edit control — then its schedule table. */}
+                    <div className="flex items-start gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 px-1 text-small font-semibold text-brand"
+                      >
+                        {batchAbbreviation(batchName)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <p className="text-body font-semibold break-words text-text-primary">{batchName}</p>
+                          <Badge variant={enrollmentStatus.variant}>{enrollmentStatus.label}</Badge>
+                        </div>
+                        <p className="text-small text-text-secondary">
+                          Code: <span className="font-medium text-text-primary">{batchCode}</span>
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
+                        aria-label={`Edit enrollment in ${batchName}`}
+                        title="Edit Enrollment"
+                        render={<Link href={`/students/${student.id}/enrollments/${enrollment.id}/edit`} />}
+                        nativeButton={false}
+                      >
+                        <Pencil className="size-4" aria-hidden="true" />
+                      </Button>
+                    </div>
+
+                    {schedules.length === 0 ? (
+                      <p className="text-small mt-2 font-medium text-danger">
+                        No schedule assigned — this enrollment is not eligible for attendance.
+                      </p>
+                    ) : (
+                      <div role="table" aria-label={`${batchName} schedules`} className="mt-2">
+                        <div role="row" className={`${SCHEDULE_COLUMNS} hidden border-b border-border pb-1.5 sm:grid`}>
+                          {["Day", "Time", "Instructor"].map((heading) => (
+                            <div
+                              key={heading}
+                              role="columnheader"
+                              className="text-small font-medium tracking-wide text-text-secondary uppercase"
+                            >
+                              {heading}
+                            </div>
+                          ))}
+                        </div>
+                        {schedules.map((assignment) => {
+                          const schedule = assignment.schedule;
+
+                          if (!schedule) {
+                            return (
+                              <div key={assignment.id} role="row" className="border-b border-border/60 py-1.5 last:border-b-0">
+                                <p role="cell" className="text-small font-medium text-danger">
+                                  Assigned schedule could not be found
+                                </p>
+                              </div>
+                            );
+                          }
+
+                          const instructor = schedule.instructors;
+
+                          return (
+                            <div
+                              key={assignment.id}
+                              role="row"
+                              className={`${SCHEDULE_COLUMNS} items-center gap-y-1 border-b border-border/60 py-1.5 last:border-b-0`}
+                            >
+                              <div role="cell" className="text-body font-medium text-text-primary">
+                                {(DAY_LABELS[schedule.day_of_week] ?? schedule.day_of_week).slice(0, 3)}
+                              </div>
+                              <div role="cell" className="text-body min-w-0 text-text-primary">
+                                {formatTimeRange(schedule.start_time, schedule.end_time)}
+                              </div>
+                              <div role="cell" className="col-span-2 flex min-w-0 items-center gap-2 sm:col-span-1">
+                                {instructor?.full_name ? (
+                                  <>
+                                    <Avatar name={instructor.full_name} src={instructor.photo_url} size="sm" className="size-6" />
+                                    <span className="text-body truncate text-text-primary">{instructor.full_name}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-body text-text-secondary">—</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel>
+          <PanelHeader
+            icon={CreditCard}
+            title="Current Membership"
+            className="flex-col items-start sm:flex-row sm:items-center"
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                render={<Link href={`/students/${student.id}/memberships/new`} />}
+                nativeButton={false}
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                Add Membership
+              </Button>
+            }
+          />
+          {currentMembership ? (
+            <div>
+              {/* A summary and entry point — the full record lives on Membership Details. */}
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <p className="text-body font-semibold text-text-primary">
                       {PLAN[currentMembership.plan] ?? currentMembership.plan} Membership
                     </p>
                     <Badge variant={membershipStatus.variant}>{membershipStatus.label}</Badge>
                   </div>
-                  <p className="text-small mt-1 text-text-secondary">ID: {currentMembership.membership_code}</p>
+                  <div className="text-small flex flex-wrap items-center gap-x-3 gap-y-0.5 text-text-secondary">
+                    <span>ID: {currentMembership.membership_code}</span>
+                    <Link
+                      href={`/memberships/${currentMembership.id}`}
+                      className="inline-flex items-center gap-1 font-medium text-brand hover:underline"
+                    >
+                      View Membership
+                      <ArrowRight className="size-3.5" aria-hidden="true" />
+                    </Link>
+                  </div>
                 </div>
-
-                <div className="grid gap-4 p-4 sm:grid-cols-2">
-                  <FieldRow icon={Calendar} label="Start Date">
-                    <Value>{formatDate(currentMembership.start_date)}</Value>
-                  </FieldRow>
-                  <FieldRow icon={Calendar} label="End Date">
-                    <Value>{formatDate(currentMembership.end_date)}</Value>
-                  </FieldRow>
-                  <FieldRow icon={CreditCard} label="Amount">
-                    <Value>{formatAmount(currentMembership.amount)}</Value>
-                  </FieldRow>
-                  <FieldRow icon={CreditCard} label="Payment">
-                    <Badge variant={(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).variant}>
-                      {(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).label}
-                    </Badge>
-                  </FieldRow>
-                </div>
-
-                <div className="flex justify-end px-4 pb-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="-mr-2.5 text-brand hover:bg-brand/10 hover:text-brand"
-                    render={<Link href={`/memberships/${currentMembership.id}`} />}
-                    nativeButton={false}
-                  >
-                    View Membership
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <EmptyState size="sm" description="No membership yet for this student." />
-            )}
-          </Panel>
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <Panel>
-            <PanelHeader
-              icon={Layers}
-              title="Batch Enrollments"
-              className="mb-4 min-h-8 flex-col items-start sm:flex-row sm:items-center"
-              action={
-                <Button size="sm" render={<Link href={`/students/${student.id}/enrollments/new`} />} nativeButton={false}>
-                  <Plus className="size-4" aria-hidden="true" />
-                  Add Enrollment
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
+                  aria-label={`Edit membership ${currentMembership.membership_code}`}
+                  title="Edit Membership"
+                  render={<Link href={`/memberships/${currentMembership.id}/edit`} />}
+                  nativeButton={false}
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
                 </Button>
-              }
-            />
-            {enrollments.length === 0 ? (
-              <EmptyState
-                size="sm"
-                description="No batch enrollments yet. Add one to make this student eligible for attendance."
-              />
-            ) : (
-              <ul className="flex flex-col gap-4">
-                {enrollments.map((enrollment) => {
-                  const activeAssignments = (assignmentsByEnrollmentId.get(enrollment.id) ?? []).filter(
-                    (assignment) => isScheduleAssignmentActive(assignment)
-                  );
-                  const batchName = enrollment.batches?.name ?? "Unknown batch";
-                  const enrollmentStatus = ENTITY_STATUS[enrollment.status] ?? ENTITY_STATUS.inactive;
+              </div>
 
-                  return (
-                    <li key={enrollment.id} className="overflow-hidden rounded-lg border border-brand/20 bg-brand/5">
-                      <div className="flex items-start gap-3 border-b border-brand/15 p-4">
-                        <Avatar name={batchName} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-body font-semibold text-text-primary">{batchName}</p>
-                            <Badge variant={enrollmentStatus.variant}>{enrollmentStatus.label}</Badge>
-                          </div>
-                          <p className="text-small mt-1 text-text-secondary">
-                            Code: {enrollment.batches?.code ?? "—"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Two columns: Start Date / End Date, then each assigned schedule with its
-                          instructor directly beside it, so Instructor lines up under End Date. */}
-                      <div className="grid gap-x-6 gap-y-4 p-4 sm:grid-cols-2">
-                        <FieldRow icon={Calendar} label="Start Date">
-                          <Value>{formatDate(enrollment.effective_start_date)}</Value>
-                        </FieldRow>
-                        <FieldRow icon={Calendar} label="End Date">
-                          <Value>
-                            {enrollment.effective_end_date ? formatDate(enrollment.effective_end_date) : "Present"}
-                          </Value>
-                        </FieldRow>
-
-                        {activeAssignments.length === 0 ? (
-                          <FieldRow icon={Clock} label="Schedule" className="sm:col-span-2">
-                            <p className="text-small font-medium text-danger">
-                              No schedule assigned — this enrollment is not eligible for attendance.
-                            </p>
-                          </FieldRow>
-                        ) : (
-                          activeAssignments.map((assignment) => {
-                            const schedule = assignment.schedule;
-
-                            if (!schedule) {
-                              return (
-                                <FieldRow key={assignment.id} icon={Clock} label="Schedule" className="sm:col-span-2">
-                                  <p className="text-small font-medium text-danger">
-                                    Assigned schedule could not be found
-                                  </p>
-                                </FieldRow>
-                              );
-                            }
-
-                            return (
-                              <Fragment key={assignment.id}>
-                                <FieldRow icon={Clock} label="Schedule">
-                                  <Value>
-                                    {DAY_LABELS[schedule.day_of_week] ?? schedule.day_of_week}
-                                    {" · "}
-                                    {formatTimeRange(schedule.start_time, schedule.end_time)}
-                                  </Value>
-                                </FieldRow>
-                                <FieldRow icon={UserRound} label="Instructor">
-                                  <Value>{schedule.instructors?.full_name || "—"}</Value>
-                                </FieldRow>
-                              </Fragment>
-                            );
-                          })
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          render={<Link href={`/students/${student.id}/enrollments/${enrollment.id}/edit`} />}
-                          nativeButton={false}
-                        >
-                          Edit Enrollment
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="-mr-2.5 text-brand hover:bg-brand/10 hover:text-brand"
-                          render={<Link href={`/batches/${enrollment.batch_id}`} />}
-                          nativeButton={false}
-                        >
-                          View Batch
-                          <ArrowRight className="size-4" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Panel>
-
-          <Panel>
-            <PanelHeader icon={FileText} title="Additional Information" className="mb-4 min-h-8" />
-            <EmptyState
-              size="sm"
-              title="No additional information yet"
-              description="Extra student details will appear here when they are available."
-            />
-          </Panel>
-        </div>
+              <div className="@container mt-3 border-t border-border pt-3">
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 @md:grid-cols-3">
+                  <InfoRow label="Validity" className="col-span-2 @md:col-span-1">
+                    {formatPeriod(currentMembership.start_date, currentMembership.end_date)}
+                  </InfoRow>
+                  <InfoRow label="Amount">{formatAmount(currentMembership.amount)}</InfoRow>
+                  <div className="grid min-w-0 content-start gap-0.5">
+                    <dt className="text-small text-text-secondary">Payment</dt>
+                    <dd>
+                      <Badge variant={(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).variant}>
+                        {(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).label}
+                      </Badge>
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          ) : (
+            <EmptyState size="sm" description="No membership yet for this student." />
+          )}
+        </Panel>
       </div>
 
       <Panel>
-        <PanelHeader icon={ClipboardList} title="Recent Attendance" className="mb-4 min-h-8" />
+        <PanelHeader icon={FileText} title="Additional Information" className="mb-2" />
         <EmptyState
-          size="sm"
+          size="compact"
+          title="No additional information yet"
+          description="Extra student details will appear here when they are available."
+        />
+      </Panel>
+
+      <Panel>
+        <PanelHeader icon={ClipboardList} title="Recent Attendance" className="mb-2" />
+        <EmptyState
+          size="compact"
           title="No recent attendance yet"
           description="Attendance for this student will appear here once classes are marked."
         />

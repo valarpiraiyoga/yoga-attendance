@@ -8,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import DataTableShell from "@/components/ui/data-table-shell";
 import EmptyState from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { PanelHeader } from "@/components/layout/Panel";
@@ -57,17 +56,19 @@ export default async function BatchSchedulesPage({ params }) {
         {schedules.length === 0 ? (
           <EmptyState size="sm" description="No schedules yet. Add one to define when this batch takes place." />
         ) : (
-          <DataTableShell>
+          // A light table-in-panel border, not another full card — `BatchHeader` already
+          // wraps this tab's content in one `Panel` (06-ui-implementation-rules.md §8.1).
+          <div className="overflow-hidden rounded-lg border border-border">
             <Table aria-label={`Schedules for ${batch.name}`}>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Day</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Instructor</TableHead>
-                  <TableHead>Effective From</TableHead>
-                  <TableHead>Effective Until</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead className="sm:w-[10%]">Day</TableHead>
+                  <TableHead className="sm:w-[16%]">Time</TableHead>
+                  <TableHead className="sm:w-[20%]">Instructor</TableHead>
+                  <TableHead className="sm:w-[14%]">Effective From</TableHead>
+                  <TableHead className="sm:w-[14%]">Effective Until</TableHead>
+                  <TableHead className="sm:w-[10%]">Status</TableHead>
+                  <TableHead className="w-px px-3 whitespace-nowrap sm:px-4">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -76,7 +77,7 @@ export default async function BatchSchedulesPage({ params }) {
                 ))}
               </TableBody>
             </Table>
-          </DataTableShell>
+          </div>
         )}
       </div>
     </BatchHeader>

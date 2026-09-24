@@ -12,9 +12,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { getMembership } from "@/lib/memberships/data";
+import { getMembership, todayDateString } from "@/lib/memberships/data";
 import { getCenterProfile } from "@/lib/center-profile/data";
-import { todayDateString } from "@/lib/schedules/validation";
 import { formatAmount, formatDate } from "@/lib/format";
 import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";

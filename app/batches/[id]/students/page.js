@@ -7,7 +7,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Users } from "lucide-react";
-import DataTableShell from "@/components/ui/data-table-shell";
 import EmptyState from "@/components/ui/empty-state";
 import { PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
@@ -67,15 +66,17 @@ export default async function BatchStudentsPage({ params }) {
         {enrollments.length === 0 ? (
           <EmptyState size="sm" description="No students are enrolled in this batch yet." />
         ) : (
-          <DataTableShell>
+          // A light table-in-panel border, not another full card — `BatchHeader` already
+          // wraps this tab's content in one `Panel` (06-ui-implementation-rules.md §8.1).
+          <div className="overflow-hidden rounded-lg border border-border">
             <Table aria-label={`Students in ${batch.name}`}>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Enrollment</TableHead>
-                  <TableHead>Schedules</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead className="sm:w-[25%]">Student</TableHead>
+                  <TableHead className="hidden whitespace-nowrap sm:table-cell sm:w-[15%]">Phone</TableHead>
+                  <TableHead className="sm:w-[12%]">Status</TableHead>
+                  <TableHead>Assigned Schedules</TableHead>
+                  <TableHead className="w-px px-3 whitespace-nowrap sm:px-4">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -90,7 +91,7 @@ export default async function BatchStudentsPage({ params }) {
                 ))}
               </TableBody>
             </Table>
-          </DataTableShell>
+          </div>
         )}
       </div>
     </BatchHeader>

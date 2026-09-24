@@ -26,12 +26,12 @@ import FieldRow from "@/components/layout/FieldRow";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getBatch } from "@/lib/batches/data";
-import { isCurrentSchedule, summarizeCurrentSchedules } from "@/lib/batches/summary";
+import { batchToday, currentSchedulesOf, summarizeCurrentSchedules } from "@/lib/batches/summary";
 import { listSchedulesForBatch } from "@/lib/schedules/data";
 import { listEnrollmentsForBatch } from "@/lib/enrollments/data";
 import { getBatchAttendanceReport } from "@/lib/reports/data";
 import { DAY_LABELS, addDaysUTC, todayDateString } from "@/lib/schedules/validation";
-import { formatDate, formatTimeRange } from "@/lib/format";
+import { formatDateWithWeekday, formatTimeRange } from "@/lib/format";
 import BatchHeader from "@/app/batches/[id]/batch-header";
 import BatchStudentRow from "@/app/batches/[id]/batch-student-row";
 
@@ -44,6 +44,8 @@ const SUCCESS_MESSAGES = {
 const RECENT_ATTENDANCE_DAYS = 90;
 const RECENT_ATTENDANCE_ROWS = 5;
 const STUDENT_ROWS = 5;
+// Schedule preview: a batch rarely has more; beyond this the panel says how many it is not listing.
+const SCHEDULE_ROWS = 10;
 
 /**
  * The batch's most recent completed sessions, from the same
@@ -68,10 +70,6 @@ async function loadRecentAttendance(batchId, today) {
   } catch {
     return null;
   }
-}
-
-function weekdayShort(value) {
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
 }
 
 /**
@@ -99,9 +97,17 @@ export default async function BatchDetailsPage({ params, searchParams }) {
     listEnrollmentsForBatch(id),
     loadRecentAttendance(id, today),
   ]);
-  const activeSchedules = schedules.filter((schedule) => schedule.status === "active");
+  // The batch's current schedules — the same set (same definition, same centre
+  // date) the Batches card and table summarise; the Schedules tab lists every row.
+  const scheduleToday = batchToday();
+  const currentSchedules = currentSchedulesOf(schedules, scheduleToday);
+  const upcomingScheduleCount = schedules.filter(
+    (schedule) => schedule.status === "active" && schedule.effective_from > scheduleToday
+  ).length;
   const activeEnrollments = enrollments.filter((enrollment) => enrollment.status === "active");
-  const summary = summarizeCurrentSchedules(schedules.filter((schedule) => isCurrentSchedule(schedule, today)));
+  const summary = summarizeCurrentSchedules(currentSchedules);
+  // Display-only: how many distinct weekdays `summary.days` lists, for the Days tile's caption.
+  const dayCount = summary.hasSchedule ? summary.days.split(", ").filter(Boolean).length : 0;
 
   const rawParams = await searchParams;
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
@@ -109,11 +115,25 @@ export default async function BatchDetailsPage({ params, searchParams }) {
   return (
     <BatchHeader batch={batch} active="overview">
       <div className="flex flex-col gap-6">
-        <StatTileGroup ariaLabel="Batch summary" className="grid-cols-1 sm:grid-cols-2">
-          <StatTile icon={CalendarDays} label="Days" value={summary.days} tone="brand" />
-          <StatTile icon={Clock} label="Time" value={summary.time} tone="info" />
-          <StatTile icon={UserRound} label="Instructor" value={summary.instructor} tone="success" />
-          <StatTile icon={Users} label="Students Enrolled" value={activeEnrollments.length} tone="warning" />
+        <StatTileGroup ariaLabel="Batch summary" columns={2} className="grid-cols-1 xl:grid-cols-4">
+          <StatTile
+            compact
+            icon={CalendarDays}
+            label="Days"
+            value={summary.days}
+            caption={dayCount > 0 ? `${dayCount} ${dayCount === 1 ? "day" : "days"}` : undefined}
+            tone="brand"
+          />
+          <StatTile
+            compact
+            icon={Clock}
+            label="Time"
+            value={summary.time}
+            caption={summary.countLabel ?? undefined}
+            tone="info"
+          />
+          <StatTile compact icon={UserRound} label="Instructor" value={summary.instructor} tone="success" />
+          <StatTile compact icon={Users} label="Students Enrolled" value={activeEnrollments.length} tone="warning" />
         </StatTileGroup>
 
         {message ? (
@@ -125,7 +145,7 @@ export default async function BatchDetailsPage({ params, searchParams }) {
           </div>
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
           <div className="flex min-w-0 flex-col gap-6">
             <Panel>
               <PanelHeader
@@ -147,7 +167,7 @@ export default async function BatchDetailsPage({ params, searchParams }) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-brand hover:bg-brand/10 hover:text-brand"
+                      className="bg-brand/10 text-brand hover:bg-brand/15"
                       render={<Link href={`/batches/${batch.id}/schedules`} />}
                       nativeButton={false}
                     >
@@ -157,11 +177,15 @@ export default async function BatchDetailsPage({ params, searchParams }) {
                   </div>
                 }
               />
-              {activeSchedules.length === 0 ? (
+              {currentSchedules.length === 0 ? (
                 <EmptyState
                   size="sm"
-                  title="No active schedules"
-                  description="Add one to define when this batch takes place."
+                  title={upcomingScheduleCount > 0 ? "No current schedules" : "No active schedules"}
+                  description={
+                    upcomingScheduleCount > 0
+                      ? "Scheduled classes for this batch have not started yet. See the Schedules tab."
+                      : "Add one to define when this batch takes place."
+                  }
                 />
               ) : (
                 <div className="overflow-hidden rounded-lg border border-border">
@@ -174,7 +198,7 @@ export default async function BatchDetailsPage({ params, searchParams }) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {activeSchedules.slice(0, 5).map((schedule) => (
+                      {currentSchedules.slice(0, SCHEDULE_ROWS).map((schedule) => (
                         <TableRow key={schedule.id}>
                           <TableCell className="font-medium text-text-primary">
                             {DAY_LABELS[schedule.day_of_week] ?? schedule.day_of_week}
@@ -191,6 +215,11 @@ export default async function BatchDetailsPage({ params, searchParams }) {
                   </Table>
                 </div>
               )}
+              {currentSchedules.length > SCHEDULE_ROWS ? (
+                <p className="text-small mt-3 text-text-secondary">
+                  Showing {SCHEDULE_ROWS} of {currentSchedules.length} current schedules. View Full Schedule for all.
+                </p>
+              ) : null}
             </Panel>
 
             <Panel>
@@ -203,7 +232,7 @@ export default async function BatchDetailsPage({ params, searchParams }) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-brand hover:bg-brand/10 hover:text-brand"
+                    className="bg-brand/10 text-brand hover:bg-brand/15"
                     render={<Link href={`/batches/${batch.id}/attendance`} />}
                     nativeButton={false}
                   >
@@ -223,32 +252,30 @@ export default async function BatchDetailsPage({ params, searchParams }) {
                   }
                 />
               ) : (
-                <div className="overflow-hidden rounded-lg border border-border">
-                  <Table aria-label="Recent attendance">
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead>Date</TableHead>
-                        <TableHead>Day</TableHead>
-                        <TableHead>Present</TableHead>
-                        <TableHead>Absent</TableHead>
-                        <TableHead>Instructor</TableHead>
+                // Unboxed — no bordered wrapper — so this reads lighter than Schedule's
+                // table, as a secondary, glanceable list rather than an equally-weighted panel.
+                <Table aria-label="Recent attendance">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Date</TableHead>
+                      <TableHead>Present</TableHead>
+                      <TableHead>Absent</TableHead>
+                      <TableHead>Instructor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentAttendance.map((session) => (
+                      <TableRow key={session.id}>
+                        <TableCell className="whitespace-nowrap font-medium text-text-primary">
+                          {formatDateWithWeekday(session.session_date)}
+                        </TableCell>
+                        <TableCell className="tabular-nums font-medium text-success">{session.presentCount}</TableCell>
+                        <TableCell className="tabular-nums font-medium text-danger">{session.absentCount}</TableCell>
+                        <TableCell className="text-text-secondary">{session.instructor?.full_name ?? "—"}</TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentAttendance.map((session) => (
-                        <TableRow key={session.id}>
-                          <TableCell className="whitespace-nowrap text-text-secondary">
-                            {formatDate(session.session_date)}
-                          </TableCell>
-                          <TableCell className="text-text-secondary">{weekdayShort(session.session_date)}</TableCell>
-                          <TableCell className="tabular-nums font-medium text-success">{session.presentCount}</TableCell>
-                          <TableCell className="tabular-nums font-medium text-danger">{session.absentCount}</TableCell>
-                          <TableCell className="text-text-secondary">{session.instructor?.full_name ?? "—"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </Panel>
           </div>
@@ -264,7 +291,7 @@ export default async function BatchDetailsPage({ params, searchParams }) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-brand hover:bg-brand/10 hover:text-brand"
+                    className="bg-brand/10 text-brand hover:bg-brand/15"
                     render={<Link href={`/batches/${batch.id}/students`} />}
                     nativeButton={false}
                   >
@@ -276,23 +303,11 @@ export default async function BatchDetailsPage({ params, searchParams }) {
               {activeEnrollments.length === 0 ? (
                 <EmptyState size="sm" title="No students enrolled" description="No students are enrolled in this batch yet." />
               ) : (
-                <div className="overflow-hidden rounded-lg border border-border">
-                  <Table aria-label="Enrolled students">
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead>Student</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {activeEnrollments.slice(0, STUDENT_ROWS).map((enrollment) => (
-                        <BatchStudentRow key={enrollment.id} enrollment={enrollment} />
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <ul className="flex flex-col divide-y divide-border">
+                  {activeEnrollments.slice(0, STUDENT_ROWS).map((enrollment) => (
+                    <BatchStudentRow key={enrollment.id} enrollment={enrollment} />
+                  ))}
+                </ul>
               )}
               {activeEnrollments.length > STUDENT_ROWS ? (
                 <p className="text-small mt-3 text-text-secondary">

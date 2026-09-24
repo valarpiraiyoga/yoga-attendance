@@ -181,6 +181,14 @@ Upcoming, Active, and Expired are determined by comparing the current date to
 the membership's start and end dates. Cancelled is a separate, explicit state
 that overrides any date-derived status.
 
+Membership start and end dates are calendar dates, both inclusive, and "the current
+date" is the date at the centre, evaluated in the centre timezone
+(**Asia/Kolkata**, §7A) — never the server's UTC date. A membership that starts and
+ends on the same day is Active for that day and Expired from the next centre day,
+so the membership status, days left and progress shown on Membership screens agree
+with attendance eligibility, which compares the same dates against the class
+session's own date (§8).
+
 ### End Date
 End date is calculated from the selected plan and start date, but remains
 editable:

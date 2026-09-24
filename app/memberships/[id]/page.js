@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CircleCheck,
   FileText,
+  Gauge,
   Hash,
   History,
   IndianRupee,
@@ -14,7 +15,6 @@ import {
   Pencil,
   Phone,
   RefreshCw,
-  Tag,
 } from "lucide-react";
 import {
   Table,
@@ -33,9 +33,8 @@ import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
 import FieldRow from "@/components/layout/FieldRow";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { getMembership, listMembershipsForStudent, listCoveredEnrollments } from "@/lib/memberships/data";
-import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/validity";
-import { todayDateString } from "@/lib/schedules/validation";
+import { getMembership, listMembershipsForStudent, listCoveredEnrollments, todayDateString } from "@/lib/memberships/data";
+import { getMembershipValidity } from "@/lib/memberships/validity";
 import { formatAmount, formatDate, formatDateShort } from "@/lib/format";
 import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import CancelMembership from "@/app/memberships/[id]/cancel-membership";
@@ -47,10 +46,6 @@ const SUCCESS_MESSAGES = {
   updated: "Membership updated successfully.",
   renewed: "Membership renewed successfully.",
 };
-
-function FieldValue({ children }) {
-  return <p className="text-body font-medium break-words text-text-primary">{children}</p>;
-}
 
 function formatDuration(startDate, endDate) {
   if (!startDate || !endDate) return "—";
@@ -87,52 +82,12 @@ function usedDays(validity) {
 }
 
 /**
- * The header's Days Progress card. The headline is the same validity text the
- * tile and the Memberships list show; the figure beside it is the share used
- * once the membership has begun, and the start date while it is still
- * Upcoming (where "0% used" says nothing). Bar colours and calculations are
- * unchanged.
- */
-function DaysProgress({ membership, validity, validityLabel, used }) {
-  const isUpcoming = validity.status === "upcoming";
-
-  return (
-    <div className="w-full rounded-lg border border-border bg-background/40 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-small text-text-secondary">Days Progress</p>
-        <p className="text-small shrink-0 font-medium text-text-secondary">
-          {isUpcoming ? `Starts ${formatDate(membership.start_date)}` : `${validity.percentUsed}% used`}
-        </p>
-      </div>
-      <p
-        className={
-          validityLabel.tone === "danger"
-            ? "text-page-title mt-1 font-semibold text-danger"
-            : "text-page-title mt-1 font-semibold text-text-primary"
-        }
-      >
-        {validityLabel.text}
-      </p>
-      <Progress
-        className="mt-3"
-        value={validity.percentUsed}
-        tone={validityTone(membership, validity)}
-        label="Membership validity used"
-      />
-      <div className="text-small mt-2 flex items-center justify-between gap-3 text-text-secondary">
-        <span>{isUpcoming ? "Not started yet" : `Used ${used} of ${validity.totalDays} days`}</span>
-        <span>{validity.totalDays} total days</span>
-      </div>
-    </div>
-  );
-}
-
-/**
  * Membership Details (composed screen — 02-ux.md "Composed Membership
  * screens": no dedicated approved wireframe, built from the same panelled
- * layout as Student Details, so no tabs). The header carries the student's
- * identity and contact details, the membership's own facts and its Days
- * Progress; below it the summary tiles, Covered Batch Enrollments (derived,
+ * layout as Student Details, so no tabs). The header only identifies — who
+ * (student), which membership (code · plan) — and carries the actions; the
+ * four summary tiles below it give the current state (Status, Validity,
+ * Payment, Progress); below them Covered Batch Enrollments (derived,
  * never stored — 01-product.md §12), Membership History (the student's other
  * memberships — renewal always creates a new record, the previous one remains
  * here, never overwritten), and the membership's notes.
@@ -165,11 +120,21 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
   const durationLabel = formatDuration(membership.start_date, membership.end_date);
   const period = formatPeriod(membership.start_date, membership.end_date);
 
-  // The same "today" the Memberships list derived each row's status and validity from.
+  // The same "today" the Memberships list derived each row's status and validity from:
+  // the centre's date (Asia/Kolkata), not the server's UTC date.
   const validity = getMembershipValidity(membership, todayDateString());
-  const validityLabel = getValidityLabel(validity);
   const showProgress = validity.status !== "cancelled";
   const used = usedDays(validity);
+
+  // Progress tile text — the same reading the former Days Progress card gave: the share used once the
+  // membership has begun, "not started" while Upcoming, nothing once Cancelled. Calculations are unchanged.
+  const isUpcoming = validity.status === "upcoming";
+  const progressValue = !showProgress ? "—" : isUpcoming ? "Not started" : `${validity.percentUsed}% used`;
+  const progressCaption = !showProgress
+    ? "Membership cancelled"
+    : isUpcoming
+      ? `Starts ${formatDate(membership.start_date)}`
+      : `${used} of ${validity.totalDays} days`;
 
   // Status tile caption — the date that closed or will close the membership, from its own record.
   const statusCaption =
@@ -191,8 +156,9 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         Back to Memberships
       </Link>
 
-      <div className="flex flex-col gap-4">
+      <>
         <EntityDetailHeader
+          decorative={false}
           className="mb-0"
           avatar={<Avatar name={student?.full_name} src={student?.photo_url} size="lg" />}
           title={student?.full_name ?? "—"}
@@ -224,6 +190,9 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
                   <ArrowRight className="size-3.5" aria-hidden="true" />
                 </Link>
               ) : null}
+              <span className="text-body basis-full">
+                Membership · <span className="font-medium text-text-primary">{membership.membership_code}</span> · {planLabel}
+              </span>
             </>
           }
           actions={
@@ -236,43 +205,20 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
                 <Pencil className="size-4" aria-hidden="true" />
                 Edit Membership
               </Button>
-              <CancelMembership membershipId={membership.id} isCancelled={membership.status === "cancelled"} />
+              <CancelMembership
+                membershipId={membership.id}
+                studentId={student?.id}
+                isCancelled={membership.status === "cancelled"}
+              />
             </>
-          }
-          highlight={
-            <div className="grid w-full gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-                <FieldRow icon={Hash} label="Membership ID">
-                  <FieldValue>{membership.membership_code}</FieldValue>
-                </FieldRow>
-                <FieldRow icon={Tag} label="Plan">
-                  <FieldValue>{planLabel}</FieldValue>
-                </FieldRow>
-                <FieldRow icon={CalendarDays} label="Start Date">
-                  <FieldValue>{formatDate(membership.start_date)}</FieldValue>
-                </FieldRow>
-                <FieldRow icon={CalendarDays} label="End Date">
-                  <FieldValue>{formatDate(membership.end_date)}</FieldValue>
-                </FieldRow>
-              </div>
-              {showProgress ? (
-                <DaysProgress membership={membership} validity={validity} validityLabel={validityLabel} used={used} />
-              ) : null}
-            </div>
           }
         />
 
-        <StatTileGroup ariaLabel="Membership summary" className="grid-cols-1 sm:grid-cols-2">
-          <StatTile icon={Tag} label="Plan" value={planLabel} caption={`Duration: ${durationLabel}`} tone="brand" />
-          <StatTile icon={CalendarDays} label="Validity" value={validityLabel.text} caption={period} tone="info" />
+        {/* Current state at a glance — each tile answers one question: what state (Status), when
+            (Validity), what is owed (Payment), how much is used (Progress). */}
+        <StatTileGroup ariaLabel="Membership summary" columns={2} className="-mt-2 grid-cols-1 xl:grid-cols-4">
           <StatTile
-            icon={IndianRupee}
-            label="Amount"
-            value={formatAmount(membership.amount)}
-            caption={`Payment: ${payment.label}`}
-            tone={membership.payment_status === "paid" ? "success" : "warning"}
-          />
-          <StatTile
+            compact
             icon={CircleCheck}
             label="Status"
             value={status.label}
@@ -287,8 +233,34 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
                     : "neutral"
             }
           />
+          <StatTile compact icon={CalendarDays} label="Validity" value={period} caption={durationLabel} tone="neutral" />
+          <StatTile
+            compact
+            icon={IndianRupee}
+            label="Payment"
+            value={formatAmount(membership.amount)}
+            caption={payment.label}
+            tone={membership.payment_status === "paid" ? "success" : "warning"}
+          />
+          <StatTile
+            compact
+            icon={Gauge}
+            label="Progress"
+            value={progressValue}
+            caption={progressCaption}
+            tone={showProgress ? validityTone(membership, validity) : "neutral"}
+          >
+            {showProgress ? (
+              <Progress
+                className="mt-2 h-1.5"
+                value={validity.percentUsed}
+                tone={validityTone(membership, validity)}
+                label="Membership validity used"
+              />
+            ) : null}
+          </StatTile>
         </StatTileGroup>
-      </div>
+      </>
 
       {message ? (
         <div

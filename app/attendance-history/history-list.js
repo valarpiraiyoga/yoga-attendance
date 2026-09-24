@@ -5,28 +5,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import DataTableShell from "@/components/ui/data-table-shell";
 import { CardGrid, ResultsHeader } from "@/components/layout/list-page";
 import SortSelect from "@/components/ui/sort-select";
 import { DEFAULT_HISTORY_SORT } from "@/lib/attendance-history/data";
 import HistorySessionCard from "@/app/attendance-history/history-session-card";
 import HistoryTableRow from "@/app/attendance-history/history-table-row";
 
+// A light table-in-panel border (matching the pattern already established on
+// Batch Overview / Students / Schedules and Membership Detail), not the
+// heavier `DataTableShell` card — `bg-surface` is explicit here since, unlike
+// those detail-page tables, this one is not already sitting inside a `Panel`.
+const TABLE_WRAPPER_CLASS = "overflow-hidden rounded-lg border border-border bg-surface";
+
 function AdminTable({ sessions, hideBatch }) {
   return (
-    <DataTableShell tone="info">
+    <div className={TABLE_WRAPPER_CLASS}>
       <Table aria-label="Attendance History">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead>Date</TableHead>
-            <TableHead>Time</TableHead>
-            {!hideBatch ? <TableHead>Batch</TableHead> : null}
-            <TableHead>Instructor</TableHead>
+            <TableHead className="whitespace-nowrap">Date</TableHead>
+            <TableHead className="whitespace-nowrap">Time</TableHead>
+            {!hideBatch ? <TableHead className="sm:w-[18%]">Batch</TableHead> : null}
+            <TableHead className="sm:w-[16%]">Instructor</TableHead>
             <TableHead className="text-right">Eligible</TableHead>
             <TableHead className="text-right">Present</TableHead>
             <TableHead className="text-right">Absent</TableHead>
             <TableHead className="text-right">Attendance</TableHead>
-            <TableHead>Action</TableHead>
+            <TableHead className="w-px px-3 whitespace-nowrap sm:px-4">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -35,24 +40,24 @@ function AdminTable({ sessions, hideBatch }) {
           ))}
         </TableBody>
       </Table>
-    </DataTableShell>
+    </div>
   );
 }
 
 function InstructorTable({ sessions }) {
   return (
-    <DataTableShell tone="info">
+    <div className={TABLE_WRAPPER_CLASS}>
       <Table aria-label="Attendance History">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead>Date</TableHead>
-            <TableHead>Time</TableHead>
-            <TableHead>Batch / Class</TableHead>
+            <TableHead className="whitespace-nowrap">Date</TableHead>
+            <TableHead className="whitespace-nowrap">Time</TableHead>
+            <TableHead className="sm:w-[20%]">Batch / Class</TableHead>
             <TableHead className="text-right">Eligible</TableHead>
             <TableHead className="text-right">Present</TableHead>
             <TableHead className="text-right">Absent</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Action</TableHead>
+            <TableHead className="w-px px-3 whitespace-nowrap sm:px-4">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -61,7 +66,7 @@ function InstructorTable({ sessions }) {
           ))}
         </TableBody>
       </Table>
-    </DataTableShell>
+    </div>
   );
 }
 

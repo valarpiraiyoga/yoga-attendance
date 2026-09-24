@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +16,13 @@ import {
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import TimeSelect from "@/components/ui/time-select";
 import { cn } from "@/lib/utils";
-import { validateScheduleInput, calculateEndTime, DAYS_OF_WEEK, DAY_LABELS } from "@/lib/schedules/validation";
+import {
+  validateScheduleInput,
+  validateTimeSlots,
+  calculateEndTime,
+  DAYS_OF_WEEK,
+  DAY_LABELS,
+} from "@/lib/schedules/validation";
 import { describeAffectedStudents } from "@/lib/schedules/usage";
 
 const DAY_OPTIONS = DAYS_OF_WEEK.map((value) => ({ value, label: DAY_LABELS[value] }));
@@ -61,6 +68,17 @@ function formatTime(value) {
  * creates a new schedule for each of them with the same values
  * (`updateSchedule`). Start / End Time use `TimeSelect` (hour, minute, AM/PM
  * dropdowns) rather than the browser's time input.
+ *
+ * Time Slots (Add Schedule only, `!schedule`): a repeatable list of Start/End
+ * `TimeSelect` pairs, one shown by default, "+ Add Time" appends another.
+ * Every slot's Start/End inputs share the SAME `name` (`start_time` /
+ * `end_time`) across rows — the same repeated-field convention Days of Week
+ * already uses for `day_of_week` — so `createSchedule` reads the full set
+ * with `formData.getAll(...)` and creates one schedule per (day × slot)
+ * combination; each combination is its own independent record, never merged.
+ * Edit keeps exactly the single Start/End pair it always had — versioning a
+ * schedule into several new time ranges at once isn't a case the existing
+ * versioned-edit/direct-edit rules model, so that stays untouched.
  *
  * Effective From means different things depending on mode: for Add, when
  * the schedule begins; for Edit, the date the edited values take effect —
@@ -110,6 +128,19 @@ export default function ScheduleForm({
   );
   const [startTime, setStartTime] = useState(state?.values?.start_time ?? schedule?.start_time ?? "");
   const [endTime, setEndTime] = useState(state?.values?.end_time ?? schedule?.end_time ?? "");
+  const isAddMode = !schedule;
+  // Time Slots (Add Schedule only — see the component doc comment). Seeded
+  // from a failed submission's full arrays when present, else one empty slot.
+  const [timeSlots, setTimeSlots] = useState(() => {
+    const starts = state?.values?.start_times;
+    const ends = state?.values?.end_times;
+    if (starts && starts.length > 0) {
+      return starts.map((start, index) => ({ id: index, start: start ?? "", end: ends?.[index] ?? "" }));
+    }
+    return [{ id: 0, start: "", end: "" }];
+  });
+  const [slotErrors, setSlotErrors] = useState(() => state?.slotErrors ?? []);
+  const nextSlotId = useRef(timeSlots.length);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [reviewData, setReviewData] = useState(null);
   const formRef = useRef(null);
@@ -118,6 +149,7 @@ export default function ScheduleForm({
   if (state !== prevState) {
     setPrevState(state);
     setFieldErrors(state?.fieldErrors ?? {});
+    setSlotErrors(state?.slotErrors ?? []);
   }
 
   const instructorSelectOptions = instructorOptions.map((instructor) => ({
@@ -147,6 +179,40 @@ export default function ScheduleForm({
   function handleEndTimeChange(value) {
     setEndTime(value);
     if (value) clearError("end_time");
+  }
+
+  function clearSlotError(index, field) {
+    setSlotErrors((current) => {
+      if (!current[index]?.[field]) return current;
+      const next = [...current];
+      const slotErrors = { ...next[index] };
+      delete slotErrors[field];
+      next[index] = slotErrors;
+      return next;
+    });
+  }
+
+  function addTimeSlot() {
+    setTimeSlots((current) => [...current, { id: nextSlotId.current++, start: "", end: "" }]);
+  }
+
+  function removeTimeSlot(index) {
+    setTimeSlots((current) => current.filter((_, i) => i !== index));
+    setSlotErrors((current) => current.filter((_, i) => i !== index));
+  }
+
+  function updateSlotStart(index, value) {
+    const calculated = calculateEndTime(value);
+    setTimeSlots((current) =>
+      current.map((slot, i) => (i === index ? { ...slot, start: value, end: calculated || slot.end } : slot))
+    );
+    if (value) clearSlotError(index, "start_time");
+    if (calculated) clearSlotError(index, "end_time");
+  }
+
+  function updateSlotEnd(index, value) {
+    setTimeSlots((current) => current.map((slot, i) => (i === index ? { ...slot, end: value } : slot)));
+    if (value) clearSlotError(index, "end_time");
   }
 
   function toggleDay(day) {
@@ -197,10 +263,16 @@ export default function ScheduleForm({
     // Add Schedule saves directly — no Review/Confirm (02-ux.md Flow 03).
     // Still re-run validation so obviously incomplete required fields don't
     // even reach the server action; it re-validates authoritatively either way.
-    const { success, errors } = validateForm(new FormData(formRef.current));
-    if (!success) {
+    // This path only ever runs for Add (Edit always has requireConfirmation),
+    // so it's also where the full Time Slots array gets checked.
+    const formData = new FormData(formRef.current);
+    const { success, errors } = validateForm(formData);
+    const slotsResult = validateTimeSlots(formData.getAll("start_time"), formData.getAll("end_time"));
+
+    if (!success || !slotsResult.success) {
       event.preventDefault();
       setFieldErrors(errors);
+      if (!slotsResult.success) setSlotErrors(slotsResult.errors);
     }
   }
 
@@ -341,7 +413,7 @@ export default function ScheduleForm({
               ? "Untick this schedule's day and tick another to move it. Any other ticked day also creates the same schedule on it."
               : lockedDay
                 ? "This schedule stays on its current day. Tick other days to also create the same schedule on them."
-                : "Select one or more days — a schedule is created for each."}
+                : "Select one or more days. Each time slot below is created for every selected day."}
           </p>
           {directEdit && affectedStudentCount > 0 ? (
             <p className="text-small text-text-secondary">
@@ -387,46 +459,128 @@ export default function ScheduleForm({
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="start_time">Start Time</Label>
-            <TimeSelect
-              id="start_time"
-              name="start_time"
-              label="Start time"
-              value={startTime}
-              onChange={handleStartTimeChange}
-              disabled={isPending}
-              invalid={Boolean(fieldErrors.start_time)}
-            />
-            {fieldErrors.start_time ? (
-              <p id="start_time-error" role="alert" className="text-small text-danger">
-                {fieldErrors.start_time}
-              </p>
-            ) : null}
-          </div>
+        {isAddMode ? (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <Label id="time-slots-label">Time Slots</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={addTimeSlot}
+                disabled={isPending}
+                className="text-brand hover:bg-brand/10 hover:text-brand"
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                Add Time
+              </Button>
+            </div>
+            <div role="group" aria-labelledby="time-slots-label" className="flex flex-col gap-3">
+              {timeSlots.map((slot, index) => (
+                <div
+                  key={slot.id}
+                  className="flex flex-col gap-3 rounded-lg border border-border bg-background/60 p-3 sm:flex-row sm:items-start"
+                >
+                  <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor={`start_time-${slot.id}`}>Start Time</Label>
+                      <TimeSelect
+                        id={`start_time-${slot.id}`}
+                        name="start_time"
+                        label="Start time"
+                        value={slot.start}
+                        onChange={(value) => updateSlotStart(index, value)}
+                        disabled={isPending}
+                        invalid={Boolean(slotErrors[index]?.start_time)}
+                      />
+                      {slotErrors[index]?.start_time ? (
+                        <p role="alert" className="text-small text-danger">
+                          {slotErrors[index].start_time}
+                        </p>
+                      ) : null}
+                    </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="end_time">End Time</Label>
-            <TimeSelect
-              id="end_time"
-              name="end_time"
-              label="End time"
-              value={endTime}
-              onChange={handleEndTimeChange}
-              disabled={isPending}
-              invalid={Boolean(fieldErrors.end_time)}
-            />
-            <p className="text-small text-text-secondary">
-              Defaults to 60 minutes after Start Time — editable.
-            </p>
-            {fieldErrors.end_time ? (
-              <p id="end_time-error" role="alert" className="text-small text-danger">
-                {fieldErrors.end_time}
-              </p>
-            ) : null}
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor={`end_time-${slot.id}`}>End Time</Label>
+                      <TimeSelect
+                        id={`end_time-${slot.id}`}
+                        name="end_time"
+                        label="End time"
+                        value={slot.end}
+                        onChange={(value) => updateSlotEnd(index, value)}
+                        disabled={isPending}
+                        invalid={Boolean(slotErrors[index]?.end_time)}
+                      />
+                      <p className="text-small text-text-secondary">
+                        Defaults to 60 minutes after Start Time — editable.
+                      </p>
+                      {slotErrors[index]?.end_time ? (
+                        <p role="alert" className="text-small text-danger">
+                          {slotErrors[index].end_time}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Only offered once there's more than one slot — a lone slot can't be removed. */}
+                  {timeSlots.length > 1 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeTimeSlot(index)}
+                      disabled={isPending}
+                      className="shrink-0 text-text-secondary hover:bg-danger/10 hover:text-danger"
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="start_time">Start Time</Label>
+              <TimeSelect
+                id="start_time"
+                name="start_time"
+                label="Start time"
+                value={startTime}
+                onChange={handleStartTimeChange}
+                disabled={isPending}
+                invalid={Boolean(fieldErrors.start_time)}
+              />
+              {fieldErrors.start_time ? (
+                <p id="start_time-error" role="alert" className="text-small text-danger">
+                  {fieldErrors.start_time}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="end_time">End Time</Label>
+              <TimeSelect
+                id="end_time"
+                name="end_time"
+                label="End time"
+                value={endTime}
+                onChange={handleEndTimeChange}
+                disabled={isPending}
+                invalid={Boolean(fieldErrors.end_time)}
+              />
+              <p className="text-small text-text-secondary">
+                Defaults to 60 minutes after Start Time — editable.
+              </p>
+              {fieldErrors.end_time ? (
+                <p id="end_time-error" role="alert" className="text-small text-danger">
+                  {fieldErrors.end_time}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">

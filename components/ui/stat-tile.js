@@ -26,6 +26,10 @@ import { cn } from "@/lib/utils";
  * `aside` is an optional right-aligned figure in the tile's tone (e.g. a
  * share-of-total percentage).
  *
+ * `compact` is the quieter variant for detail-page summary rows (Membership
+ * Details): 12px padding, a 32px icon tile, an 18px value that wraps instead of
+ * truncating. `children` renders under the caption (a progress bar, say).
+ *
  * `decorativeChart` adds the small bar graphic from the list-page
  * references. It is purely decorative: `aria-hidden`, one fixed shape for
  * every tile, and it encodes no data — it must never be read as a trend.
@@ -85,6 +89,8 @@ export function StatTile({
   decorativeChart = false,
   tone = "brand",
   valueFirst = false,
+  compact = false,
+  children,
   className,
 }) {
   const hasRightCluster = Boolean(aside) || decorativeChart;
@@ -94,6 +100,7 @@ export function StatTile({
       data-slot="stat-tile"
       className={cn(
         "flex min-w-0 items-center gap-3 rounded-card border border-border bg-surface p-4 shadow-xs",
+        compact && "items-start p-3",
         className
       )}
     >
@@ -102,13 +109,14 @@ export function StatTile({
           aria-hidden="true"
           className={cn(
             "flex size-10 shrink-0 items-center justify-center rounded-lg",
+            compact && "size-8",
             TONE_STYLES[tone] ?? TONE_STYLES.brand
           )}
         >
-          <Icon className="size-5" aria-hidden="true" />
+          <Icon className={compact ? "size-4" : "size-5"} aria-hidden="true" />
         </span>
       ) : null}
-      <div className={cn("min-w-0", valueFirst && "flex flex-col-reverse")}>
+      <div className={cn("min-w-0", compact && "flex-1", valueFirst && "flex flex-col-reverse")}>
         {/* Full literal strings, deliberately NOT passed through `cn()`:
             tailwind-merge does not know our custom type tokens and treats
             `text-small` as a text colour, so `cn("text-small text-text-secondary")`
@@ -126,11 +134,26 @@ export function StatTile({
         </dt>
         <dd
           data-slot="stat-tile-value"
-          className="truncate text-page-title font-semibold text-text-primary"
+          className={
+            compact
+              ? "text-section-title font-semibold break-words text-text-primary"
+              : "truncate text-page-title font-semibold text-text-primary"
+          }
         >
           {value}
         </dd>
-        {caption ? <p className="truncate text-small font-normal text-text-secondary">{caption}</p> : null}
+        {caption ? (
+          <p
+            className={
+              compact
+                ? "text-small font-normal break-words text-text-secondary"
+                : "truncate text-small font-normal text-text-secondary"
+            }
+          >
+            {caption}
+          </p>
+        ) : null}
+        {children}
       </div>
       {hasRightCluster ? (
         <div

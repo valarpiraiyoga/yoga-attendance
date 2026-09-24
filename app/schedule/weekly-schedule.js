@@ -3,15 +3,18 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ListToolbar } from "@/components/layout/list-page";
 import { formatTime } from "@/lib/format";
-import { DAYS_OF_WEEK, DAY_LABELS, addDaysUTC, timeToMinutes } from "@/lib/schedules/validation";
+import { DAYS_OF_WEEK, DAY_LABELS, addDaysUTC, timeToMinutes, scheduleAppliesOn } from "@/lib/schedules/validation";
+import WeeklyScheduleCard from "@/app/schedule/weekly-schedule-card";
 
 // Fixed 6:00 AM – 10:00 PM axis (02-ux.md D14 — an explicit decision, not
 // read from the wireframe, whose own sample only draws a partial range).
 // This must never expand or contract to fit whatever schedules exist.
 const GRID_START_MINUTES = 6 * 60;
 const GRID_END_MINUTES = 22 * 60;
-// Tall enough that a one-hour card fits its three lines (batch code, time
-// range, instructor) at the 12px/18px card type without clipping.
+// The vertical scale — every card's height and position are still purely a
+// function of its real start/end time against this constant. Unchanged by
+// the card's own content simplification below: a card's box is never
+// resized to fit (or save on) whatever is drawn inside it.
 const HOUR_HEIGHT_PX = 72;
 
 // Small buffers above the 6:00 AM line and below the 10:00 PM line — not part
@@ -24,21 +27,33 @@ const BOTTOM_OFFSET_PX = 16;
 const GRID_HEIGHT_PX =
   ((GRID_END_MINUTES - GRID_START_MINUTES) / 60) * HOUR_HEIGHT_PX + TOP_OFFSET_PX + BOTTOM_OFFSET_PX;
 
-// Card content tiers by rendered height (line = 18px at the card type size,
-// plus 12px of vertical padding): a card shows as many of code / time range /
-// instructor as fit. Nothing is ever clipped mid-line, and the full details
-// stay available on the card's tooltip.
-const CARD_HEIGHT_FOR_TIME_PX = 44;
-const CARD_HEIGHT_FOR_INSTRUCTOR_PX = 62;
-
 // A day column's cards must never be narrower than this, regardless of how
-// many overlap — batch code, time range and instructor all need to stay
-// readable (D15: overlapping cards stay visible, side by side, never
-// hidden/collapsed — that only works if "side by side" doesn't mean
-// "crushed"). The gap is the visible seam between adjacent overlapping
-// cards in the same weekday/time slot.
-const MIN_CARD_WIDTH_PX = 144;
+// many overlap — a small instructor avatar plus the batch code, on one line,
+// both need to stay readable (D15: overlapping cards stay visible, side by
+// side, never hidden/collapsed — that only works if "side by side" doesn't
+// mean "crushed"). The card no longer carries the instructor's name or the
+// time range (available on click instead), so this floor is deliberately
+// narrow — just enough for the avatar + a short code, not a name that would
+// need to wrap. The gap is the visible seam between adjacent overlapping
+// cards in the same weekday/time slot; the same value also insets every card
+// from its day column's own left/right edges, so cards never visually touch
+// the grid lines.
+const MIN_CARD_WIDTH_PX = 96;
+// A day with only one (non-overlapping) card gets `width: 100%` of its day
+// column, which can stretch well past what a tiny avatar + short code needs
+// on a wide viewport — this caps how big the card is ever drawn, so it stays
+// a compact chip instead of a mostly-empty stretched box. Never shrinks a
+// shared/overlapping card below its MIN_CARD_WIDTH_PX floor: the two only
+// disagree when a card would otherwise be wider than this, i.e. exactly the
+// single-card-in-a-wide-column case this exists to fix.
+const CARD_MAX_WIDTH_PX = 140;
 const CARD_GAP_PX = 4;
+// A hairline seam between two back-to-back cards (e.g. Tuesday 6–7 and
+// 7–8) so they read as two separate records, not one continuous block.
+// Trims only the rendered box's bottom edge — `top` (the card's start
+// position) is untouched, so its vertical position against the grid stays
+// exactly what the schedule's start time computes.
+const CARD_VERTICAL_GAP_PX = 2;
 
 // Maps a clock-time (in minutes since midnight) to its pixel offset from the
 // top of the grid, including the buffer above — the single source of truth
@@ -161,12 +176,7 @@ export default function WeeklySchedule({ weekStart, schedules }) {
     const date = addDaysUTC(weekStart, index);
 
     const dayCards = schedules
-      .filter((schedule) => {
-        if (schedule.day_of_week !== dayOfWeek) return false;
-        if (date < schedule.effective_from) return false;
-        if (schedule.effective_until && date > schedule.effective_until) return false;
-        return true;
-      })
+      .filter((schedule) => scheduleAppliesOn(schedule, dayOfWeek, date))
       .map((schedule) => ({
         schedule,
         startMinutes: Math.max(timeToMinutes(schedule.start_time), GRID_START_MINUTES),
@@ -294,44 +304,55 @@ export default function WeeklySchedule({ weekStart, schedules }) {
                   />
                 ))}
 
-                {day.cards.map((card) => {
-                  const top = minutesToGridOffsetPx(card.startMinutes);
-                  const height = (card.endMinutes - card.startMinutes) * (HOUR_HEIGHT_PX / 60);
-                  // Equal-gap column math: each card's share of the day
-                  // column's width, minus its fair portion of the gaps
-                  // between cards, with `calc()` resolving the percentage
-                  // against the day column's actual rendered width — which
-                  // MIN_CARD_WIDTH_PX above already guarantees is enough
-                  // for `card.totalColumns` cards at CARD_GAP_PX apart.
-                  const widthPercent = 100 / card.totalColumns;
-                  const gapPerCard = (CARD_GAP_PX * (card.totalColumns - 1)) / card.totalColumns;
-                  const leftGap = (CARD_GAP_PX * card.column) / card.totalColumns;
+                {/* Insets every card CARD_GAP_PX from this day column's own left/right
+                    edges — a `position: absolute` box with both `left` and `right` set
+                    becomes its own positioning context, so every card below keeps
+                    positioning itself with the exact same percentage/calc() math against
+                    this (slightly narrower) box instead of the day column directly. Purely
+                    a rendering box: the vertical axis (top/height, i.e. every card's actual
+                    time) is untouched. */}
+                <div className="absolute inset-y-0" style={{ left: `${CARD_GAP_PX}px`, right: `${CARD_GAP_PX}px` }}>
+                  {day.cards.map((card) => {
+                    const top = minutesToGridOffsetPx(card.startMinutes);
+                    const height = (card.endMinutes - card.startMinutes) * (HOUR_HEIGHT_PX / 60);
+                    // Equal-gap column math: each card's share of the day
+                    // column's width, minus its fair portion of the gaps
+                    // between cards, with `calc()` resolving the percentage
+                    // against the day column's actual rendered width — which
+                    // MIN_CARD_WIDTH_PX above already guarantees is enough
+                    // for `card.totalColumns` cards at CARD_GAP_PX apart.
+                    const widthPercent = 100 / card.totalColumns;
+                    const gapPerCard = (CARD_GAP_PX * (card.totalColumns - 1)) / card.totalColumns;
+                    const leftGap = (CARD_GAP_PX * card.column) / card.totalColumns;
 
-                  const timeRange = `${formatTime(card.schedule.start_time)} – ${formatTime(card.schedule.end_time)}`;
-                  const instructor = card.schedule.instructors?.full_name ?? "—";
+                    // Still handed to the card for its click-to-open popup — the visible
+                    // card itself shows only the instructor's avatar and the batch code;
+                    // the grid's vertical axis (left-hand hour labels + this card's own
+                    // position) is what communicates the time.
+                    const timeRange = `${formatTime(card.schedule.start_time)} – ${formatTime(card.schedule.end_time)}`;
+                    const instructor = card.schedule.instructors?.full_name ?? "—";
 
-                  return (
-                    <div
-                      key={card.schedule.id}
-                      className="absolute overflow-hidden rounded-md border border-l-4 border-brand/30 border-l-brand bg-brand/10 px-2 py-1.5 text-small"
-                      style={{
-                        top: `${top}px`,
-                        height: `${height}px`,
-                        left: `calc(${card.column * widthPercent}% + ${leftGap}px)`,
-                        width: `calc(${widthPercent}% - ${gapPerCard}px)`,
-                      }}
-                      title={`${card.schedule.batches?.name ?? ""} · ${timeRange} · ${instructor}`}
-                    >
-                      <p className="truncate font-semibold text-text-primary">{card.schedule.batches?.code ?? "—"}</p>
-                      {height >= CARD_HEIGHT_FOR_TIME_PX ? (
-                        <p className="truncate text-text-primary">{timeRange}</p>
-                      ) : null}
-                      {height >= CARD_HEIGHT_FOR_INSTRUCTOR_PX ? (
-                        <p className="truncate text-text-secondary">{instructor}</p>
-                      ) : null}
-                    </div>
-                  );
-                })}
+                    return (
+                      <WeeklyScheduleCard
+                        key={card.schedule.id}
+                        schedule={card.schedule}
+                        dayLabel={DAY_LABELS[day.dayOfWeek]}
+                        timeRange={timeRange}
+                        instructor={instructor}
+                        style={{
+                          top: `${top}px`,
+                          // A hairline shorter than the schedule's real duration (see
+                          // CARD_VERTICAL_GAP_PX) so back-to-back cards (e.g. Tuesday
+                          // 6–7 and 7–8) show a visible seam instead of touching.
+                          height: `${Math.max(0, height - CARD_VERTICAL_GAP_PX)}px`,
+                          left: `calc(${card.column * widthPercent}% + ${leftGap}px)`,
+                          width: `calc(${widthPercent}% - ${gapPerCard}px)`,
+                          maxWidth: `${CARD_MAX_WIDTH_PX}px`,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
               </div>
             ))}
           </div>

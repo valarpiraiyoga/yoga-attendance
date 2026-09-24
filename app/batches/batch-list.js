@@ -12,9 +12,12 @@ import { DEFAULT_BATCH_SORT } from "@/lib/batches/data";
 import BatchCardItem from "@/app/batches/batch-card-item";
 import BatchTableRow from "@/app/batches/batch-table-row";
 
+// 3 columns at the widest and `items-start` — the same card-grid behavior
+// already finalized for Students/Memberships, so a batch with a short
+// schedule summary doesn't stretch to match a taller sibling in the row.
 function BatchCards({ batches }) {
   return (
-    <CardGrid ariaLabel="Batches">
+    <CardGrid ariaLabel="Batches" className="items-start xl:grid-cols-3">
       {batches.map((batch) => (
         <BatchCardItem key={batch.id} batch={batch} />
       ))}
@@ -30,7 +33,7 @@ function BatchTable({ batches }) {
       <Table aria-label="Batches" className="[&_td]:px-3 [&_th]:px-3">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead>Batch Name</TableHead>
+            <TableHead>Batch</TableHead>
             <TableHead>Code</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Instructor</TableHead>

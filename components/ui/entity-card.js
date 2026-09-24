@@ -17,12 +17,19 @@ import { cn } from "@/lib/utils";
  * the identity block. `iconClassName` on the component (not per row)
  * covers every current usage; pass one on a `meta` item only if a specific
  * row genuinely needs a different tone.
+ *
+ * `statusPlacement` — `"subtitle"` (default) puts `status` on its own line
+ * under `subtitle`, in the left identity column, exactly as before this prop
+ * existed. `"actions"` instead stacks it under `actions` in the right
+ * column (View/menu icons on top, status below) — the Students card's
+ * finalized header shape. Every existing caller is unaffected by default.
  */
 export default function EntityCard({
   avatar,
   title,
   subtitle,
   status,
+  statusPlacement = "subtitle",
   actions,
   meta = [],
   iconClassName = "text-text-secondary",
@@ -45,9 +52,14 @@ export default function EntityCard({
                 {title}
               </h3>
               {subtitle ? <p className="truncate text-small text-text-secondary">{subtitle}</p> : null}
-              {status ? <div className="mt-1">{status}</div> : null}
+              {status && statusPlacement === "subtitle" ? <div className="mt-1">{status}</div> : null}
             </div>
-            {actions ? <div className="flex shrink-0 items-center">{actions}</div> : null}
+            {actions ? (
+              <div className={cn("flex shrink-0", statusPlacement === "actions" ? "flex-col items-end gap-2" : "items-center")}>
+                {actions}
+                {status && statusPlacement === "actions" ? status : null}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

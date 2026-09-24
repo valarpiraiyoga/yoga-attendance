@@ -41,7 +41,7 @@ const BLUR_VALIDATED_FIELDS = new Set([
  * No Status field here, unlike Instructor/Batch forms: 02-ux.md Flow 11
  * treats deactivation as its own explicit action (Review → Confirm → Save)
  * from Student Details, not a field on this form — see
- * app/students/[id]/deactivate-student.js.
+ * app/students/[id]/student-status-button.js.
  *
  * The Profile Photo (optional) is the shared `ProfilePhotoField`. The chosen
  * file rides in the same form action as the other fields

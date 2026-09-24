@@ -2,38 +2,52 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Clock, Eye, UserRound, Users } from "lucide-react";
+import { CalendarDays, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import EntityCard from "@/components/ui/entity-card";
 import { BATCH_STATUS } from "@/lib/status";
-import { formatStudentCount, summarizeCurrentSchedules } from "@/lib/batches/summary";
+import { summarizeCurrentSchedules } from "@/lib/batches/summary";
 import { cn } from "@/lib/utils";
 import BatchCardMenu from "@/app/batches/batch-card-menu";
+import BatchInstructorSummary from "@/app/batches/batch-instructor-summary";
 
 /**
- * Batch list card (`08 Batches card view.png`): identity (avatar, name,
- * code, status), then Time / Days / Instructor / Students. Time, Days and
- * Instructor summarise the batch's current schedules; Students is its active
- * enrollments. Card actions follow the finalized pattern shared with
- * Students and Memberships: eye icon (View) + overflow menu. Composed from
- * `EntityCard`; only the menu-open tint is local state.
+ * Batch list card: identity (avatar, name, "Code: X", status), then a
+ * compact schedule summary (Days + Time/count under one calendar icon), then
+ * one row pairing Instructor (avatar, name, "Instructor" label — or
+ * overlapping avatars + count when several — `BatchInstructorSummary`) with
+ * a quiet Students figure. All three derive from the batch's current
+ * schedules (`summarizeCurrentSchedules`, lib/batches/summary.js —
+ * unmodified) and its active enrollment count; nothing here recomputes
+ * either. Card actions follow the finalized pattern shared with Students and
+ * Memberships: eye icon (View) + overflow menu.
+ *
+ * The schedule/instructor/students block renders through `children` rather
+ * than `EntityCard`'s `meta` prop: `meta` only accepts a Lucide icon
+ * *component* for each row (it renders it as `<Icon />`), which can't
+ * express the Instructor row's avatar(s) — composing it here keeps
+ * `EntityCard` itself unchanged while still using its header/status/actions
+ * exactly as every other list card in this app does.
+ *
+ * `h-auto` (with CardGrid's `items-start` override, batch-list.js) keeps a
+ * batch with a short schedule summary from stretching to match a taller
+ * sibling card in the same grid row.
  */
 export default function BatchCardItem({ batch }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const status = BATCH_STATUS[batch.displayStatus] ?? BATCH_STATUS.active;
   const summary = summarizeCurrentSchedules(batch.currentSchedules);
-  const students = formatStudentCount(batch.studentCount);
 
   return (
     <EntityCard
-      className={cn(menuOpen && "border-brand/40 bg-brand/5")}
+      className={cn("h-auto", menuOpen && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
       avatar={<Avatar name={batch.name} shape="square" bordered />}
       title={batch.name}
-      subtitle={batch.code}
+      subtitle={`Code: ${batch.code}`}
       status={<Badge variant={status.variant}>{status.label}</Badge>}
       actions={
         <>
@@ -51,12 +65,27 @@ export default function BatchCardItem({ batch }) {
           <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} />
         </>
       }
-      meta={[
-        { icon: Clock, label: summary.time, title: summary.time },
-        { icon: CalendarDays, label: summary.days, title: summary.days },
-        { icon: UserRound, label: summary.instructor, title: summary.instructor },
-        { icon: Users, label: students, title: students },
-      ]}
-    />
+    >
+      <div className="flex flex-col gap-3 border-t border-border pt-3">
+        <span
+          className="inline-flex min-w-0 items-start gap-1.5 text-small text-text-secondary"
+          title={summary.detail || summary.timeSummary}
+        >
+          <CalendarDays className="mt-0.5 size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
+          <span className="min-w-0">
+            <p className="truncate font-semibold text-text-primary">{summary.days}</p>
+            <p className="truncate">{summary.timeSummary}</p>
+          </span>
+        </span>
+
+        <div className="flex items-center justify-between gap-3">
+          <BatchInstructorSummary schedules={batch.currentSchedules} size="md" showLabel className="min-w-0" />
+          <div className="shrink-0 rounded-lg border border-border bg-background/60 px-4 py-2 text-center">
+            <p className="text-section-title font-semibold text-text-primary">{batch.studentCount}</p>
+            <p className="text-small text-text-secondary">{batch.studentCount === 1 ? "Student" : "Students"}</p>
+          </div>
+        </div>
+      </div>
+    </EntityCard>
   );
 }

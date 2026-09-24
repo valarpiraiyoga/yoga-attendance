@@ -40,6 +40,7 @@ export default function BatchHeader({ batch, active, children }) {
       </Link>
 
       <EntityDetailHeader
+        decorative={false}
         className="mb-0"
         avatar={<Avatar name={batch.name} shape="square" size="lg" />}
         title={batch.name}

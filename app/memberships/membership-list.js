@@ -12,9 +12,13 @@ import { DEFAULT_MEMBERSHIP_SORT } from "@/lib/memberships/data";
 import MembershipCardItem from "@/app/memberships/membership-card-item";
 import MembershipTableRow from "@/app/memberships/membership-table-row";
 
+// 3 columns at the widest (matches the Students list pattern and the approved
+// reference) and `items-start` so a Cancelled membership's shorter card (no
+// progress-bar footer) doesn't stretch to match a taller Active/Expired
+// sibling in the same grid row — CardGrid's own default is items-stretch.
 function MembershipCards({ memberships, today }) {
   return (
-    <CardGrid ariaLabel="Memberships">
+    <CardGrid ariaLabel="Memberships" className="items-start xl:grid-cols-3">
       {memberships.map((membership) => (
         <MembershipCardItem key={membership.id} membership={membership} today={today} />
       ))}

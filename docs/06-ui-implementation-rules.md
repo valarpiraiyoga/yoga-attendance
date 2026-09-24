@@ -99,9 +99,11 @@ Shadows  none / xs / sm / md / lg / xl
    `bg-[#fff]`, `p-[13px]`). The only permitted arbitrary values are layout
    geometry that has no token (e.g. `max-w-[1200px]` in `Container`, the
    weekly-grid pixel math in `weekly-schedule.js`).
-5. **No decorative gradients.** The sidebar tint (`.sidebar-surface`) is the
-   single approved exception and is defined once in `globals.css`. Do not add
-   a second. `DataTableShell`'s gradient and the Dashboard's saturated
+5. **No decorative gradients.** The sidebar tint (`.sidebar-surface`, defined
+   once in `globals.css`) and the detail-page hero card (`EntityDetailHeader`:
+   a soft `brand`/`info` gradient with faint circles and rings, tokens only,
+   pinned to the top on scroll from `sm`) are the two approved exceptions. Do
+   not add a third. `DataTableShell`'s gradient and the Dashboard's saturated
    `StatTile` gradients are retired (§8, §9).
 6. Shadows: `shadow-xs` and `shadow-sm` only. Anything heavier requires a
    reference that clearly shows elevation.
@@ -508,17 +510,28 @@ bg-surface px-6 py-16 text-center
 
 `PageHeader` is the only way a page renders its title. No exceptions.
 
+A compact strip (global shell refinement — supersedes the earlier large
+header with an icon tile and a 24px title):
+
 ```
-[ icon tile ]  H1 title            [ actions ]
-               description
+H1 title                           [ actions ]
+description
+──────────────────────────────────────────────
 ```
 
-- Icon tile: `bg-brand/10 text-brand rounded-lg`, `size-6` icon.
-- Title: `text-page-title font-semibold text-text-primary`.
-- Description: `text-small text-text-secondary`, one line of purpose.
+- No icon tile. `PageHeader` still accepts `icon` so call sites do not break,
+  but does not render it.
+- Title: `text-section-title font-semibold text-text-primary` (18px).
+- Description: `text-body text-text-secondary` (14px), one line of purpose.
 - Actions: right-aligned on `sm+`, stacked below on mobile. At most one
   `default` variant.
+- A hairline `border-b border-border/70` closes the strip; `pb-4`.
 - Spacing to the next block: `mb-6`.
+- Only title, description and actions live in the strip. Hero/profile cards,
+  KPIs and tabs are page content and never go inside it.
+- The top `Header` bar exists only below `lg` (hamburger + app name). From `lg`
+  the profile / notifications / help / logout row lives at the bottom of the
+  Sidebar (`UtilityRow`), which the mobile navigation sheet reuses.
 
 **Contextual header slot.** Some pages carry a control in the header row
 rather than an action button — Attendance's date navigator (`14`, `15`).

@@ -7,20 +7,23 @@ import { cn } from "@/lib/utils";
  * all — pairs with a primary action) or `variant="filtered"` (no records
  * match the current search/filters — pairs with a "Clear Filters" action).
  * `size="sm"` drops the icon and the outer padding for an empty state
- * nested inside a `Panel`.
+ * nested inside a `Panel`. `size="compact"` goes further for a secondary
+ * section that is simply empty: no dashed box, left-aligned title and text.
  */
 export default function EmptyState({ icon: Icon, title, description, action, size = "default", className }) {
   const isSmall = size === "sm";
+  const isCompact = size === "compact";
 
   return (
     <div
       className={cn(
         "flex flex-col items-center gap-3 rounded-card border border-dashed border-border bg-surface text-center",
         isSmall ? "gap-2 px-4 py-8" : "px-6 py-16",
+        isCompact && "items-start gap-0.5 rounded-none border-0 bg-transparent p-0 text-left",
         className
       )}
     >
-      {Icon && !isSmall ? (
+      {Icon && !isSmall && !isCompact ? (
         <span
           aria-hidden="true"
           className="flex size-12 items-center justify-center rounded-full bg-background text-text-secondary"
@@ -30,7 +33,7 @@ export default function EmptyState({ icon: Icon, title, description, action, siz
       ) : null}
       {title ? <p className="text-body font-medium text-text-primary">{title}</p> : null}
       {description ? (
-        <p className="max-w-sm text-small text-text-secondary">{description}</p>
+        <p className={cn("text-small text-text-secondary", !isCompact && "max-w-sm")}>{description}</p>
       ) : null}
       {action ? <div className="mt-1">{action}</div> : null}
     </div>

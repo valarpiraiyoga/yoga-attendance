@@ -15,18 +15,31 @@ import {
  * Students card overflow — links only to existing Student / Membership /
  * Enrollment routes already used on Student Details. "View Membership" and
  * "Edit Batch" disable when no current membership / active enrollment exists.
+ *
+ * Also the Student Details header's more (⋮) menu: the same action list, with
+ * the trigger's look and label passed in (`triggerVariant`, `triggerSize`,
+ * `triggerClassName`, `triggerLabel`); the defaults are the list card's.
  */
-export default function StudentCardMenu({ studentId, membershipId, enrollmentId, onOpenChange }) {
+export default function StudentCardMenu({
+  studentId,
+  membershipId,
+  enrollmentId,
+  onOpenChange,
+  triggerVariant = "ghost",
+  triggerSize = "icon-sm",
+  triggerClassName = "shrink-0 text-brand hover:bg-brand/10 hover:text-brand",
+  triggerLabel = "Student actions",
+}) {
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
           <Button
             type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label="Student actions"
+            variant={triggerVariant}
+            size={triggerSize}
+            className={triggerClassName}
+            aria-label={triggerLabel}
           />
         }
       >

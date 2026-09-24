@@ -15,14 +15,10 @@ export default function StudentTableRow({ student }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const entityStatus = ENTITY_STATUS[student.status] ?? ENTITY_STATUS.inactive;
   const membershipStatus = MEMBERSHIP_SUMMARY[student.membershipSummary] ?? MEMBERSHIP_SUMMARY.none;
+  const batchValue = student.batchCodes.length > 0 ? student.batchCodes.join(", ") : "—";
 
   return (
-    <TableRow
-      className={cn(
-        "border-border/30 bg-surface/40 transition-colors hover:bg-surface/70",
-        menuOpen && "bg-brand/10 hover:bg-brand/10"
-      )}
-    >
+    <TableRow className={cn(menuOpen && "bg-brand/10 hover:bg-brand/10")}>
       <TableCell>
         <div className="flex min-w-0 items-center gap-3">
           <Avatar name={student.full_name} src={student.photo_url} />
@@ -33,19 +29,7 @@ export default function StudentTableRow({ student }) {
         </div>
       </TableCell>
       <TableCell className="text-text-secondary">{student.phone || "—"}</TableCell>
-      <TableCell>
-        {student.batchCodes.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {student.batchCodes.map((code) => (
-              <Badge key={code} variant="outline" className="border-border/70 bg-surface/60">
-                {code}
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <span className="text-text-secondary">—</span>
-        )}
-      </TableCell>
+      <TableCell className="text-text-secondary">{batchValue}</TableCell>
       <TableCell>
         <Badge variant={membershipStatus.variant}>{membershipStatus.label}</Badge>
       </TableCell>

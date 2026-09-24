@@ -156,8 +156,14 @@ export default async function StudentsPage({ searchParams }) {
             sortOptions={SORT_OPTIONS}
           />
 
+          {/* Extra bottom clearance on narrow viewports only: below `lg` the
+              mobile Header's hamburger opens a Sheet whose own bottom
+              UtilityRow (profile/notifications/help/logout) sits close to
+              the screen edge, and a phone's own browser chrome eats into
+              the same area — this keeps the last card row and Pagination
+              comfortably clear of both instead of sitting flush against it. */}
           <Pagination
-            className="mt-4"
+            className="mt-4 pb-6 sm:pb-0"
             page={page}
             totalPages={totalPages}
             total={total}

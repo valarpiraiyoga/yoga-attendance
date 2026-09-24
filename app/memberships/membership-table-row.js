@@ -36,12 +36,7 @@ export default function MembershipTableRow({ membership, today }) {
   const daysLeft = getValidityLabel(validity, { compact: true });
 
   return (
-    <TableRow
-      className={cn(
-        "border-border/30 bg-surface/40 transition-colors hover:bg-surface/70",
-        menuOpen && "bg-brand/10 hover:bg-brand/10"
-      )}
-    >
+    <TableRow className={cn(menuOpen && "bg-brand/10 hover:bg-brand/10")}>
       <TableCell>
         <p className="whitespace-nowrap font-semibold text-text-primary">{membership.membership_code}</p>
         <p className="text-small text-text-secondary">{describePeriodLength(validity.totalDays)}</p>

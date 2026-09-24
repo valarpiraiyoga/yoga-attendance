@@ -12,9 +12,13 @@ import { DEFAULT_STUDENT_SORT } from "@/lib/students/data";
 import StudentCardItem from "@/app/students/student-card-item";
 import StudentTableRow from "@/app/students/student-table-row";
 
+// 3 columns at the widest — CardGrid's own default goes to 4 at `xl`, wider
+// than these compact cards need (docs/ui-reference/02/students.png: 3 at
+// desktop, 2 at narrower desktop/tablet, 1 on mobile — the `sm`/`lg` steps
+// CardGrid already provides).
 function StudentCards({ students }) {
   return (
-    <CardGrid ariaLabel="Students">
+    <CardGrid ariaLabel="Students" className="xl:grid-cols-3">
       {students.map((student) => (
         <StudentCardItem key={student.id} student={student} />
       ))}
@@ -30,7 +34,7 @@ function StudentTable({ students }) {
           <TableRow className="hover:bg-transparent">
             <TableHead>Student</TableHead>
             <TableHead>Phone</TableHead>
-            <TableHead>Batches</TableHead>
+            <TableHead>Batch</TableHead>
             <TableHead>Membership</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Action</TableHead>

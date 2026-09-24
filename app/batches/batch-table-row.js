@@ -11,12 +11,15 @@ import { BATCH_STATUS } from "@/lib/status";
 import { summarizeCurrentSchedules } from "@/lib/batches/summary";
 import { cn } from "@/lib/utils";
 import BatchCardMenu from "@/app/batches/batch-card-menu";
+import BatchInstructorSummary from "@/app/batches/batch-instructor-summary";
 
 /**
- * Batch table row (`09 Batches table view.png`): Batch Name (avatar + name),
- * Code, Category, Instructor, Days & Time, Students, Status, Action. The
- * schedule-derived cells summarise the batch's current schedules; Action is
- * the finalized eye + overflow menu.
+ * Batch table row: Batch (avatar + name), Code, Category, Instructor,
+ * Days & Time, Students, Status, Action. The schedule-derived cells
+ * summarise the batch's current schedules (unmodified `summarizeCurrentSchedules`,
+ * plus `BatchInstructorSummary` for the Instructor cell's avatar(s) — see
+ * that component's own comment for why it isn't folded into the shared
+ * summary function); Action is the finalized eye + overflow menu.
  */
 export default function BatchTableRow({ batch }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -25,12 +28,7 @@ export default function BatchTableRow({ batch }) {
   const summary = summarizeCurrentSchedules(batch.currentSchedules);
 
   return (
-    <TableRow
-      className={cn(
-        "border-border/30 bg-surface/40 transition-colors hover:bg-surface/70",
-        menuOpen && "bg-brand/10 hover:bg-brand/10"
-      )}
-    >
+    <TableRow className={cn(menuOpen && "bg-brand/10 hover:bg-brand/10")}>
       <TableCell>
         <div className="flex min-w-0 items-center gap-3">
           <Avatar name={batch.name} shape="square" />
@@ -39,12 +37,17 @@ export default function BatchTableRow({ batch }) {
       </TableCell>
       <TableCell className="whitespace-nowrap text-text-secondary">{batch.code || "—"}</TableCell>
       <TableCell className="text-text-secondary">{batch.category || "—"}</TableCell>
-      <TableCell className="text-text-secondary">{summary.instructor}</TableCell>
       <TableCell>
+        <BatchInstructorSummary schedules={batch.currentSchedules} />
+      </TableCell>
+      <TableCell title={summary.detail || undefined}>
         {summary.hasSchedule ? (
           <>
             <p className="text-text-primary">{summary.days}</p>
             <p className="text-small whitespace-nowrap text-text-secondary">{summary.time}</p>
+            {summary.countLabel ? (
+              <p className="text-small whitespace-nowrap text-text-secondary">{summary.countLabel}</p>
+            ) : null}
           </>
         ) : (
           <span className="text-text-secondary">{summary.time}</span>

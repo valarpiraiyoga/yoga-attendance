@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Avatar from "@/components/ui/avatar";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatDate, formatTimeRange } from "@/lib/format";
 import { DAY_LABELS } from "@/lib/schedules/validation";
@@ -28,19 +29,33 @@ export default function BatchScheduleRow({ schedule }) {
 
   return (
     <TableRow className={cn(menuOpen && "bg-brand/10 hover:bg-brand/10")}>
-      <TableCell className="whitespace-nowrap text-text-secondary">{day}</TableCell>
-      <TableCell className="whitespace-nowrap text-text-secondary">{time}</TableCell>
-      <TableCell className="whitespace-nowrap text-text-secondary">{schedule.instructors?.full_name ?? "—"}</TableCell>
-      <TableCell className="whitespace-nowrap text-text-secondary">{formatDate(schedule.effective_from)}</TableCell>
-      <TableCell className="whitespace-nowrap text-text-secondary">
+      {/* Day + Time are the primary, easiest-to-scan info: Day gets the strongest weight,
+          Time stays legible but secondary. Effective dates are quieter still (text-small)
+          — real, unchanged values (formatDate), just visually de-emphasized. */}
+      <TableCell className="py-3 whitespace-nowrap font-medium text-text-primary">{day}</TableCell>
+      <TableCell className="py-3 whitespace-nowrap text-text-secondary">{time}</TableCell>
+      <TableCell className="py-3 whitespace-nowrap text-text-secondary">
+        {schedule.instructors?.full_name ? (
+          <span className="inline-flex items-center gap-2">
+            <Avatar name={schedule.instructors.full_name} src={schedule.instructors.photo_url} size="sm" />
+            {schedule.instructors.full_name}
+          </span>
+        ) : (
+          "—"
+        )}
+      </TableCell>
+      <TableCell className="py-3 text-small whitespace-nowrap text-text-secondary">
+        {formatDate(schedule.effective_from)}
+      </TableCell>
+      <TableCell className="py-3 text-small whitespace-nowrap text-text-secondary">
         {schedule.effective_until ? formatDate(schedule.effective_until) : "—"}
       </TableCell>
-      <TableCell>
+      <TableCell className="py-3">
         <Badge variant={schedule.status === "active" ? "success" : "danger"}>
           {schedule.status === "active" ? "Active" : "Inactive"}
         </Badge>
       </TableCell>
-      <TableCell>
+      <TableCell className="w-px px-3 py-3 whitespace-nowrap sm:px-4">
         <div className="flex items-center gap-1">
           <Button
             type="button"
