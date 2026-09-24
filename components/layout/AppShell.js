@@ -1,6 +1,7 @@
 import Header from "@/components/global/Header";
 import Sidebar from "@/components/global/Sidebar";
 import { getCenterSettings } from "@/lib/center-profile/settings";
+import { DEFAULT_CENTER_SETTINGS } from "@/lib/center-profile/settings-core";
 
 /**
  * Reusable application-level layout.
@@ -26,22 +27,24 @@ import { getCenterSettings } from "@/lib/center-profile/settings";
  * `mobileTitle` (optional) names the section in the mobile top bar in place of
  * the app name — see `Header`.
  *
- * The centre's logo (Center Settings) appears in the shell's one brand slot -
- * the Sidebar and the mobile menu's header - when one has been uploaded; the
- * layout is otherwise unchanged. A logo that cannot be read never fails the
- * page: the shell just renders without it.
+ * The centre's logo AND name (Center Settings - the one saved Center Profile,
+ * read through `getCenterSettings`) fill the shell's one brand slot - the
+ * Sidebar, the mobile menu's header and the mobile top bar's fallback title;
+ * "Attendance System" stays the product descriptor beneath the name. The layout
+ * is otherwise unchanged. Settings that cannot be read never fail the page: the
+ * shell falls back to the default name and no logo.
  */
 export default async function AppShell({ role, user, mobileTitle, children }) {
-  const logoUrl = await getCenterSettings()
-    .then((settings) => settings.logoUrl)
-    .catch(() => null);
+  const { logoUrl, centerName } = await getCenterSettings()
+    .then((settings) => ({ logoUrl: settings.logoUrl, centerName: settings.name }))
+    .catch(() => ({ logoUrl: null, centerName: DEFAULT_CENTER_SETTINGS.name }));
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background print:block print:h-auto print:overflow-visible">
-      <Sidebar role={role} user={user} logoUrl={logoUrl} />
+      <Sidebar role={role} user={user} logoUrl={logoUrl} centerName={centerName} />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <Header role={role} user={user} mobileTitle={mobileTitle} logoUrl={logoUrl} />
+        <Header role={role} user={user} mobileTitle={mobileTitle} logoUrl={logoUrl} centerName={centerName} />
         <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 print:overflow-visible print:p-0">
           {children}
         </main>

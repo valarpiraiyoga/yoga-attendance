@@ -15,7 +15,7 @@ import NavList from "@/components/global/NavList";
 import UtilityRow from "@/components/global/UtilityRow";
 import CenterLogo from "@/components/global/CenterLogo";
 
-export default function MobileMenu({ role, user, logoUrl }) {
+export default function MobileMenu({ role, user, logoUrl, centerName }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -32,8 +32,8 @@ export default function MobileMenu({ role, user, logoUrl }) {
         <SheetHeader className="border-b border-border/70">
           <SheetTitle className="flex items-center gap-3 text-left leading-tight">
             <CenterLogo url={logoUrl} />
-            <span className="flex flex-col items-start">
-              <span className="text-sm font-semibold text-text-primary">Yoga Center</span>
+            <span className="flex min-w-0 flex-col items-start">
+              <span className="max-w-full truncate text-sm font-semibold text-text-primary">{centerName}</span>
               <span className="text-xs font-normal text-text-secondary">Attendance System</span>
             </span>
           </SheetTitle>
