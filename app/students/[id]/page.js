@@ -24,6 +24,8 @@ import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
+import { getRecentStudentAttendance } from "@/lib/reports/data";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   listEnrollmentsForStudent,
   listScheduleAssignmentsForEnrollment,
@@ -31,7 +33,7 @@ import {
 } from "@/lib/enrollments/data";
 import { DAY_LABELS, DAYS_OF_WEEK } from "@/lib/schedules/validation";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
-import { formatDate, formatDateShort, formatTimeRange } from "@/lib/format";
+import { formatDate, formatDateShort, formatDateWithWeekday, formatTimeRange } from "@/lib/format";
 import { formatCurrency } from "@/lib/currencies";
 import { cn } from "@/lib/utils";
 import { ENTITY_STATUS, MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
@@ -105,6 +107,24 @@ function formatPeriod(startDate, endDate) {
     : `${formatDate(startDate)} – ${formatDate(endDate)}`;
 }
 
+const ATTENDANCE_STATUS = {
+  present: { label: "Present", variant: "success" },
+  absent: { label: "Absent", variant: "danger" },
+};
+
+/**
+ * The student's latest recorded attendance (`getRecentStudentAttendance`), or
+ * `null` when it cannot be loaded, so the rest of Student Details still renders
+ * and the panel says so rather than claiming there is none.
+ */
+async function loadRecentAttendance(studentId, today) {
+  try {
+    return await getRecentStudentAttendance(studentId, today);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Student Details (wireframe p10; `04 Student detail.png`) — a single page,
  * not tabs (02-ux.md: "Student Details is a single page, not tabs" — settled
@@ -130,9 +150,10 @@ export default async function StudentDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const [enrollments, currentMembership] = await Promise.all([
+  const [enrollments, currentMembership, recentAttendance] = await Promise.all([
     listEnrollmentsForStudent(id),
     getCurrentMembershipForStudent(id),
+    loadRecentAttendance(id, today),
   ]);
   const assignmentsByEnrollmentId = new Map(
     await Promise.all(
@@ -491,11 +512,52 @@ export default async function StudentDetailsPage({ params, searchParams }) {
 
       <Panel>
         <PanelHeader icon={ClipboardList} title="Recent Attendance" className="mb-2" />
-        <EmptyState
-          size="compact"
-          title="No recent attendance yet"
-          description="Attendance for this student will appear here once classes are marked."
-        />
+        {!recentAttendance ? (
+          <EmptyState
+            size="compact"
+            title="Recent attendance is not available right now"
+            description="Try refreshing the page."
+          />
+        ) : recentAttendance.length === 0 ? (
+          <EmptyState
+            size="compact"
+            title="No recent attendance yet"
+            description="Attendance for this student will appear here once classes are marked."
+          />
+        ) : (
+          <Table aria-label="Recent attendance">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Date</TableHead>
+                <TableHead>Batch</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="hidden sm:table-cell">Instructor</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentAttendance.map((session) => {
+                const status = ATTENDANCE_STATUS[session.status];
+                return (
+                  <TableRow key={session.id}>
+                    <TableCell className="whitespace-nowrap font-medium text-text-primary">
+                      {formatDateWithWeekday(session.session_date)}
+                    </TableCell>
+                    <TableCell className="text-text-primary">
+                      {session.batch?.name ?? "—"}
+                      {session.batch?.code ? <span className="text-text-secondary"> · {session.batch.code}</span> : null}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={status.variant}>{status.label}</Badge>
+                    </TableCell>
+                    <TableCell className="hidden text-text-secondary sm:table-cell">
+                      {session.instructor?.full_name ?? "—"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
       </Panel>
     </div>
   );
