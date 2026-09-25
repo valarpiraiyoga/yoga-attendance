@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ImageIcon, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import FormField from "@/components/ui/form-field";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
-import ProfilePhotoField, { useProfilePhoto } from "@/components/ui/profile-photo-field";
+import { useProfilePhoto } from "@/components/ui/profile-photo-field";
+import ProfilePhotoCard from "@/components/ui/profile-photo-card";
 import TimeZoneSelect from "@/components/forms/TimeZoneSelect";
 import CurrencySelect from "@/components/forms/CurrencySelect";
 import { validateCenterProfileInput } from "@/lib/center-profile/validation";
@@ -205,31 +206,19 @@ export default function CenterProfileForm({ action, profile }) {
         </Panel>
         </div>
 
-        <Panel className="self-start lg:col-span-2">
-          <PanelHeader title="Center Logo" description="This logo is used in the application and on receipts." />
-          <ProfilePhotoField
-            name={profile?.name ?? ""}
-            label="Center Logo"
-            hideLabel
-            noun="Logo"
-            currentUrl={profile?.logo_url ?? null}
-            photo={logo}
-            onChange={setLogo}
-            error={fieldErrors.photo}
-            disabled={isPending}
-            preview={(url) => (
-              <div className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-background">
-                {url ? (
-                  // A plain <img>: the same tradeoff as every other stored image here (see Avatar).
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={url} alt="Center logo preview" className="size-full object-contain p-1.5" />
-                ) : (
-                  <ImageIcon className="size-8 text-text-secondary" aria-hidden="true" />
-                )}
-              </div>
-            )}
-          />
-        </Panel>
+        <ProfilePhotoCard
+          name={profile?.name ?? ""}
+          label="Center Logo"
+          noun="Logo"
+          description="This logo is used in the application and on receipts."
+          currentUrl={profile?.logo_url ?? null}
+          photo={logo}
+          onChange={setLogo}
+          error={fieldErrors.photo}
+          disabled={isPending}
+          fit="contain"
+          className="w-full self-start lg:col-span-2"
+        />
       </div>
 
       <div className="flex flex-col gap-4 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">

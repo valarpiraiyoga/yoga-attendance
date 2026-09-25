@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useProfilePhoto } from "@/components/ui/profile-photo-field";
 import BatchIdentityField from "@/app/batches/batch-identity-field";
+import BatchIdentityHeader from "@/components/ui/batch-identity-header";
 import { DEFAULT_BATCH_COLOR } from "@/lib/batches/identity";
 import { validateBatchInput } from "@/lib/batches/validation";
 
@@ -111,6 +112,8 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
           {state.error}
         </p>
       ) : null}
+
+      {batch ? <BatchIdentityHeader batch={batch} /> : null}
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="name">Batch Name</Label>

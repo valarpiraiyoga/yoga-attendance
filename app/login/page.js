@@ -1,4 +1,4 @@
-import AuthLayout from "@/components/auth/AuthLayout";
+import AuthCardLayout from "@/components/auth/AuthCardLayout";
 import LoginForm from "./login-form";
 
 export const metadata = {
@@ -20,17 +20,15 @@ export default async function LoginPage({ searchParams }) {
   const initialError = ERROR_MESSAGES[params?.error];
 
   return (
-    <AuthLayout>
-      <div className="mb-8">
-        <h1 className="text-page-title font-semibold text-text-primary">
-          Welcome back
-        </h1>
-        <p className="text-body mt-1 text-text-secondary">
-          Sign in to continue to your dashboard.
-        </p>
+    <AuthCardLayout>
+      <div className="mb-6 text-center">
+        <h1 className="text-page-title font-semibold text-text-primary">Welcome Back</h1>
+        <p className="text-body mt-1 text-text-secondary">Sign in to your account</p>
       </div>
 
       <LoginForm initialError={initialError} />
-    </AuthLayout>
+
+      <p className="text-small mt-6 text-center text-text-secondary">Need help? Contact your administrator.</p>
+    </AuthCardLayout>
   );
 }

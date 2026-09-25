@@ -1,17 +1,13 @@
-import { Settings } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
-import Container from "@/components/layout/Container";
-import PageHeader from "@/components/layout/PageHeader";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import SettingsTabs from "@/app/settings/settings-tabs";
+import SettingsChrome from "@/app/settings/settings-chrome";
 
 /**
- * Shared Settings shell: the compact page-header strip, the three approved
- * tabs (`app/settings/settings-tabs.js` — docs/02-ux.md "Settings"; wireframe
- * p.38–40), and the shared page chrome. On mobile the top bar names the page
- * ("Settings", `mobileTitle`) and the strip steps aside. The header is a
- * direct child of the shell's `<main>` (it bleeds through the shell padding),
- * so only the tabs and the individual tab pages sit in the `Container`.
+ * Shared Settings shell: the page chrome, plus (via `settings-chrome.js`) the compact
+ * page-header strip and the three approved tabs (`app/settings/settings-tabs.js` —
+ * docs/02-ux.md "Settings"; wireframe p.38–40) around the three tab pages. On mobile the
+ * top bar names the page ("Settings", `mobileTitle`) and the strip steps aside. Add /
+ * Edit Instructor are task screens and draw their own strip with a back button.
  *
  * This layout's own `requireRole` only builds the shell for the initial
  * request — it does not re-run on client-side navigation between sibling
@@ -24,17 +20,7 @@ export default async function SettingsLayout({ children }) {
 
   return (
     <AppShell role={user.role} user={user} mobileTitle="Settings">
-      <PageHeader
-        compact
-        collapseOnMobile
-        title="Settings"
-        description="Manage center information, instructors, and access permissions."
-        icon={<Settings className="size-6" />}
-      />
-
-      <Container>
-        <SettingsTabs>{children}</SettingsTabs>
-      </Container>
+      <SettingsChrome>{children}</SettingsChrome>
     </AppShell>
   );
 }

@@ -9,6 +9,7 @@ import { InstructorCell, SessionCell } from "@/components/ui/session-cells";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import SessionCardMenu from "@/app/attendance/session-card-menu";
+import { sessionContextOf } from "@/app/attendance/session-context";
 import { summarizeSession } from "@/app/attendance/session-summary";
 
 // Responsive by the table's own width (container queries), not the viewport —
@@ -20,7 +21,7 @@ const ELIGIBLE_ONLY = "hidden @[38rem]:table-cell";
 
 const HEAD_CLASS = "h-10 px-2 text-small tracking-normal";
 
-function SessionRow({ session, today, timeZone }) {
+function SessionRow({ session, today, timeZone, isAdmin }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const summary = summarizeSession(session, today, timeZone);
 
@@ -61,6 +62,10 @@ function SessionRow({ session, today, timeZone }) {
             actionLabel={summary.actionLabel}
             actionHref={summary.actionHref}
             detailsHref={summary.detailsHref}
+            scheduleId={session.schedule_id}
+            date={session.session_date}
+            canMarkException={isAdmin && session.status === "scheduled"}
+            sessionContext={sessionContextOf(session)}
             onOpenChange={setMenuOpen}
           />
         </div>
@@ -78,7 +83,7 @@ function SessionRow({ session, today, timeZone }) {
  * primary "Take Attendance" action lives on the card and in the row's eye /
  * menu, not as a button in the row.
  */
-export default function SessionTable({ sessions, today, timeZone, ariaLabel }) {
+export default function SessionTable({ sessions, today, timeZone, ariaLabel, isAdmin = false }) {
   return (
     <div className="@container overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
       <Table aria-label={ariaLabel}>
@@ -93,7 +98,7 @@ export default function SessionTable({ sessions, today, timeZone, ariaLabel }) {
         </TableHeader>
         <TableBody>
           {sessions.map((session) => (
-            <SessionRow key={session.id ?? `${session.schedule_id}:${session.session_date}`} session={session} today={today} timeZone={timeZone} />
+            <SessionRow key={session.id ?? `${session.schedule_id}:${session.session_date}`} session={session} today={today} timeZone={timeZone} isAdmin={isAdmin} />
           ))}
         </TableBody>
       </Table>

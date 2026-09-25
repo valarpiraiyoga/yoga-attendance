@@ -1,18 +1,21 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Hash, Pencil, Tag } from "lucide-react";
+import { CalendarDays, Hash, Pencil, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import BatchAvatar from "@/components/ui/batch-avatar";
 import Tabs from "@/components/ui/tabs";
+import Container from "@/components/layout/Container";
 import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
+import PageHeader from "@/components/layout/PageHeader";
 import { Panel } from "@/components/layout/Panel";
 import { formatDate } from "@/lib/format";
 import { ENTITY_STATUS } from "@/lib/status";
 
 /**
  * Batch Details' shared header + tab nav (wireframe p17-19; 02-ux.md: Overview
- * / Students / Schedules / Attendance — four real routes). The header is the finalized
- * detail header (the same one Student and Membership Details use): batch
+ * / Students / Schedules / Attendance — four real routes). The page starts with the
+ * compact page strip (title + back button), then the finalized detail header (the same
+ * one Student and Membership Details use, with the same teal wash): batch
  * avatar, name, status, code / category / created date and the description.
  * The tabs are the canonical underline `Tabs`, route-based.
  *
@@ -30,17 +33,17 @@ export default function BatchHeader({ batch, active, children }) {
   ];
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link
-        href="/batches"
-        className="text-body inline-flex w-fit items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Batches
-      </Link>
-
+    <>
+      <PageHeader
+        compact
+        back={{ href: "/batches", label: "Back to Batches" }}
+        title="Batch Details"
+        description={`Schedules, students and attendance for ${batch.name}.`}
+      />
+      <Container className="flex flex-col gap-6">
       <EntityDetailHeader
         decorative={false}
+        wash
         className="mb-0"
         avatar={<BatchAvatar batch={batch} size="lg" />}
         title={batch.name}
@@ -79,6 +82,7 @@ export default function BatchHeader({ batch, active, children }) {
       <Tabs as="link" items={tabs} active={active} ariaLabel="Batch sections" />
 
       {active === "overview" || active === "attendance" ? children : <Panel>{children}</Panel>}
-    </div>
+      </Container>
+    </>
   );
 }

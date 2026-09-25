@@ -7,30 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import EntityCard from "@/components/ui/entity-card";
-import { formatTimeParts } from "@/lib/format";
+import StartTimeTile from "@/components/ui/start-time-tile";
 import { cn } from "@/lib/utils";
 import SessionCardMenu from "@/app/attendance/session-card-menu";
+import { sessionContextOf } from "@/app/attendance/session-context";
 import { summarizeSession } from "@/app/attendance/session-summary";
-
-/**
- * The start-time tile: the session's strongest visual element — the time large
- * and bold, its period small beneath (finalized reference).
- */
-function StartTimeTile({ startTime, label }) {
-  const { time, period } = formatTimeParts(startTime);
-
-  return (
-    <span className="flex size-14 shrink-0 flex-col items-center justify-center rounded-lg bg-brand/10 text-center leading-none text-brand">
-      <span className="sr-only">Starts at {label}</span>
-      <span aria-hidden="true" className="text-section-title font-bold">
-        {time}
-      </span>
-      <span aria-hidden="true" className="mt-0.5 text-small font-semibold">
-        {period}
-      </span>
-    </span>
-  );
-}
 
 /**
  * Attendance session card, shared by Today's Sessions and All Sessions
@@ -41,7 +22,7 @@ function StartTimeTile({ startTime, label }) {
  * outline "View Attendance" / "View Session" to the same routes the eye and
  * menu use. Composed from `EntityCard`; only the menu-open tint is local state.
  */
-export default function SessionCardItem({ session, today, timeZone }) {
+export default function SessionCardItem({ session, today, timeZone, isAdmin = false }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const summary = summarizeSession(session, today, timeZone);
   const canTake = summary.actionLabel === "Take Attendance";
@@ -72,6 +53,10 @@ export default function SessionCardItem({ session, today, timeZone }) {
             actionLabel={summary.actionLabel}
             actionHref={summary.actionHref}
             detailsHref={summary.detailsHref}
+            scheduleId={session.schedule_id}
+            date={session.session_date}
+            canMarkException={isAdmin && session.status === "scheduled"}
+            sessionContext={sessionContextOf(session)}
             onOpenChange={setMenuOpen}
           />
         </div>

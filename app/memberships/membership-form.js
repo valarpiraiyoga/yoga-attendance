@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
+import { Banknote, CalendarDays, CalendarX2, CircleCheck, Layers, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,8 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import ConfirmDialog from "@/components/ui/confirm-dialog";
+import StudentContext from "@/components/ui/student-context";
+import ReviewDialog, { ReviewRow } from "@/components/ui/review-dialog";
 import { formatCurrency } from "@/lib/currencies";
+import StudentIdentityHeader from "@/components/ui/student-identity-header";
 import { validateMembershipInput, calculateMembershipEndDate } from "@/lib/memberships/validation";
 
 const PLAN_OPTIONS = [
@@ -190,11 +193,10 @@ export default function MembershipForm({
           </p>
         ) : null}
 
-        <div className="mb-1 flex flex-wrap items-baseline gap-x-3 rounded-lg border border-border bg-background/60 p-3">
-          <span className="text-body font-medium text-text-primary">{student.full_name}</span>
-          <span className="text-small text-text-secondary">{student.student_code}</span>
-          {student.phone ? <span className="text-body text-text-secondary">{student.phone}</span> : null}
-        </div>
+        <StudentIdentityHeader
+          student={student}
+          membership={membership ? { code: membership.membership_code, plan: planLabel(membership.plan) } : undefined}
+        />
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="plan">Plan</Label>
@@ -373,44 +375,38 @@ export default function MembershipForm({
       </form>
 
       {requireConfirmation ? (
-        <ConfirmDialog
+        <ReviewDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
           title="Review membership"
+          context={<StudentContext student={student} />}
           description="Confirm these details before saving."
-          confirmLabel="Confirm & Save"
           isPending={isPending}
           onConfirm={confirmAndSubmit}
         >
           {reviewData ? (
-            <dl className="flex flex-col gap-3 rounded-lg border border-border bg-background/60 p-4">
-              <div className="flex justify-between gap-4">
-                <dt className="text-body text-text-secondary">Student</dt>
-                <dd className="text-body font-medium text-text-primary">{student.full_name}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-body text-text-secondary">Plan</dt>
-                <dd className="text-body font-medium text-text-primary">{reviewData.planLabel}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-body text-text-secondary">Start date</dt>
-                <dd className="text-body font-medium text-text-primary">{reviewData.startDate}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-body text-text-secondary">End date</dt>
-                <dd className="text-body font-medium text-text-primary">{reviewData.endDate}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-body text-text-secondary">Amount</dt>
-                <dd className="text-body font-medium text-text-primary">{formatCurrency(reviewData.amount, currency)}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-body text-text-secondary">Payment status</dt>
-                <dd className="text-body font-medium text-text-primary">{reviewData.paymentStatusLabel}</dd>
-              </div>
+            <dl className="flex flex-col gap-3">
+              <ReviewRow icon={UserRound} label="Student">
+                {student.full_name}
+              </ReviewRow>
+              <ReviewRow icon={Layers} label="Plan">
+                {reviewData.planLabel}
+              </ReviewRow>
+              <ReviewRow icon={CalendarDays} label="Start date">
+                {reviewData.startDate}
+              </ReviewRow>
+              <ReviewRow icon={CalendarX2} label="End date">
+                {reviewData.endDate}
+              </ReviewRow>
+              <ReviewRow icon={Banknote} label="Amount">
+                {formatCurrency(reviewData.amount, currency)}
+              </ReviewRow>
+              <ReviewRow icon={CircleCheck} label="Payment status">
+                {reviewData.paymentStatusLabel}
+              </ReviewRow>
             </dl>
           ) : null}
-        </ConfirmDialog>
+        </ReviewDialog>
       ) : null}
     </>
   );

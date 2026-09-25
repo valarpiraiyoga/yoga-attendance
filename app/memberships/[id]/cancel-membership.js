@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import StudentContext from "@/components/ui/student-context";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cancelMembership } from "@/lib/memberships/actions";
 import MembershipCardMenu from "@/app/memberships/membership-card-menu";
@@ -24,7 +25,7 @@ import MembershipCardMenu from "@/app/memberships/membership-card-menu";
  * server-side anyway (lib/memberships/actions.js), but there's no reason to
  * offer an action that can only fail.
  */
-export default function CancelMembership({ membershipId, studentId, isCancelled }) {
+export default function CancelMembership({ membershipId, studentId, isCancelled, student, membership }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [isPending, startTransition] = useTransition();
@@ -70,6 +71,7 @@ export default function CancelMembership({ membershipId, studentId, isCancelled 
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Cancel membership"
+        context={<StudentContext student={student} membership={membership} />}
         description="Cancel this membership? This does not delete the record — it remains available in Membership History and cannot be reversed."
         confirmLabel="Cancel Membership"
         destructive

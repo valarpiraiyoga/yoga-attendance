@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   PROFILE_PHOTO_ACCEPT,
   PROFILE_PHOTO_HINT,
+  PROFILE_PHOTO_HINT_POINTS,
   validateProfilePhotoFile,
 } from "@/lib/storage/profile-photo-rules";
 
@@ -47,6 +48,7 @@ export function useProfilePhoto() {
  * @param {string} [props.label] - the field's label ("Profile Photo").
  * @param {string} [props.noun] - the file's name in buttons and messages ("Photo").
  * @param {(url: string|null) => import("react").ReactNode} [props.preview] - draws the preview for the shown URL (default: the person's `Avatar`).
+ * @param {boolean} [props.stacked] - a single-column layout for a narrow side card: a bold title, the preview, full-width Change / Remove buttons (with icons) and the hint beside an info icon.
  * @param {boolean} [props.hideLabel] - keep the label for assistive technology only, when the field already sits under a visible heading.
  * @param {string|null} [props.currentUrl] - the saved photo, if any.
  * @param {ReturnType<typeof useProfilePhoto>["photo"]} props.photo
@@ -58,6 +60,7 @@ export default function ProfilePhotoField({
   name,
   label = "Profile Photo",
   hideLabel = false,
+  stacked = false,
   noun = "Photo",
   preview,
   currentUrl = null,
@@ -104,36 +107,61 @@ export default function ProfilePhotoField({
 
   return (
     <div className="flex flex-col gap-2">
-      <span id={labelId} className={hideLabel ? "sr-only" : "text-body font-medium text-text-primary"}>
+      <span
+        id={labelId}
+        className={
+          hideLabel ? "sr-only" : stacked ? "text-body font-semibold text-text-primary" : "text-body font-medium text-text-primary"
+        }
+      >
         {label}
       </span>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+      <div className={stacked ? "flex flex-col gap-3" : "flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4"}>
         {preview ? preview(shownUrl) : <Avatar name={name} src={shownUrl} className="size-20 text-page-title" />}
 
-        <div className="flex min-w-0 flex-col items-start gap-2">
-          <div className="flex flex-wrap gap-2">
+        <div className={stacked ? "flex min-w-0 flex-col gap-3" : "flex min-w-0 flex-col items-start gap-2"}>
+          <div className={stacked ? "flex flex-col gap-2" : "flex flex-wrap gap-2"}>
             <Button
               type="button"
               variant="outline"
               size="sm"
               disabled={disabled}
+              className={
+                stacked ? "h-10 w-full border-brand/30 bg-brand/10 text-brand hover:bg-brand/15 hover:text-brand" : undefined
+              }
               onClick={() => inputRef.current?.click()}
             >
-              <ImageUp className="size-4" aria-hidden="true" />
+              <ImageUp className={stacked ? "size-5" : "size-4"} aria-hidden="true" />
               {shownUrl ? `Change ${noun}` : `Upload ${noun}`}
             </Button>
             {shownUrl ? (
-              <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={handleRemove}>
-                <Trash2 className="size-4" aria-hidden="true" />
-                Remove {noun}
+              <Button
+                type="button"
+                variant={stacked ? "outline" : "ghost"}
+                size="sm"
+                disabled={disabled}
+                className={stacked ? "h-10 w-full border-border bg-surface text-danger hover:bg-danger/5 hover:text-danger" : undefined}
+                onClick={handleRemove}
+              >
+                <Trash2 className={stacked ? "size-5" : "size-4"} aria-hidden="true" />
+                {stacked ? "Remove" : `Remove ${noun}`}
               </Button>
             ) : null}
           </div>
-          <p className="text-small text-text-secondary">
-            {photo.file ? `${photo.file.name} — saved when you save the form. ` : ""}
-            {PROFILE_PHOTO_HINT}
-          </p>
+          {stacked ? (
+            // In the card the hint is its own block, set off from the buttons by a rule, one bullet per point.
+            <ul className="text-small list-disc space-y-1 border-t border-border pt-3 pl-4 break-words text-text-secondary">
+              {photo.file ? <li>{`${photo.file.name} — saved when you save the form.`}</li> : null}
+              {PROFILE_PHOTO_HINT_POINTS.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-small break-words text-text-secondary">
+              {photo.file ? `${photo.file.name} — saved when you save the form. ` : ""}
+              {PROFILE_PHOTO_HINT}
+            </p>
+          )}
         </div>
 
         <input

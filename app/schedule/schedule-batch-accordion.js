@@ -14,6 +14,7 @@ import { ENTITY_STATUS } from "@/lib/status";
 import { DAY_LABELS } from "@/lib/schedules/validation";
 import { cn } from "@/lib/utils";
 import ScheduleCardMenu from "@/app/schedule/schedule-card-menu";
+import { scheduleContextOf } from "@/app/schedule/schedule-context";
 
 // How many schedule rows a batch group shows on mobile before "+N more
 // schedules" (an in-place reveal, not pagination). The desktop table lists
@@ -42,7 +43,13 @@ function ScheduleActions({ schedule, batchId, batchName, day, time, onOpenChange
       >
         <Eye className="size-4" aria-hidden="true" />
       </Button>
-      <ScheduleCardMenu scheduleId={schedule.id} batchId={batchId} batchName={batchName} onOpenChange={onOpenChange} />
+      <ScheduleCardMenu
+        scheduleId={schedule.id}
+        batchId={batchId}
+        batchName={batchName}
+        scheduleContext={scheduleContextOf(schedule, schedule.batches ?? { id: batchId, name: batchName })}
+        onOpenChange={onOpenChange}
+      />
     </div>
   );
 }

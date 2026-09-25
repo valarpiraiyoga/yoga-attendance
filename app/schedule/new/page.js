@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { listBatchOptions, getBatch } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { createSchedule } from "@/lib/schedules/actions";
 import ScheduleForm from "@/app/schedule/schedule-form";
+import PageHeader from "@/components/layout/PageHeader";
 
 /**
  * Add Schedule (02-ux.md Flow 03: "... Schedules → Add Schedule → Select
@@ -40,32 +39,27 @@ export default async function NewSchedulePage({ searchParams }) {
   const cancelHref = batch ? `/batches/${batch.id}/schedules` : "/schedule";
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Link
-        href={cancelHref}
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        {batch ? "Back to Batch Schedules" : "Back to Schedule"}
-      </Link>
-
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Add Schedule</h1>
-      <p className="text-body mt-1 text-text-secondary">
-        {batch ? `Add a recurring schedule for ${batch.name}.` : "Add a recurring weekly schedule."}
-      </p>
-
-      <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
-        <ScheduleForm
-          action={createSchedule}
-          batch={batch ?? undefined}
-          batchOptions={batchOptions}
-          instructorOptions={instructorOptions}
-          requireConfirmation={false}
-          submitLabel="Save Schedule"
-          pendingLabel="Saving…"
-          cancelHref={cancelHref}
-        />
+    <>
+      <PageHeader
+        compact
+        back={{ href: cancelHref, label: batch ? "Back to Batch Schedules" : "Back to Schedule" }}
+        title="Add Schedule"
+        description={<>{batch ? `Add a recurring schedule for ${batch.name}.` : "Add a recurring weekly schedule."}</>}
+      />
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+          <ScheduleForm
+            action={createSchedule}
+            batch={batch ?? undefined}
+            batchOptions={batchOptions}
+            instructorOptions={instructorOptions}
+            requireConfirmation={false}
+            submitLabel="Save Schedule"
+            pendingLabel="Saving…"
+            cancelHref={cancelHref}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

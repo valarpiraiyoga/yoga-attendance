@@ -117,7 +117,6 @@ export default async function MembershipsPage({ searchParams }) {
         <StatTileGroup className="mb-6" ariaLabel="Membership summary">
           <StatTile
             valueFirst
-            decorativeChart
             icon={CreditCard}
             label="Total Memberships"
             value={counts.total}
@@ -125,7 +124,6 @@ export default async function MembershipsPage({ searchParams }) {
           />
           <StatTile
             valueFirst
-            decorativeChart
             icon={CircleCheck}
             label="Active"
             value={counts.active}
@@ -134,7 +132,6 @@ export default async function MembershipsPage({ searchParams }) {
           />
           <StatTile
             valueFirst
-            decorativeChart
             icon={Hourglass}
             label="Expiring Soon"
             value={counts.expiringSoon}
@@ -143,7 +140,6 @@ export default async function MembershipsPage({ searchParams }) {
           />
           <StatTile
             valueFirst
-            decorativeChart
             icon={CalendarX}
             label="Expired"
             value={counts.expired}

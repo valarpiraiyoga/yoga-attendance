@@ -6,14 +6,15 @@ import { CircleAlert, CircleCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TONES = {
-  success: { icon: CircleCheck, iconClass: "text-success", border: "border-success/30", role: "status" },
-  error: { icon: CircleAlert, iconClass: "text-danger", border: "border-danger/30", role: "alert" },
+  success: { icon: CircleCheck, iconClass: "text-success", border: "border-success/30", tint: "bg-success/10", role: "status" },
+  error: { icon: CircleAlert, iconClass: "text-danger", border: "border-danger/30", tint: "bg-danger/10", role: "alert" },
 };
 
 /**
- * A transient message pinned to the bottom-right of the window (clear of the
- * pinned page header at the top), outside the
- * layout: it never pushes or wraps the content that triggered it. Rendered
+ * A transient message pinned to the top-right of the window, on a tinted
+ * background in its tone's colour (green for success, red for an error), outside
+ * the layout: it never pushes or wraps the content that triggered it. Below `lg`
+ * it sits under the 48px mobile top bar rather than over it. Rendered
  * into `document.body`, so no clipping or stacking context of the trigger
  * (sticky / overflow-hidden cards) can hide it.
  *
@@ -39,17 +40,19 @@ export default function Toast({ message, tone = "success", onDismiss, duration }
 
   if (!message || typeof document === "undefined") return null;
 
-  const { icon: Icon, iconClass, border, role } = TONES[tone] ?? TONES.success;
+  const { icon: Icon, iconClass, border, tint, role } = TONES[tone] ?? TONES.success;
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex justify-end sm:inset-x-auto sm:right-6 print:hidden">
+    <div className="pointer-events-none fixed inset-x-4 top-16 z-50 flex justify-end sm:inset-x-auto sm:right-6 lg:top-6 print:hidden">
+      {/* The tint sits on a solid surface, so the page behind never shows through the colour. */}
       <div
         role={role}
         className={cn(
-          "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border bg-surface p-3 shadow-sm animate-in fade-in slide-in-from-bottom-2",
+          "pointer-events-auto w-full max-w-sm rounded-lg border bg-surface shadow-sm animate-in fade-in slide-in-from-top-2",
           border
         )}
       >
+       <div className={cn("flex items-start gap-3 rounded-[inherit] p-3", tint)}>
         <Icon className={cn("mt-0.5 size-4 shrink-0", iconClass)} aria-hidden="true" />
         <p className="text-body min-w-0 flex-1 break-words text-text-primary">{message}</p>
         <button
@@ -60,6 +63,7 @@ export default function Toast({ message, tone = "success", onDismiss, duration }
         >
           <X className="size-4" aria-hidden="true" />
         </button>
+       </div>
       </div>
     </div>,
     document.body

@@ -11,6 +11,7 @@ import { formatDate, formatTimeRange } from "@/lib/format";
 import { DAY_LABELS } from "@/lib/schedules/validation";
 import { cn } from "@/lib/utils";
 import ScheduleCardMenu from "@/app/schedule/schedule-card-menu";
+import { scheduleContextOf } from "@/app/schedule/schedule-context";
 
 /**
  * One row of Batch Details' Schedules tab: day, time, instructor, effective
@@ -68,7 +69,12 @@ export default function BatchScheduleRow({ schedule }) {
           >
             <Eye className="size-4" aria-hidden="true" />
           </Button>
-          <ScheduleCardMenu scheduleId={schedule.id} batchName={label} onOpenChange={setMenuOpen} />
+          <ScheduleCardMenu
+            scheduleId={schedule.id}
+            batchName={label}
+            scheduleContext={scheduleContextOf(schedule)}
+            onOpenChange={setMenuOpen}
+          />
         </div>
       </TableCell>
     </TableRow>

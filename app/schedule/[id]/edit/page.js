@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getSchedule, getScheduleDeleteImpact } from "@/lib/schedules/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { updateSchedule } from "@/lib/schedules/actions";
 import ScheduleForm from "@/app/schedule/schedule-form";
+import PageHeader from "@/components/layout/PageHeader";
 
 /**
  * Edit Schedule (02-ux.md Flow 04). Batch is fixed — a schedule's batch
@@ -39,34 +38,29 @@ export default async function EditSchedulePage({ params }) {
   const updateScheduleById = updateSchedule.bind(null, id);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Link
-        href={`/schedule/${id}`}
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Schedule Details
-      </Link>
-
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Edit Schedule</h1>
-      <p className="text-body mt-1 text-text-secondary">
-        Update {schedule.batches?.name ?? "this batch"}&rsquo;s recurring schedule.
-      </p>
-
-      <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
-        <ScheduleForm
-          action={updateScheduleById}
-          batch={schedule.batches}
-          instructorOptions={instructorOptions}
-          schedule={schedule}
-          editMode={usage.editMode}
-          affectedStudentCount={usage.affectedStudentCount}
-          requireConfirmation
-          submitLabel="Save Changes"
-          pendingLabel="Saving…"
-          cancelHref={`/schedule/${id}`}
-        />
+    <>
+      <PageHeader
+        compact
+        back={{ href: `/schedule/${id}`, label: "Back to Schedule Details" }}
+        title="Edit Schedule"
+        description={<>Update {schedule.batches?.name ?? "this batch"}&rsquo;s recurring schedule.</>}
+      />
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+          <ScheduleForm
+            action={updateScheduleById}
+            batch={schedule.batches}
+            instructorOptions={instructorOptions}
+            schedule={schedule}
+            editMode={usage.editMode}
+            affectedStudentCount={usage.affectedStudentCount}
+            requireConfirmation
+            submitLabel="Save Changes"
+            pendingLabel="Saving…"
+            cancelHref={`/schedule/${id}`}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

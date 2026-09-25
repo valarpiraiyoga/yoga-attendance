@@ -7,6 +7,7 @@ import Avatar from "@/components/ui/avatar";
 import BatchAvatar from "@/components/ui/batch-avatar";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import ScheduleContext, { scheduleContextOf } from "@/app/schedule/schedule-context";
 import { getBatchColor } from "@/lib/batches/identity";
 import { cn } from "@/lib/utils";
 
@@ -84,16 +85,12 @@ export default function WeeklyScheduleCard({ schedule, style, dayLabel, timeRang
         open={open}
         onOpenChange={setOpen}
         tone="info"
-        title={batchName}
-        description={`${dayLabel} · ${timeRange}`}
+        title="Schedule details"
+        context={<ScheduleContext context={scheduleContextOf(schedule)} />}
         confirmLabel="Close"
         hideCancel
         onConfirm={() => setOpen(false)}
       >
-        <div className="flex items-center justify-center gap-2">
-          <Avatar name={instructor} src={photoUrl} size="sm" />
-          <span className="text-body text-text-primary">{instructor}</span>
-        </div>
         <Button variant="outline" className="w-full" render={<Link href={`/schedule/${schedule.id}`} />} nativeButton={false}>
           View Schedule
           <ArrowRight className="size-4" aria-hidden="true" />

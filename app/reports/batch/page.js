@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { BarChart3 } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
+import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import { listBatchOptions } from "@/lib/batches/data";
 import { validateReportDateRange } from "@/lib/reports/validation";
@@ -76,12 +76,9 @@ export default async function BatchAttendanceReportPage({ searchParams }) {
 
   return (
     <>
-      <PageHeader
-        title="Reports"
-        description="View attendance reports and summaries."
-        icon={<BarChart3 className="size-6" />}
-      />
+      <PageHeader compact title="Reports" description="View attendance reports and summaries." />
 
+      <Container>
       <ReportTabs active="batch">
         <BatchAttendanceFilters
           key={`filters:${batchId}:${dateFrom}:${dateTo}`}
@@ -93,6 +90,7 @@ export default async function BatchAttendanceReportPage({ searchParams }) {
 
         {results}
       </ReportTabs>
+      </Container>
     </>
   );
 }

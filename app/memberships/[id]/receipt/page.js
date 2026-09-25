@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Mail, MessageCircle, Phone } from "lucide-react";
+import { Mail, MessageCircle, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +21,7 @@ import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { formatPhone } from "@/lib/phone";
 import PrintReceiptButton from "@/app/memberships/[id]/receipt/print-receipt-button";
+import PageHeader from "@/components/layout/PageHeader";
 
 function Detail({ label, children }) {
   return (
@@ -101,38 +101,40 @@ export default async function MembershipReceiptPage({ params }) {
   const noNumberLabel = "Send WhatsApp is unavailable: this student has no registered mobile number";
 
   return (
-    <div className="mx-auto max-w-3xl print:max-w-none">
+    <>
       <style>{`@media print { @page { size: A4; margin: 14mm; } }`}</style>
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link
-          href={`/memberships/${id}`}
-          className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-        >
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to Membership
-        </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <PrintReceiptButton />
-          {whatsAppUrl ? (
-            <Button
-              variant="outline"
-              render={<a href={whatsAppUrl} target="_blank" rel="noopener noreferrer" />}
-              nativeButton={false}
-            >
-              <MessageCircle className="size-4" aria-hidden="true" />
-              Send WhatsApp
-            </Button>
-          ) : (
-            <span title={noNumberLabel}>
-              <Button variant="outline" disabled aria-label={noNumberLabel}>
+      <PageHeader
+        compact
+        className="print:hidden"
+        back={{ href: `/memberships/${id}`, label: "Back to Membership" }}
+        title="Membership Receipt"
+        description={`Receipt ${membership.membership_code}: print it or send it on WhatsApp.`}
+        actions={
+          <>
+            <PrintReceiptButton />
+            {whatsAppUrl ? (
+              <Button
+                variant="outline"
+                render={<a href={whatsAppUrl} target="_blank" rel="noopener noreferrer" />}
+                nativeButton={false}
+              >
                 <MessageCircle className="size-4" aria-hidden="true" />
                 Send WhatsApp
               </Button>
-            </span>
-          )}
-        </div>
-      </div>
+            ) : (
+              <span title={noNumberLabel}>
+                <Button variant="outline" disabled aria-label={noNumberLabel}>
+                  <MessageCircle className="size-4" aria-hidden="true" />
+                  Send WhatsApp
+                </Button>
+              </span>
+            )}
+          </>
+        }
+      />
+
+      <div className="mx-auto w-full max-w-3xl print:max-w-none">
 
       <article
         aria-label={`Receipt ${membership.membership_code}`}
@@ -244,6 +246,7 @@ export default async function MembershipReceiptPage({ params }) {
           </span>
         </footer>
       </article>
-    </div>
+      </div>
+    </>
   );
 }

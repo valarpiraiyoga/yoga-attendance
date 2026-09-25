@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Alert from "@/components/ui/alert";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import ScheduleContext from "@/app/schedule/schedule-context";
 import { deleteSchedule, previewScheduleDelete } from "@/lib/schedules/actions";
 import {
   dayLabel,
@@ -30,7 +31,7 @@ import { formatTimeRange } from "@/lib/format";
  * database, so a session that appeared after this dialog opened turns the
  * dialog into the blocked state instead of deleting.
  */
-export default function DeleteScheduleDialog({ scheduleId, open, onOpenChange }) {
+export default function DeleteScheduleDialog({ scheduleId, scheduleContext, open, onOpenChange }) {
   const router = useRouter();
   const [preview, setPreview] = useState(null);
   const [blockedReason, setBlockedReason] = useState(null);
@@ -54,6 +55,7 @@ export default function DeleteScheduleDialog({ scheduleId, open, onOpenChange })
 
   const isChecking = open && preview === null;
   const impact = preview?.impact ?? null;
+  const context = <ScheduleContext context={scheduleContext} />;
 
   function runDelete() {
     setErrorText(null);
@@ -82,6 +84,7 @@ export default function DeleteScheduleDialog({ scheduleId, open, onOpenChange })
         onOpenChange={onOpenChange}
         tone="warning"
         title="Couldn't check this schedule"
+        context={context}
         description={preview.error}
         confirmLabel="Close"
         hideCancel
@@ -99,6 +102,7 @@ export default function DeleteScheduleDialog({ scheduleId, open, onOpenChange })
         onOpenChange={onOpenChange}
         tone="warning"
         title="Schedule can't be deleted"
+        context={context}
         description={describeBlockReason(blockReason)}
         confirmLabel="View / Deactivate Schedule"
         onConfirm={viewSchedule}
@@ -121,6 +125,7 @@ export default function DeleteScheduleDialog({ scheduleId, open, onOpenChange })
       onOpenChange={onOpenChange}
       destructive
       title="Delete Schedule?"
+      context={context}
       description={label}
       confirmLabel="Delete Schedule"
       pendingLabel={isChecking ? "Checking…" : "Deleting…"}

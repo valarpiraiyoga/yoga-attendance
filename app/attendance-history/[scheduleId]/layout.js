@@ -1,11 +1,9 @@
-import Container from "@/components/layout/Container";
-
 /**
- * The session-detail routes (`[date]`, its edit / review steps) keep the
- * standard 1200px content container. The Attendance History layout above no
- * longer supplies it, because the list page draws a full-width header strip
- * outside the container.
+ * The session-detail routes (`[date]`, its edit / review steps) draw the compact page strip full-width, so
+ * they must sit directly in the shell's `<main>`: this layout adds no container of its
+ * own. Each page sets its own content width (a centred `max-w-*` form, or a `Container`
+ * around a detail page's body).
  */
 export default function AttendanceHistorySessionLayout({ children }) {
-  return <Container>{children}</Container>;
+  return children;
 }

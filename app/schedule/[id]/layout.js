@@ -1,10 +1,9 @@
-import Container from "@/components/layout/Container";
-
 /**
- * Schedule Details (and its edit step) keep the standard 1200px content
- * container. The Schedule layout above no longer supplies it, because the
- * list page draws a full-width header strip outside the container.
+ * Schedule Details and its edit step. Like the list page, Schedule Details draws the
+ * compact page strip full-width, so it must sit directly in the shell's `<main>`:
+ * this layout adds no container of its own. Each page sets its own content width
+ * (Details wraps its body in `Container`; Edit is a centred `max-w-3xl` form).
  */
 export default function ScheduleDetailsLayout({ children }) {
-  return <Container>{children}</Container>;
+  return children;
 }

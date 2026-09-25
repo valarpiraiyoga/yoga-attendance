@@ -4,6 +4,7 @@ import { useCallback, useState, useTransition } from "react";
 import { ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import StudentContext from "@/components/ui/student-context";
 import Toast from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { setStudentStatus } from "@/lib/students/actions";
@@ -28,7 +29,7 @@ import { setStudentStatus } from "@/lib/students/actions";
  * `setInstructorStatus` usage pattern. The result message appears as a toast
  * (top-right of the window), so it never disturbs the header's layout.
  */
-export default function StudentStatusButton({ studentId, studentName, status }) {
+export default function StudentStatusButton({ studentId, studentName, status, student }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [isPending, startTransition] = useTransition();
@@ -84,6 +85,7 @@ export default function StudentStatusButton({ studentId, studentName, status }) 
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Deactivate student"
+        context={<StudentContext student={student} />}
         description={`Deactivate ${studentName}? This does not delete their record — their history, memberships, and enrollments remain available, and they can be reactivated later.`}
         confirmLabel="Deactivate"
         destructive

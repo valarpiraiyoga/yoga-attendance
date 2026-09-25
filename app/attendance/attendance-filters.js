@@ -227,6 +227,7 @@ export default function AttendanceFilters({
             onChange={(event) => searchFor(event.target.value)}
             onClear={() => searchFor("")}
             placeholder="Search by batch name, code or instructor..."
+            inputClassName="h-9 bg-surface"
           />
         </form>
 

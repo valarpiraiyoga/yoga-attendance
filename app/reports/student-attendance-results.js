@@ -59,10 +59,10 @@ export default async function StudentAttendanceResults({ studentId, studentLabel
       />
 
       <StatTileGroup ariaLabel="Student attendance summary">
-        <StatTile valueFirst decorativeChart icon={CalendarDays} label="Sessions" value={totals.eligibleSessions} tone="brand" />
-        <StatTile valueFirst decorativeChart icon={CircleCheck} label="Present" value={totals.presentCount} tone="success" />
-        <StatTile valueFirst decorativeChart icon={UserRoundX} label="Absent" value={totals.absentCount} tone="danger" />
-        <StatTile valueFirst decorativeChart icon={BarChart3} label="Attendance" value={formatPercent(totals.ratio)} tone="info" />
+        <StatTile valueFirst icon={CalendarDays} label="Sessions" value={totals.eligibleSessions} tone="brand" />
+        <StatTile valueFirst icon={CircleCheck} label="Present" value={totals.presentCount} tone="success" />
+        <StatTile valueFirst icon={UserRoundX} label="Absent" value={totals.absentCount} tone="danger" />
+        <StatTile valueFirst icon={BarChart3} label="Attendance" value={formatPercent(totals.ratio)} tone="info" />
       </StatTileGroup>
 
       {sessions.length === 0 ? (

@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getMembership } from "@/lib/memberships/data";
 import { updateMembership } from "@/lib/memberships/actions";
 import MembershipForm from "@/app/memberships/membership-form";
+import PageHeader from "@/components/layout/PageHeader";
 
 /**
  * Edit Membership. Plain Save, no Review/Confirm gate — cancellation is the
@@ -28,32 +27,27 @@ export default async function EditMembershipPage({ params }) {
   const updateMembershipById = updateMembership.bind(null, id);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Link
-        href={`/memberships/${id}`}
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Membership Details
-      </Link>
-
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Edit Membership</h1>
-      <p className="text-body mt-1 text-text-secondary">
-        Update {membership.students?.full_name ?? "this student"}&rsquo;s membership.
-      </p>
-
-      <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
-        <MembershipForm
-          action={updateMembershipById}
-          currency={membership.currency}
-          student={membership.students}
-          membership={membership}
-          requireConfirmation={false}
-          submitLabel="Save Changes"
-          pendingLabel="Saving…"
-          cancelHref={`/memberships/${id}`}
-        />
+    <>
+      <PageHeader
+        compact
+        back={{ href: `/memberships/${id}`, label: "Back to Membership Details" }}
+        title="Edit Membership"
+        description={<>Update {membership.students?.full_name ?? "this student"}&rsquo;s membership.</>}
+      />
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+          <MembershipForm
+            action={updateMembershipById}
+            currency={membership.currency}
+            student={membership.students}
+            membership={membership}
+            requireConfirmation={false}
+            submitLabel="Save Changes"
+            pendingLabel="Saving…"
+            cancelHref={`/memberships/${id}`}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

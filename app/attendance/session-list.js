@@ -16,7 +16,7 @@ function sessionKey(session) {
  * in the URL): then both are rendered and CSS shows Cards below `lg` and Table
  * from `lg` up, the same finalized default rule as Attendance History.
  */
-export default function SessionList({ sessions, layout = "", total, sort, sortOptions, today, timeZone }) {
+export default function SessionList({ sessions, layout = "", total, sort, sortOptions, today, timeZone, isAdmin = false }) {
   const ariaLabel = "Today's Sessions";
 
   return (
@@ -33,13 +33,13 @@ export default function SessionList({ sessions, layout = "", total, sort, sortOp
       {layout !== "table" ? (
         <CardGrid ariaLabel={ariaLabel} className={cn("xl:grid-cols-3", layout === "" && "lg:hidden")}>
           {sessions.map((session) => (
-            <SessionCardItem key={sessionKey(session)} session={session} today={today} timeZone={timeZone} />
+            <SessionCardItem key={sessionKey(session)} session={session} today={today} timeZone={timeZone} isAdmin={isAdmin} />
           ))}
         </CardGrid>
       ) : null}
       {layout !== "cards" ? (
         <div className={cn(layout === "" && "hidden lg:block")}>
-          <SessionTable sessions={sessions} today={today} timeZone={timeZone} ariaLabel={ariaLabel} />
+          <SessionTable sessions={sessions} today={today} timeZone={timeZone} ariaLabel={ariaLabel} isAdmin={isAdmin} />
         </div>
       ) : null}
     </div>

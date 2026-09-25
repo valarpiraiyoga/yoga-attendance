@@ -64,12 +64,11 @@ export default async function BatchAttendanceResults({ batchId, batchLabel, date
       />
 
       <StatTileGroup ariaLabel="Batch attendance summary">
-        <StatTile valueFirst decorativeChart icon={CalendarDays} label="Sessions" value={totals.sessionCount} tone="brand" />
-        <StatTile valueFirst decorativeChart icon={CircleCheck} label="Present" value={totals.presentTotal} tone="success" />
-        <StatTile valueFirst decorativeChart icon={UserRoundX} label="Absent" value={totals.absentTotal} tone="danger" />
+        <StatTile valueFirst icon={CalendarDays} label="Sessions" value={totals.sessionCount} tone="brand" />
+        <StatTile valueFirst icon={CircleCheck} label="Present" value={totals.presentTotal} tone="success" />
+        <StatTile valueFirst icon={UserRoundX} label="Absent" value={totals.absentTotal} tone="danger" />
         <StatTile
           valueFirst
-          decorativeChart
           icon={BarChart3}
           label="Average Attendance"
           value={formatPercent(totals.ratio)}

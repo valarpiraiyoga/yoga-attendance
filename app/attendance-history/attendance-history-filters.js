@@ -271,6 +271,7 @@ export default function AttendanceHistoryFilters({
             onChange={(event) => searchFor(event.target.value)}
             onClear={() => searchFor("")}
             placeholder={searchPlaceholder}
+            inputClassName="h-9 bg-surface"
           />
         </form>
 

@@ -133,7 +133,9 @@ export default async function AttendancePage({ searchParams }) {
   // Admin or instructor (Phase 15 Instructor Access). Role decides only
   // whether the area opens; RLS decides what either list actually
   // contains, so no row filtering is repeated here.
-  await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
+  const user = await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
+  // Only an admin marks a session Cancelled / Holiday (offered in each row's menu).
+  const isAdmin = user.role === ROLES.ADMIN;
 
   const rawParams = await searchParams;
   // The centre's own day and zone (Center Settings), never the viewer's.
@@ -194,11 +196,10 @@ export default async function AttendancePage({ searchParams }) {
           <div className="max-lg:hidden">
             <KpiStrip pageKey="attendance">
               <StatTileGroup className="mb-6" ariaLabel="Today's attendance summary">
-                <StatTile valueFirst decorativeChart icon={CalendarDays} label="Sessions Today" value={allToday.length} tone="brand" />
-                <StatTile valueFirst decorativeChart icon={Users} label="Total Eligible" value={totals.eligible} tone="info" />
+                <StatTile valueFirst icon={CalendarDays} label="Sessions Today" value={allToday.length} tone="brand" />
+                <StatTile valueFirst icon={Users} label="Total Eligible" value={totals.eligible} tone="info" />
                 <StatTile
                   valueFirst
-                  decorativeChart
                   icon={CircleCheck}
                   label="Marked Present"
                   value={totals.present}
@@ -207,7 +208,6 @@ export default async function AttendancePage({ searchParams }) {
                 />
                 <StatTile
                   valueFirst
-                  decorativeChart
                   icon={UserRoundX}
                   label="Marked Absent"
                   value={totals.absent}
@@ -256,6 +256,7 @@ export default async function AttendancePage({ searchParams }) {
                     sortOptions={TODAY_SORT_OPTIONS}
                     today={today}
                     timeZone={timeZone}
+                    isAdmin={isAdmin}
                   />
 
                   <Pagination
@@ -389,7 +390,7 @@ export default async function AttendancePage({ searchParams }) {
                 />
               ) : (
                 <>
-                  <SessionTimeline groups={groups} selectedDate={selectedDate} layout={layout} today={today} timeZone={timeZone} />
+                  <SessionTimeline groups={groups} selectedDate={selectedDate} layout={layout} today={today} timeZone={timeZone} isAdmin={isAdmin} />
                   {total > sessions.length ? (
                     <p className="mt-4 text-small text-text-secondary">
                       Showing the first {sessions.length} of {total} sessions. Narrow the date range to see the rest.

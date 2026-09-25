@@ -5,10 +5,12 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import ProfilePhotoField, { useProfilePhoto } from "@/components/ui/profile-photo-field";
+import { useProfilePhoto } from "@/components/ui/profile-photo-field";
+import ProfilePhotoCard from "@/components/ui/profile-photo-card";
 import { Textarea } from "@/components/ui/textarea";
 import FormField from "@/components/ui/form-field";
 import PhoneInput from "@/components/forms/PhoneInput";
+import StudentIdentityHeader from "@/components/ui/student-identity-header";
 import {
   Select,
   SelectContent,
@@ -111,7 +113,12 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
         </p>
       ) : null}
 
-      <ProfilePhotoField
+      {/* Edit only: says which student this is (the SAVED name and ID, not what is typed below). */}
+      {student ? <StudentIdentityHeader student={student} /> : null}
+
+      {/* The photo is its own compact left card (a portrait photo, full-width buttons inside it); every other field sits to its right. */}
+      <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
+      <ProfilePhotoCard
         name={fullName}
         currentUrl={student?.photo_url ?? null}
         photo={photo}
@@ -120,6 +127,7 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
         disabled={isPending}
       />
 
+      <div className="flex min-w-0 flex-col gap-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
           <Label htmlFor="full_name">Full Name</Label>
@@ -257,6 +265,8 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
             {fieldErrors.notes}
           </p>
         ) : null}
+      </div>
+      </div>
       </div>
 
       <div className="mt-2 flex justify-end gap-3 border-t border-border pt-5">

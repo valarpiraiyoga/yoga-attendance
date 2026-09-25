@@ -1,12 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { createMembership } from "@/lib/memberships/actions";
 import MembershipForm from "@/app/memberships/membership-form";
 import { getCenterCurrency } from "@/lib/center-profile/settings";
 import GuidedSteps from "@/app/students/guided-steps";
+import PageHeader from "@/components/layout/PageHeader";
 
 /**
  * Add Membership from a known student. Serves two entry points with one
@@ -39,37 +38,31 @@ export default async function NewStudentMembershipPage({ params, searchParams })
   const createMembershipForStudent = createMembership.bind(null, id, isGuided ? "guided" : "student");
 
   return (
-    <div className={isGuided ? "mx-auto max-w-4xl" : "mx-auto max-w-3xl"}>
-      <Link
-        href={`/students/${id}`}
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Student Details
-      </Link>
+    <>
+      <PageHeader
+        compact
+        back={{ href: `/students/${id}`, label: "Back to Student Details" }}
+        title="Add Membership"
+        description={<>Create a membership for {student.full_name} {isGuided ? " to continue their setup." : "."}</>}
+      />
+      <div className={isGuided ? "mx-auto w-full max-w-4xl" : "mx-auto w-full max-w-3xl"}>
+        {isGuided ? <GuidedSteps current={2} className="mt-0" /> : null}
 
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Add Membership</h1>
-      <p className="text-body mt-1 text-text-secondary">
-        Create a membership for {student.full_name}
-        {isGuided ? " to continue their setup." : "."}
-      </p>
-
-      {isGuided ? <GuidedSteps current={2} /> : null}
-
-      <div
-        className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8" : "mt-6"}`}
-      >
-        <MembershipForm
-          action={createMembershipForStudent}
-          currency={await getCenterCurrency()}
-          student={student}
-          requireConfirmation={!isGuided}
-          submitLabel="Save Membership"
-          pendingLabel="Saving…"
-          cancelHref={`/students/${id}`}
-          skipHref={isGuided ? `/students/${id}/enrollments/new?guided=1` : undefined}
-        />
+        <div
+          className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8" : ""}`}
+        >
+          <MembershipForm
+            action={createMembershipForStudent}
+            currency={await getCenterCurrency()}
+            student={student}
+            requireConfirmation={!isGuided}
+            submitLabel="Save Membership"
+            pendingLabel="Saving…"
+            cancelHref={`/students/${id}`}
+            skipHref={isGuided ? `/students/${id}/enrollments/new?guided=1` : undefined}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

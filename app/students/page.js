@@ -108,10 +108,9 @@ export default async function StudentsPage({ searchParams }) {
       <div className="max-lg:hidden">
       <KpiStrip pageKey="students">
         <StatTileGroup className="mb-6" ariaLabel="Student summary">
-          <StatTile valueFirst decorativeChart icon={Users} label="Total Students" value={totalStudentCount} tone="brand" />
+          <StatTile valueFirst icon={Users} label="Total Students" value={totalStudentCount} tone="brand" />
           <StatTile
             valueFirst
-            decorativeChart
             icon={UserCheck}
             label="Active Students"
             value={activeStudentCount}
@@ -120,14 +119,13 @@ export default async function StudentsPage({ searchParams }) {
           />
           <StatTile
             valueFirst
-            decorativeChart
             icon={UserX}
             label="Inactive Students"
             value={inactiveStudentCount}
             aside={sharePercent(inactiveStudentCount)}
             tone="warning"
           />
-          <StatTile valueFirst decorativeChart icon={Layers} label="Total Batches" value={totalBatchCount} tone="info" />
+          <StatTile valueFirst icon={Layers} label="Total Batches" value={totalBatchCount} tone="info" />
         </StatTileGroup>
       </KpiStrip>
       </div>

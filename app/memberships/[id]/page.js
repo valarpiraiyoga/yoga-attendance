@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft,
   ArrowRight,
   CalendarDays,
   CircleCheck,
@@ -27,9 +26,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import EmptyState from "@/components/ui/empty-state";
+import FlashToast from "@/components/ui/flash-toast";
+import MembershipTag from "@/components/ui/membership-tag";
 import Progress from "@/components/ui/progress";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import Container from "@/components/layout/Container";
 import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
+import PageHeader from "@/components/layout/PageHeader";
 import FieldRow from "@/components/layout/FieldRow";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
@@ -150,18 +153,18 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         : `Ends ${formatDate(membership.end_date)}`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link
-        href="/memberships"
-        className="text-body inline-flex w-fit items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Memberships
-      </Link>
-
+    <>
+      <PageHeader
+        compact
+        back={{ href: "/memberships", label: "Back to Memberships" }}
+        title="Membership Details"
+        description={`Plan, payment and validity for ${student?.full_name ?? "this student"}.`}
+      />
+      <Container className="flex flex-col gap-6">
       <>
         <EntityDetailHeader
           decorative={false}
+          wash
           className="mb-0"
           avatar={<Avatar name={student?.full_name} src={student?.photo_url} size="lg" />}
           title={student?.full_name ?? "—"}
@@ -193,9 +196,7 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
                   <ArrowRight className="size-3.5" aria-hidden="true" />
                 </Link>
               ) : null}
-              <span className="text-body basis-full">
-                Membership · <span className="font-medium text-text-primary">{membership.membership_code}</span> · {planLabel}
-              </span>
+              <MembershipTag code={membership.membership_code} plan={planLabel} />
             </>
           }
           actions={
@@ -212,6 +213,12 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
                 membershipId={membership.id}
                 studentId={student?.id}
                 isCancelled={membership.status === "cancelled"}
+                student={
+                  student
+                    ? { full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }
+                    : null
+                }
+                membership={{ code: membership.membership_code, planLabel, period }}
               />
             </>
           }
@@ -265,14 +272,8 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         </StatTileGroup>
       </>
 
-      {message ? (
-        <div
-          role="status"
-          className="rounded-input border border-success/30 bg-success/5 px-3 py-2 text-body text-success"
-        >
-          {message}
-        </div>
-      ) : null}
+      {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
+      <FlashToast message={message} />
 
       <Panel>
         <PanelHeader
@@ -355,6 +356,7 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
           <p className="text-body break-words whitespace-pre-line text-text-primary">{membership.notes || "No notes."}</p>
         </FieldRow>
       </Panel>
-    </div>
+      </Container>
+    </>
   );
 }

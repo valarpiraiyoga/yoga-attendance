@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import ScheduleContext from "@/app/schedule/schedule-context";
 import { deactivateSchedule } from "@/lib/schedules/actions";
 
 /**
@@ -19,7 +20,7 @@ import { deactivateSchedule } from "@/lib/schedules/actions";
  * directly via `useTransition`, matching the same direct-action-call
  * pattern as every other quick status action in this project.
  */
-export default function DeactivateSchedule({ scheduleId, isActive, today }) {
+export default function DeactivateSchedule({ scheduleId, isActive, today, scheduleContext }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [effectiveUntil, setEffectiveUntil] = useState(today);
   const [feedback, setFeedback] = useState(null);
@@ -55,6 +56,7 @@ export default function DeactivateSchedule({ scheduleId, isActive, today }) {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Deactivate schedule"
+        context={<ScheduleContext context={scheduleContext} />}
         description="This does not delete the schedule — it closes it from the date below and marks it inactive. Historical sessions and attendance remain available."
         confirmLabel="Deactivate"
         destructive

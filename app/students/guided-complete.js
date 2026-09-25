@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { formatPhone } from "@/lib/phone";
-import { ArrowLeft, ArrowRight, Check, UserPlus, UserRound } from "lucide-react";
+import { ArrowRight, Check, UserPlus, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
+import PageHeader from "@/components/layout/PageHeader";
 import { PLAN } from "@/lib/status";
 import GuidedSteps from "@/app/students/guided-steps";
 
@@ -23,19 +24,15 @@ export default function GuidedComplete({ student, membership, enrollment }) {
   ].filter(Boolean);
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <Link
-        href="/students"
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Students
-      </Link>
-
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Add Student</h1>
-      <p className="text-body mt-1 text-text-secondary">Create a student profile to begin their enrollment setup.</p>
-
-      <GuidedSteps current={3} complete />
+    <>
+      <PageHeader
+        compact
+        back={{ href: "/students", label: "Back to Students" }}
+        title="Add Student"
+        description="Create a student profile to begin their enrollment setup."
+      />
+      <div className="mx-auto w-full max-w-4xl">
+      <GuidedSteps current={3} complete className="mt-0" />
 
       <section
         aria-labelledby="guided-complete-title"
@@ -87,6 +84,7 @@ export default function GuidedComplete({ student, membership, enrollment }) {
           </Button>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

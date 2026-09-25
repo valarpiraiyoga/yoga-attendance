@@ -63,12 +63,11 @@ export default async function AttendanceSummaryResults({ dateFrom, dateTo, page 
       />
 
       <StatTileGroup ariaLabel="Attendance summary">
-        <StatTile valueFirst decorativeChart icon={CalendarDays} label="Total Sessions" value={totals.sessionCount} tone="brand" />
-        <StatTile valueFirst decorativeChart icon={CircleCheck} label="Total Present" value={totals.presentTotal} tone="success" />
-        <StatTile valueFirst decorativeChart icon={UserRoundX} label="Total Absent" value={totals.absentTotal} tone="danger" />
+        <StatTile valueFirst icon={CalendarDays} label="Total Sessions" value={totals.sessionCount} tone="brand" />
+        <StatTile valueFirst icon={CircleCheck} label="Total Present" value={totals.presentTotal} tone="success" />
+        <StatTile valueFirst icon={UserRoundX} label="Total Absent" value={totals.absentTotal} tone="danger" />
         <StatTile
           valueFirst
-          decorativeChart
           icon={BarChart3}
           label="Overall Attendance"
           value={formatPercent(totals.ratio)}

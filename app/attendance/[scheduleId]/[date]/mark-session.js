@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import SessionContext from "@/app/attendance/session-context";
 import { markSessionException } from "@/lib/class-sessions/actions";
 import { validateSessionNote } from "@/lib/class-sessions/validation";
 
@@ -39,12 +40,18 @@ const STATUS_LABELS = {
  *    app/schedule/[id]/deactivate-schedule.js exactly). Only this step can
  *    write anything.
  *
+ * `sessionContext` (`sessionContextOf(session)`, `app/attendance/session-context.js`) tops both
+ * steps with which session this is - its start time, batch and code, date and time, instructor.
+ *
+ * `hideTrigger` / `defaultOpen`: the session's overflow menu (`session-actions-menu.js`)
+ * supplies the trigger and mounts this already open, so the dialog starts empty.
+ *
  * `destructive` styling (`ConfirmDialog`) applies only to the Review step,
  * and only when Cancelled is chosen — Holiday is a planned closure, not a
  * loss, so it keeps standard styling (approved Phase 14 decision).
  */
-export default function MarkSession({ scheduleId, date }) {
-  const [composeOpen, setComposeOpen] = useState(false);
+export default function MarkSession({ scheduleId, date, sessionContext, defaultOpen = false, hideTrigger = false }) {
+  const [composeOpen, setComposeOpen] = useState(defaultOpen);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [status, setStatus] = useState("");
   const [note, setNote] = useState("");
@@ -90,10 +97,12 @@ export default function MarkSession({ scheduleId, date }) {
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      <Button type="button" variant="outline" onClick={openCompose} disabled={isPending}>
-        Mark Cancelled / Holiday
-      </Button>
+    <div className={hideTrigger ? "contents" : "flex flex-col items-end gap-2"}>
+      {hideTrigger ? null : (
+        <Button type="button" variant="outline" onClick={openCompose} disabled={isPending}>
+          Mark Cancelled / Holiday
+        </Button>
+      )}
 
       {feedback ? (
         <p role="alert" className="text-small text-danger">
@@ -107,6 +116,7 @@ export default function MarkSession({ scheduleId, date }) {
         title="Mark session"
         description="This session did not run, or the centre was closed. Choose which, and add an optional note."
         confirmLabel="Review Change"
+        context={<SessionContext context={sessionContext} />}
         onConfirm={openReview}
       >
         <div className="flex flex-col gap-4">
@@ -170,6 +180,7 @@ export default function MarkSession({ scheduleId, date }) {
         confirmLabel={status === "cancelled" ? "Confirm Cancellation" : "Confirm Holiday"}
         destructive={status === "cancelled"}
         isPending={isPending}
+        context={<SessionContext context={sessionContext} />}
         onConfirm={runMarkSession}
       >
         <dl className="flex flex-col gap-3 rounded-lg border border-border bg-background/60 p-4">

@@ -1,5 +1,4 @@
 import AppShell from "@/components/layout/AppShell";
-import Container from "@/components/layout/Container";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 
 /**
@@ -21,8 +20,8 @@ export default async function ReportsLayout({ children }) {
   const user = await requireRole(ROLES.ADMIN);
 
   return (
-    <AppShell role={user.role} user={user}>
-      <Container>{children}</Container>
+    <AppShell role={user.role} user={user} mobileTitle="Reports">
+      {children}
     </AppShell>
   );
 }

@@ -1,14 +1,13 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, CircleCheck, CircleX, ClipboardCheck, Clock, Layers, Percent, UserRound, Users } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { CalendarDays, CircleCheck, CircleX, ClipboardCheck, Clock, Layers, Percent, UserRound, Users } from "lucide-react";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import Container from "@/components/layout/Container";
 import FieldRow from "@/components/layout/FieldRow";
+import PageHeader from "@/components/layout/PageHeader";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getSessionOccurrence } from "@/lib/class-sessions/data";
 import { isValidDateString } from "@/lib/schedules/validation";
-import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_BADGE_VARIANTS } from "@/lib/class-sessions/validation";
 import { listEligibleStudents, getAttendanceForSession } from "@/lib/attendance/data";
 import { computeAttendanceSummary } from "@/lib/attendance/validation";
 import { formatDateWithWeekday, formatTimeRange } from "@/lib/format";
@@ -49,22 +48,14 @@ export default async function EditAttendancePage({ params }) {
   const batchName = session.batches?.name ?? "Session";
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link
-        href={`/attendance-history/${scheduleId}/${date}`}
-        className="text-body inline-flex w-fit items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Attendance Details
-      </Link>
-
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-page-title font-semibold text-text-primary">Edit Attendance</h1>
-          <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS.completed}>{DISPLAY_STATUS_LABELS.completed}</Badge>
-        </div>
-        <p className="text-body mt-1 text-text-secondary">Correct attendance for this class session.</p>
-      </div>
+    <>
+      <PageHeader
+        compact
+        back={{ href: `/attendance-history/${scheduleId}/${date}`, label: "Back to Attendance Details" }}
+        title="Edit Attendance"
+        description="Correct attendance for this class session."
+      />
+      <Container className="flex flex-col gap-6">
 
       <div className="flex flex-col gap-3">
         <StatTileGroup ariaLabel="Saved attendance summary">
@@ -106,6 +97,7 @@ export default async function EditAttendancePage({ params }) {
         />
         <EditAttendanceForm scheduleId={scheduleId} date={date} students={eligibleStudents} initialMarks={marks} />
       </Panel>
-    </div>
+      </Container>
+    </>
   );
 }

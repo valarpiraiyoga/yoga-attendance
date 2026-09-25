@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { CircleCheck, CircleMinus, CircleX, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -10,19 +9,10 @@ import ConfirmDialog from "@/components/ui/confirm-dialog";
 import EmptyState from "@/components/ui/empty-state";
 import MarkButton from "@/components/ui/mark-button";
 import SearchInput from "@/components/ui/search-input";
-import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Panel, PanelHeader } from "@/components/layout/Panel";
+import { Panel } from "@/components/layout/Panel";
+import SessionContext, { sessionContextOf } from "@/app/attendance/session-context";
 import { saveSessionAttendance } from "@/lib/attendance/actions";
 import { computeAttendanceSummary } from "@/lib/attendance/validation";
-import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function marksToMap(marks) {
@@ -38,15 +28,64 @@ const STATUS_BADGE = {
   absent: { label: "Absent", variant: "danger" },
 };
 
-const ROW_TONE = { present: "bg-success/5 hover:bg-success/5", absent: "bg-danger/5 hover:bg-danger/5" };
+const ROW_TONE = { present: "bg-success/5", absent: "bg-danger/5" };
+
+// Search only earns its place on a long list; a small class is scanned by eye.
+const SEARCH_THRESHOLD = 8;
+
+/** Present / Absent counts with their colour dots (colour is never the only cue: the words are there too). */
+function CountsLine({ summary }) {
+  return (
+    <p className="text-small flex flex-wrap items-center gap-x-4 gap-y-1 text-text-secondary">
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden="true" className="size-2 rounded-full bg-success" />
+        <span className="font-medium text-text-primary tabular-nums">{summary.presentCount}</span> Present
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden="true" className="size-2 rounded-full bg-danger" />
+        <span className="font-medium text-text-primary tabular-nums">{summary.absentCount}</span> Absent
+      </span>
+    </p>
+  );
+}
+
+/** "n of N marked" over a two-part bar (Present green, Absent red): the whole session's progress at a glance. */
+function MarkedProgress({ summary }) {
+  const total = summary.eligibleCount;
+  const marked = summary.presentCount + summary.absentCount;
+  const percent = (count) => (total > 0 ? (count / total) * 100 : 0);
+
+  return (
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <p className="text-body text-text-secondary">
+          <span className="font-semibold text-text-primary tabular-nums">{marked}</span> of {total} marked
+        </p>
+        <CountsLine summary={summary} />
+      </div>
+      <div
+        role="progressbar"
+        aria-label="Students marked"
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={marked}
+        className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-border"
+      >
+        <div className="bg-success" style={{ width: `${percent(summary.presentCount)}%` }} />
+        <div className="bg-danger" style={{ width: `${percent(summary.absentCount)}%` }} />
+      </div>
+    </div>
+  );
+}
 
 /**
- * Session Details' Attendance tab — the Take / View / Edit Attendance view:
- * the four attendance StatTiles, the students panel (search, Present / Absent
- * per student) and the save area. Behaviour is unchanged — the same marks
- * state, Mark All Present, `saveSessionAttendance`, and the review dialog
- * before a completed session's marks are changed. The session's own header
- * and summary panel are rendered above by `session-header.js`.
+ * The Take / View / Edit Attendance view: a card of students, one row each with a
+ * Present | Absent toggle (Mark All Present, and a search field only on a long
+ * list), and a save bar that stays at the bottom of the screen with the progress
+ * ("n of N marked", Present and Absent counts) beside Cancel / Save. Behaviour is
+ * unchanged: the same marks state, Mark All Present, `saveSessionAttendance`, and
+ * the review dialog before a completed session's marks are changed. The session's
+ * own one-line summary is rendered above by `session-header.js`.
  *
  * The attendance data model stores only Present / Absent per student
  * (0011_attendance.sql), so there is no per-student note field and no
@@ -92,8 +131,9 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
 
   const showControls = !isCompleted || editing;
   const normalizedQuery = query.trim().toLowerCase();
+  const showSearch = eligibleStudents.length > SEARCH_THRESHOLD;
   const visibleStudents = eligibleStudents
-    .map((student, index) => ({ student, position: index + 1 }))
+    .map((student) => ({ student }))
     .filter(
       ({ student }) =>
         !normalizedQuery ||
@@ -145,14 +185,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <StatTileGroup ariaLabel="Attendance summary">
-        <StatTile icon={Users} label="Eligible" value={summary.eligibleCount} tone="brand" />
-        <StatTile icon={CircleCheck} label="Present" value={summary.presentCount} tone="success" />
-        <StatTile icon={CircleX} label="Absent" value={summary.absentCount} tone="danger" />
-        <StatTile icon={CircleMinus} label="Unmarked" value={summary.unmarkedCount} tone="warning" />
-      </StatTileGroup>
-
+    <div className="flex flex-col gap-4">
       {savedMessage ? (
         <p role="status" className="rounded-input border border-success/30 bg-success/5 px-3 py-2 text-body text-success">
           {savedMessage}
@@ -165,13 +198,6 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
       ) : null}
 
       <Panel>
-        <PanelHeader
-          icon={Users}
-          title={`Students (${eligibleStudents.length})`}
-          description={showControls ? "Mark each student as Present or Absent." : "Attendance recorded for each student."}
-          className="mb-4 min-h-8"
-        />
-
         {eligibleStudents.length === 0 ? (
           <EmptyState
             size="sm"
@@ -180,18 +206,21 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
           />
         ) : (
           <>
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <SearchInput
-                id="take-attendance-search"
-                label="Search students"
-                type="search"
-                placeholder="Search students"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onClear={() => setQuery("")}
-                className="sm:max-w-xs"
-              />
-              <div className="flex flex-wrap gap-2">
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              {showSearch ? (
+                <SearchInput
+                  id="take-attendance-search"
+                  label="Search students"
+                  type="search"
+                  placeholder="Search students"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onClear={() => setQuery("")}
+                  className="w-full sm:max-w-xs"
+                />
+              ) : null}
+              {showControls ? null : <CountsLine summary={summary} />}
+              <div className={cn("flex flex-wrap gap-2", showSearch && "sm:ml-auto")}>
                 {isCompleted && !editing ? (
                   <Button
                     type="button"
@@ -216,85 +245,59 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
             {visibleStudents.length === 0 ? (
               <EmptyState size="sm" title="No students found" description="No students match your search." />
             ) : (
-              <div className="overflow-hidden rounded-lg border border-border">
-                <Table aria-label="Student attendance">
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="hidden w-12 sm:table-cell">#</TableHead>
-                      <TableHead className="px-3 whitespace-nowrap sm:px-5">Student</TableHead>
-                      <TableHead className="hidden whitespace-nowrap sm:table-cell">Membership</TableHead>
-                      <TableHead className="px-3 whitespace-nowrap sm:px-5">Attendance</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visibleStudents.map(({ student, position }) => {
-                      const status = marks[student.id];
-                      const badge = STATUS_BADGE[status] ?? { label: "Unmarked", variant: "neutral" };
+              <ul aria-label="Student attendance" className="flex flex-col gap-1">
+                {visibleStudents.map(({ student }) => {
+                  const status = marks[student.id];
+                  const badge = STATUS_BADGE[status] ?? { label: "Unmarked", variant: "neutral" };
 
-                      return (
-                        <TableRow key={student.id} className={cn(ROW_TONE[status])}>
-                          <TableCell className="hidden tabular-nums text-text-secondary sm:table-cell">{position}</TableCell>
-                          <TableCell className="px-3 sm:px-5">
-                            {/* Below `sm` the avatar and phone are dropped and the membership shows only its
-                                end date under the name, so the Present / Absent controls stay on screen
-                                without sideways scrolling. */}
-                            <div className="flex items-center gap-3 sm:whitespace-nowrap">
-                              <Avatar name={student.full_name} size="sm" className="hidden shrink-0 sm:flex" />
-                              <div className="min-w-0">
-                                <p className="font-semibold text-text-primary">{student.full_name}</p>
-                                <p className="text-small text-text-secondary sm:whitespace-nowrap">
-                                  {student.student_code}
-                                  {student.phone ? <span className="hidden sm:inline"> · {student.phone}</span> : null}
-                                </p>
-                                <p className="text-small text-text-secondary sm:hidden">
-                                  Until {formatDate(student.membership?.end_date)}
-                                </p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden whitespace-nowrap text-text-secondary sm:table-cell">
-                            {formatDate(student.membership?.start_date)} – {formatDate(student.membership?.end_date)}
-                          </TableCell>
-                          <TableCell className="px-3 sm:px-5">
-                            {showControls ? (
-                              <div role="group" aria-label={`Attendance for ${student.full_name}`} className="flex gap-2">
-                                <MarkButton
-                                  status="present"
-                                  selected={status === "present"}
-                                  studentName={student.full_name}
-                                  disabled={isPending}
-                                  onSelect={() => setMark(student.id, "present")}
-                                />
-                                <MarkButton
-                                  status="absent"
-                                  selected={status === "absent"}
-                                  studentName={student.full_name}
-                                  disabled={isPending}
-                                  onSelect={() => setMark(student.id, "absent")}
-                                />
-                              </div>
-                            ) : (
-                              <Badge variant={badge.variant}>{badge.label}</Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                  return (
+                    <li
+                      key={student.id}
+                      className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5", ROW_TONE[status])}
+                    >
+                      {/* The avatar is dropped on a phone so the two buttons keep their room. */}
+                      <Avatar name={student.full_name} size="sm" className="hidden shrink-0 sm:flex" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold break-words text-text-primary">{student.full_name}</p>
+                        <p className="text-small truncate text-text-secondary">{student.student_code}</p>
+                      </div>
+                      {showControls ? (
+                        <div role="group" aria-label={`Attendance for ${student.full_name}`} className="flex shrink-0 gap-2">
+                          <MarkButton
+                            status="present"
+                            selected={status === "present"}
+                            studentName={student.full_name}
+                            disabled={isPending}
+                            className="h-10 sm:h-9"
+                            onSelect={() => setMark(student.id, "present")}
+                          />
+                          <MarkButton
+                            status="absent"
+                            selected={status === "absent"}
+                            studentName={student.full_name}
+                            disabled={isPending}
+                            className="h-10 sm:h-9"
+                            onSelect={() => setMark(student.id, "absent")}
+                          />
+                        </div>
+                      ) : (
+                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </>
         )}
       </Panel>
 
       {showControls ? (
-        <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-5">
-          <p className="text-small text-text-secondary">
-            <span className="font-medium text-text-primary">{summary.presentCount + summary.absentCount}</span> of{" "}
-            {summary.eligibleCount} students marked
-          </p>
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+        <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-card border border-border bg-surface p-3 shadow-md sm:flex-row sm:items-center sm:gap-6 sm:p-4">
+          <div className="min-w-0 flex-1">
+            <MarkedProgress summary={summary} />
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0 sm:items-center">
             {isCompleted ? (
               <Button type="button" variant="outline" onClick={cancelEditing} disabled={isPending}>
                 Cancel
@@ -321,6 +324,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
         open={reviewOpen}
         onOpenChange={setReviewOpen}
         title="Review attendance changes"
+        context={<SessionContext context={sessionContextOf(session)} />}
         description="This updates the saved attendance for this session. The recorded history for other sessions is unaffected."
         confirmLabel="Confirm & Save"
         isPending={isPending}

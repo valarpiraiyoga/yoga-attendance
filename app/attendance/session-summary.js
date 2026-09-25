@@ -17,15 +17,18 @@ import { formatDate, formatTimeRange } from "@/lib/format";
  * sessions have no attendance, a completed one is viewed, and a session
  * that has started (or is today's and not yet started) is taken.
  */
+export function sessionActionLabel(session, today) {
+  if (session.status === "completed") return "View Attendance";
+  if (session.status !== "cancelled" && session.status !== "holiday" && session.session_date <= today) {
+    return "Take Attendance";
+  }
+  return "View Session";
+}
+
 export function summarizeSession(session, today, timeZone) {
   const displayStatus = deriveDisplayStatus(session, new Date(), timeZone);
   const isCompleted = session.status === "completed";
-
-  let actionLabel = "View Session";
-  if (session.status === "completed") actionLabel = "View Attendance";
-  else if (session.status !== "cancelled" && session.status !== "holiday" && session.session_date <= today) {
-    actionLabel = "Take Attendance";
-  }
+  const actionLabel = sessionActionLabel(session, today);
 
   const eligibleCount = session.attendanceSummary?.eligibleCount ?? 0;
   const basePath = `/attendance/${session.schedule_id}/${session.session_date}`;
@@ -45,7 +48,7 @@ export function summarizeSession(session, today, timeZone) {
     eligibleLabel: `${eligibleCount} eligible ${eligibleCount === 1 ? "student" : "students"}`,
     attendanceLabel: isCompleted ? `${session.attendanceSummary?.percentage ?? 0}%` : null,
     actionLabel,
-    actionHref: `${basePath}?tab=attendance`,
-    detailsHref: basePath,
+    actionHref: actionLabel === "View Session" ? `${basePath}/details` : basePath,
+    detailsHref: `${basePath}/details`,
   };
 }

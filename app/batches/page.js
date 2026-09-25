@@ -89,10 +89,9 @@ export default async function BatchesPage({ searchParams }) {
       <div className="max-lg:hidden">
       <KpiStrip pageKey="batches">
         <StatTileGroup className="mb-6" ariaLabel="Batch summary">
-          <StatTile valueFirst decorativeChart icon={Layers} label="Total Batches" value={counts.total} tone="brand" />
+          <StatTile valueFirst icon={Layers} label="Total Batches" value={counts.total} tone="brand" />
           <StatTile
             valueFirst
-            decorativeChart
             icon={CircleCheck}
             label="Active Batches"
             value={counts.active}
@@ -101,7 +100,6 @@ export default async function BatchesPage({ searchParams }) {
           />
           <StatTile
             valueFirst
-            decorativeChart
             icon={Clock}
             label="Upcoming"
             value={counts.upcoming}
@@ -110,7 +108,6 @@ export default async function BatchesPage({ searchParams }) {
           />
           <StatTile
             valueFirst
-            decorativeChart
             icon={CalendarCheck}
             label="Completed"
             value={counts.completed}

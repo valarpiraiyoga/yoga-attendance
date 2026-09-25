@@ -1,128 +1,87 @@
 import Link from "next/link";
-import {
-  ArrowLeft,
-  CalendarDays,
-  ClipboardCheck,
-  Clock,
-  Hash,
-  Pencil,
-  UserRound,
-  Users,
-} from "lucide-react";
+import { ArrowRight, CalendarDays, ClipboardCheck, Clock, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import BatchAvatar from "@/components/ui/batch-avatar";
-import Tabs from "@/components/ui/tabs";
-import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
-import FieldRow from "@/components/layout/FieldRow";
 import { formatDateWithWeekday, formatTimeRange } from "@/lib/format";
 import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_BADGE_VARIANTS } from "@/lib/class-sessions/validation";
-import MarkSession from "@/app/attendance/[scheduleId]/[date]/mark-session";
-
-function FieldValue({ children }) {
-  return <p className="text-body font-medium break-words text-text-primary">{children}</p>;
-}
+import SessionActionsMenu from "@/app/attendance/[scheduleId]/[date]/session-actions-menu";
+import { sessionContextOf } from "@/app/attendance/session-context";
 
 /**
- * The heading shared by all three Session Details tabs (Overview / Eligible
- * Students / Attendance): back link, the session summary in the finalized
- * detail header (the one Batch, Membership and Schedule Details use), and the
- * session's tab navigation below that card — the batch is the anchor
- * (avatar, name, status, code), the session's facts sit below the divider as
- * `FieldRow`s, and the admin's Edit This Session / Mark Cancelled-or-Holiday
- * actions sit top-right, exactly as before.
+ * The one-line session summary at the top of Take Attendance: which class this is
+ * (the batch's own mark, name and status) and when and who (date, time, instructor),
+ * nothing more, so the students are on screen straight away. The admin's Edit This
+ * Session and Mark Cancelled / Holiday actions sit in an overflow menu at the right
+ * (`session-actions-menu.js`); an Instructor sees no menu. A session note, when the
+ * session has one, is a quiet second line.
  *
- * Everything shown is data the session already carries — there is no room /
- * location on a class session, so none is shown. `eligibleCount` is the
- * session's own Eligible Students count, passed in by the page (the same
- * schedule-scoped figure the tabs show).
+ * Everything shown is data the session already carries - there is no room /
+ * location on a class session, so none is shown.
  */
 export default function SessionHeader({
   session,
   displayStatus,
   scheduleId,
   date,
-  activeTab,
-  eligibleCount,
   isAdmin,
   canEdit,
   canMarkException,
 }) {
   const batchName = session.batches?.name ?? "—";
-  const batchCode = session.batches?.code ?? null;
   const base = `/attendance/${scheduleId}/${date}`;
-  const tabs = [
-    { key: "overview", label: "Overview", href: base },
-    { key: "eligible", label: "Eligible Students", href: `${base}?tab=eligible` },
-    { key: "attendance", label: "Attendance", href: `${base}?tab=attendance` },
-  ];
-
   const hasActions = isAdmin && (canEdit || canMarkException);
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link
-        href="/attendance"
-        className="text-body inline-flex w-fit items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Attendance
-      </Link>
+    <div className="rounded-card border border-border bg-surface p-4 shadow-xs">
+      <div className="flex items-center gap-3">
+        <BatchAvatar batch={{ ...session.batches, name: batchName }} size="md" />
 
-      <EntityDetailHeader
-        className="mb-0"
-        avatar={<BatchAvatar batch={{ ...session.batches, name: batchName }} size="lg" />}
-        title={batchName}
-        status={
-          <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS[displayStatus]}>{DISPLAY_STATUS_LABELS[displayStatus]}</Badge>
-        }
-        subMeta={
-          batchCode ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Hash className="size-3.5 shrink-0" aria-hidden="true" />
-              Batch Code: {batchCode}
-            </span>
-          ) : null
-        }
-        actions={
-          hasActions ? (
-            <>
-              {canEdit ? (
-                <Button variant="outline" render={<Link href={`${base}/edit`} />} nativeButton={false}>
-                  <Pencil className="size-4" aria-hidden="true" />
-                  Edit This Session
-                </Button>
-              ) : null}
-              {canMarkException ? <MarkSession scheduleId={scheduleId} date={date} /> : null}
-            </>
-          ) : null
-        }
-        highlight={
-          <div className="flex w-full flex-col gap-4">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
-              <FieldRow icon={CalendarDays} label="Date">
-                <FieldValue>{formatDateWithWeekday(session.session_date)}</FieldValue>
-              </FieldRow>
-              <FieldRow icon={Clock} label="Time">
-                <FieldValue>{formatTimeRange(session.start_time, session.end_time)}</FieldValue>
-              </FieldRow>
-              <FieldRow icon={UserRound} label="Instructor">
-                <FieldValue>{session.instructors?.full_name ?? "—"}</FieldValue>
-              </FieldRow>
-              <FieldRow icon={Users} label="Eligible Students">
-                <FieldValue>{eligibleCount ?? 0}</FieldValue>
-              </FieldRow>
-            </div>
-            {session.note ? (
-              <FieldRow icon={ClipboardCheck} label="Session Note" className="border-t border-border pt-4">
-                <p className="text-body break-words whitespace-pre-line text-text-primary">{session.note}</p>
-              </FieldRow>
-            ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-section-title font-semibold break-words text-text-primary">{batchName}</p>
+            <Badge variant={DISPLAY_STATUS_BADGE_VARIANTS[displayStatus]}>{DISPLAY_STATUS_LABELS[displayStatus]}</Badge>
           </div>
-        }
-      />
+          <div className="text-small mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-text-secondary">
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarDays className="size-3.5 shrink-0" aria-hidden="true" />
+              {formatDateWithWeekday(session.session_date)}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+              {formatTimeRange(session.start_time, session.end_time)}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
+              {session.instructors?.full_name ?? "—"}
+            </span>
+            <Link
+              href={`${base}/details`}
+              className="inline-flex items-center gap-1 font-medium text-brand hover:underline"
+            >
+              Session details
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
 
-      <Tabs as="link" items={tabs} active={activeTab} ariaLabel="Session sections" />
+        {hasActions ? (
+          <SessionActionsMenu
+            scheduleId={scheduleId}
+            date={date}
+            base={base}
+            canEdit={canEdit}
+            canMarkException={canMarkException}
+            sessionContext={sessionContextOf(session)}
+          />
+        ) : null}
+      </div>
+
+      {session.note ? (
+        <p className="text-small mt-3 flex items-start gap-1.5 border-t border-border pt-3 break-words whitespace-pre-line text-text-secondary">
+          <ClipboardCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          {session.note}
+        </p>
+      ) : null}
     </div>
   );
 }

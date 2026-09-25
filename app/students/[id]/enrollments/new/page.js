@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
@@ -10,7 +8,9 @@ import { getCentreToday } from "@/lib/center-profile/settings";
 import { createEnrollment } from "@/lib/enrollments/actions";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
 import EnrollmentForm from "@/app/students/[id]/enrollments/enrollment-form";
+import StudentIdentityHeader from "@/components/ui/student-identity-header";
 import GuidedSteps from "@/app/students/guided-steps";
+import PageHeader from "@/components/layout/PageHeader";
 
 const PLAN_LABELS = { monthly: "Monthly", quarterly: "Quarterly", custom: "Custom duration" };
 const MEMBERSHIP_STATUS_LABELS = { upcoming: "Upcoming", active: "Active", expired: "Expired", cancelled: "Cancelled" };
@@ -69,76 +69,73 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
   const createEnrollmentForStudent = createEnrollment.bind(null, id);
 
   return (
-    <div className={isGuided ? "mx-auto max-w-4xl" : "mx-auto max-w-3xl"}>
-      <Link
-        href={`/students/${id}`}
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Student Details
-      </Link>
+    <>
+      <PageHeader
+        compact
+        back={{ href: `/students/${id}`, label: "Back to Student Details" }}
+        title="Add Batch Enrollment"
+        description={<>Assign this student to a batch{isGuided ? " to complete their setup." : "."}</>}
+      />
+      <div className={isGuided ? "mx-auto w-full max-w-4xl" : "mx-auto w-full max-w-3xl"}>
+        {isGuided ? <GuidedSteps current={3} className="mt-0" /> : null}
 
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Add Batch Enrollment</h1>
-      <p className="text-body mt-1 text-text-secondary">
-        Assign this student to a batch{isGuided ? " to complete their setup." : "."}
-      </p>
-
-      {isGuided ? <GuidedSteps current={3} /> : null}
-
-      <div
-        className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8" : "mt-6"}`}
-      >
-        <div className={isGuided ? "mb-6 grid gap-4 sm:grid-cols-2" : "mb-6"}>
-          <div className="flex flex-col gap-1 rounded-lg border border-border bg-background/60 p-3">
+        <div
+          className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8" : ""}`}
+        >
+          {isGuided ? null : <StudentIdentityHeader student={student} className="mb-6" />}
+          <div className={isGuided ? "mb-6 grid gap-4 sm:grid-cols-2" : undefined}>
             {isGuided ? (
-              <span className="text-small font-medium tracking-wide text-text-secondary uppercase">
-                Student Context
-              </span>
+              <div className="flex flex-col gap-1 rounded-lg border border-border bg-background/60 p-3">
+                <span className="text-small font-medium tracking-wide text-text-secondary uppercase">
+                  Student Context
+                </span>
+                <div className="flex flex-wrap items-baseline gap-x-3">
+                  <span className="text-body font-medium text-text-primary">{student.full_name}</span>
+                  <span className="text-body text-text-secondary">{student.phone}</span>
+                </div>
+              </div>
             ) : null}
-            <div className="flex flex-wrap items-baseline gap-x-3">
-              <span className="text-body font-medium text-text-primary">{student.full_name}</span>
-              <span className="text-body text-text-secondary">{student.phone}</span>
-            </div>
+
+            {isGuided && currentMembership ? (
+              <div className="flex flex-col gap-1 rounded-lg border border-border bg-background/60 p-3">
+                <span className="text-small font-medium tracking-wide text-text-secondary uppercase">
+                  Membership Context
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-body font-medium text-text-primary">
+                    {PLAN_LABELS[currentMembership.plan] ?? currentMembership.plan} Membership
+                  </span>
+                  <Badge variant={MEMBERSHIP_STATUS_VARIANTS[currentMembership.status]}>
+                    {MEMBERSHIP_STATUS_LABELS[currentMembership.status]}
+                  </Badge>
+                </div>
+                <span className="text-body text-text-secondary">
+                  {formatDate(currentMembership.start_date)} – {formatDate(currentMembership.end_date)}
+                </span>
+              </div>
+            ) : isGuided ? (
+              <div className="flex flex-col justify-center gap-1 rounded-lg border border-dashed border-border bg-background/60 p-3">
+                <span className="text-small font-medium tracking-wide text-text-secondary uppercase">
+                  Membership Context
+                </span>
+                <span className="text-body text-text-secondary">No membership was created for this student.</span>
+              </div>
+            ) : null}
           </div>
 
-          {isGuided && currentMembership ? (
-            <div className="flex flex-col gap-1 rounded-lg border border-border bg-background/60 p-3">
-              <span className="text-small font-medium tracking-wide text-text-secondary uppercase">
-                Membership Context
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-body font-medium text-text-primary">
-                  {PLAN_LABELS[currentMembership.plan] ?? currentMembership.plan} Membership
-                </span>
-                <Badge variant={MEMBERSHIP_STATUS_VARIANTS[currentMembership.status]}>
-                  {MEMBERSHIP_STATUS_LABELS[currentMembership.status]}
-                </Badge>
-              </div>
-              <span className="text-body text-text-secondary">
-                {formatDate(currentMembership.start_date)} – {formatDate(currentMembership.end_date)}
-              </span>
-            </div>
-          ) : isGuided ? (
-            <div className="flex flex-col justify-center gap-1 rounded-lg border border-dashed border-border bg-background/60 p-3">
-              <span className="text-small font-medium tracking-wide text-text-secondary uppercase">
-                Membership Context
-              </span>
-              <span className="text-body text-text-secondary">No membership was created for this student.</span>
-            </div>
-          ) : null}
+          <EnrollmentForm
+            action={createEnrollmentForStudent}
+            student={{ full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }}
+            batchOptions={batchOptions}
+            currentSchedules={currentSchedules}
+            todayDate={await getCentreToday()}
+            guided={isGuided}
+            submitLabel="Save Enrollment"
+            pendingLabel="Saving…"
+            cancelHref={`/students/${id}`}
+          />
         </div>
-
-        <EnrollmentForm
-          action={createEnrollmentForStudent}
-          batchOptions={batchOptions}
-          currentSchedules={currentSchedules}
-          todayDate={await getCentreToday()}
-          guided={isGuided}
-          submitLabel="Save Enrollment"
-          pendingLabel="Saving…"
-          cancelHref={`/students/${id}`}
-        />
       </div>
-    </div>
+    </>
   );
 }

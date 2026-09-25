@@ -3,11 +3,13 @@
 import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CalendarDays, Clock, ClipboardCheck, History, Layers, Repeat2, UserRound } from "lucide-react";
+import { CalendarDays, Clock, ClipboardCheck, History, Layers, Repeat2, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
+import Container from "@/components/layout/Container";
 import FieldRow from "@/components/layout/FieldRow";
+import PageHeader from "@/components/layout/PageHeader";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { saveSessionAttendance } from "@/lib/attendance/actions";
 import { validateAttendanceMarks, computeAttendanceSummary } from "@/lib/attendance/validation";
@@ -210,19 +212,14 @@ export default function ReviewAttendanceChanges({
   const editHref = `/attendance-history/${scheduleId}/${date}/edit`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link
-        href={editHref}
-        className="text-body inline-flex w-fit items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Edit Attendance
-      </Link>
-
-      <div>
-        <h1 className="text-page-title font-semibold text-text-primary">Review Attendance Changes</h1>
-        <p className="text-body mt-1 text-text-secondary">Review the changes before saving.</p>
-      </div>
+    <>
+      <PageHeader
+        compact
+        back={{ href: editHref, label: "Back to Edit Attendance" }}
+        title="Review Attendance Changes"
+        description="Review the changes before saving."
+      />
+      <Container className="flex flex-col gap-6">
 
       <Panel>
         <PanelHeader icon={Layers} title="Session Details" className="mb-4 min-h-8" />
@@ -311,6 +308,7 @@ export default function ReviewAttendanceChanges({
           }
         />
       )}
-    </div>
+      </Container>
+    </>
   );
 }

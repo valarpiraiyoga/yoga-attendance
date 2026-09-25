@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import ConfirmDialog from "@/components/ui/confirm-dialog";
+import EnrollmentReviewDialog from "@/app/students/[id]/enrollments/enrollment-review-dialog";
 import { DAY_LABELS } from "@/lib/schedules/validation";
 import {
   validateEnrollmentInput,
@@ -69,6 +69,7 @@ function scheduleLabel(schedule) {
  */
 export default function EnrollmentForm({
   action,
+  student,
   enrollment,
   batchOptions,
   currentSchedules,
@@ -423,70 +424,16 @@ export default function EnrollmentForm({
         </div>
       </form>
 
-      <ConfirmDialog
+      <EnrollmentReviewDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Review enrollment"
-        description="Confirm these details before saving. This applies only to this enrollment and does not affect past attendance."
-        confirmLabel="Confirm & Save"
+        student={student}
+        review={reviewData}
+        isEdit={Boolean(enrollment)}
+        isActive={isActive}
         isPending={isPending}
         onConfirm={confirmAndSubmit}
-      >
-        {reviewData ? (
-          <dl className="flex flex-col gap-3 rounded-lg border border-border bg-background/60 p-4">
-            <div className="flex justify-between gap-4">
-              <dt className="text-body text-text-secondary">Batch</dt>
-              <dd className="text-body font-medium text-text-primary">{reviewData.batchName}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-body text-text-secondary">Start date</dt>
-              <dd className="text-body font-medium text-text-primary">{reviewData.startDate}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-body text-text-secondary">End date</dt>
-              <dd className="text-body font-medium text-text-primary">
-                {reviewData.endDate || "No end date"}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-body text-text-secondary">Schedules</dt>
-              <dd className="text-body font-medium text-text-primary">
-                {reviewData.selectedSchedules.map(scheduleLabel).join("; ")}
-              </dd>
-            </div>
-            {reviewData.addedSchedules.length > 0 ? (
-              <div className="flex flex-col gap-1">
-                <dt className="text-body text-text-secondary">Adding</dt>
-                <dd className="text-body font-medium text-success">
-                  {reviewData.addedSchedules.map(scheduleLabel).join("; ")}
-                </dd>
-              </div>
-            ) : null}
-            {reviewData.removedAssignments.length > 0 ? (
-              <div className="flex flex-col gap-1">
-                <dt className="text-body text-text-secondary">Ending</dt>
-                <dd className="text-body font-medium text-danger">
-                  {reviewData.removedAssignments.map((assignment) => scheduleLabel(assignment.schedule)).join("; ")}
-                </dd>
-              </div>
-            ) : null}
-            {reviewData.scheduleEffectiveDate ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-body text-text-secondary">Schedule change effective</dt>
-                <dd className="text-body font-medium text-text-primary">{reviewData.scheduleEffectiveDate}</dd>
-              </div>
-            ) : null}
-            {enrollment ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-body text-text-secondary">Status</dt>
-                <dd className="text-body font-medium text-text-primary">
-                  {isActive ? "Active" : "Inactive"}
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-        ) : null}
-      </ConfirmDialog>
+      />
     </>
   );
 }

@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { listBatchOptions } from "@/lib/batches/data";
@@ -9,6 +7,8 @@ import { getCentreToday } from "@/lib/center-profile/settings";
 import { getEnrollment, listScheduleAssignmentsForEnrollment, isScheduleAssignmentActive } from "@/lib/enrollments/data";
 import { updateEnrollment } from "@/lib/enrollments/actions";
 import EnrollmentForm from "@/app/students/[id]/enrollments/enrollment-form";
+import StudentIdentityHeader from "@/components/ui/student-identity-header";
+import PageHeader from "@/components/layout/PageHeader";
 
 export default async function EditEnrollmentPage({ params }) {
   // Authorization boundary — see app/students/layout.js for why this must be
@@ -42,33 +42,30 @@ export default async function EditEnrollmentPage({ params }) {
   const updateEnrollmentById = updateEnrollment.bind(null, enrollmentId, id);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Link
-        href={`/students/${id}`}
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Student Details
-      </Link>
-
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Edit Batch Enrollment</h1>
-      <p className="text-body mt-1 text-text-secondary">
-        Update {student.full_name}&rsquo;s enrollment in {enrollment.batches?.name ?? "this batch"}.
-      </p>
-
-      <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
-        <EnrollmentForm
-          action={updateEnrollmentById}
-          enrollment={enrollment}
-          batchOptions={batchOptions}
-          currentSchedules={currentSchedules}
-          assignedSchedules={activeAssignments}
-          todayDate={today}
-          submitLabel="Save Changes"
-          pendingLabel="Saving…"
-          cancelHref={`/students/${id}`}
-        />
+    <>
+      <PageHeader
+        compact
+        back={{ href: `/students/${id}`, label: "Back to Student Details" }}
+        title="Edit Batch Enrollment"
+        description={<>Update {student.full_name}&rsquo;s enrollment in {enrollment.batches?.name ?? "this batch"}.</>}
+      />
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+          <StudentIdentityHeader student={student} className="mb-6" />
+          <EnrollmentForm
+            action={updateEnrollmentById}
+            student={{ full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }}
+            enrollment={enrollment}
+            batchOptions={batchOptions}
+            currentSchedules={currentSchedules}
+            assignedSchedules={activeAssignments}
+            todayDate={today}
+            submitLabel="Save Changes"
+            pendingLabel="Saving…"
+            cancelHref={`/students/${id}`}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -54,6 +54,10 @@ const NOTE_TONE_CLASSES = {
  * `pendingLabel` is the confirm button's text while `isPending` ("Saving…" by
  * default; a delete says "Deleting…").
  *
+ * `context` is the "which record is this about?" card (a `ContextCard` - a student, a
+ * schedule, a session): it sits right under the title and description, before the note and
+ * the review content, so the person knows what the question below acts on.
+ *
  * `children` is the "Review" content — a short inline note fits the
  * `note` prop; a larger review summary (a definition list of what is about
  * to change) renders as `children` below the centered header, in its own
@@ -66,6 +70,7 @@ export default function ConfirmDialog({
   title,
   description,
   note,
+  context,
   children,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
@@ -96,6 +101,8 @@ export default function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
+
+        {context}
 
         {note ? (
           <p

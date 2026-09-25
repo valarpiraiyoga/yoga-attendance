@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Calendar, CircleCheck, Clock, Layers, Users } from "lucide-react";
+import { ArrowRight, Calendar, CircleCheck, Clock, Layers, Users } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import Container from "@/components/layout/Container";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import { requireUser, ROLES } from "@/lib/auth/dal";
-import { listSessionsForDate, listSessions } from "@/lib/class-sessions/data";
+import { getSessionDateNavigation, listSessionsForDate, listSessions } from "@/lib/class-sessions/data";
+import { getRecentActivity } from "@/lib/dashboard/data";
+import { isValidMonth, monthOf } from "@/lib/attendance-history/calendar";
 import { todayInCentreTimezone, hourInCentreTimezone } from "@/lib/class-sessions/validation";
 import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { addDaysUTC } from "@/lib/schedules/validation";
@@ -17,6 +19,7 @@ import { getActiveBatchCount } from "@/lib/batches/data";
 import { cn } from "@/lib/utils";
 import DashboardTodaysClasses from "@/app/dashboard-todays-classes";
 import DashboardUpcomingClasses from "@/app/dashboard-upcoming-classes";
+import { DashboardCalendar, DashboardQuickActions, DashboardRecentActivity } from "@/app/dashboard-side-panels";
 
 // How many days ahead Upcoming Classes looks, and how many rows it shows —
 // a short preview (approved wireframes p.2, p.8 show 1–3 rows), not a
@@ -195,11 +198,11 @@ function DashboardSkeleton({ isAdmin }) {
  * occurrences, two batched summary calls), 8 for an Admin (the same plus
  * the two counts) — independent of how many sessions exist on either list.
  */
-async function DashboardContent({ isAdmin, today, timeZone }) {
+async function DashboardContent({ isAdmin, today, timeZone, month }) {
   const upcomingFrom = addDaysUTC(today, 1);
   const upcomingTo = addDaysUTC(today, UPCOMING_WINDOW_DAYS);
 
-  const [todaysSessions, upcoming, activeStudentCount, activeBatchCount] = await Promise.all([
+  const [todaysSessions, upcoming, activeStudentCount, activeBatchCount, dateNavigation, recentActivity] = await Promise.all([
     listSessionsForDate(today).then(withAttendanceSummaries),
     listSessions({ dateFrom: upcomingFrom, dateTo: upcomingTo, page: 1, pageSize: UPCOMING_LIMIT }).then(
       async (result) => ({
@@ -209,6 +212,10 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
     ),
     isAdmin ? getActiveStudentCount() : Promise.resolve(null),
     isAdmin ? getActiveBatchCount() : Promise.resolve(null),
+    // The calendar's days with class sessions (RLS narrows an Instructor to their own), and,
+    // for an Admin, what has happened lately - both real records, nothing invented.
+    getSessionDateNavigation(month),
+    isAdmin ? getRecentActivity() : Promise.resolve(null),
   ]);
 
   const totalToday = todaysSessions.length;
@@ -223,9 +230,8 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
   return (
     <div className="flex flex-col gap-8">
       {isAdmin ? (
-        <StatTileGroup ariaLabel="Summary" className="grid-cols-1 sm:grid-cols-2">
+        <StatTileGroup ariaLabel="Summary" className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
           <StatTile
-            decorativeChart
             label="Active Students"
             value={activeStudentCount}
             caption="Currently enrolled"
@@ -233,7 +239,6 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
             tone="brand"
           />
           <StatTile
-            decorativeChart
             label="Active Batches"
             value={activeBatchCount}
             caption="Ongoing batches"
@@ -241,7 +246,6 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
             tone="info"
           />
           <StatTile
-            decorativeChart
             label="Today's Classes"
             value={totalToday}
             caption="Scheduled for today"
@@ -249,7 +253,6 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
             tone="warning"
           />
           <StatTile
-            decorativeChart
             label="Attendance Marked"
             value={`${attendanceMarkedCount} / ${totalToday}`}
             caption="Marked today"
@@ -260,7 +263,6 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
       ) : (
         <StatTileGroup columns={3} ariaLabel="Summary" className="grid-cols-1 sm:grid-cols-2">
           <StatTile
-            decorativeChart
             label="Today's Classes"
             value={totalToday}
             caption="Scheduled for today"
@@ -268,7 +270,6 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
             tone="warning"
           />
           <StatTile
-            decorativeChart
             label="Completed"
             value={attendanceMarkedCount}
             caption="Marked today"
@@ -276,7 +277,6 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
             tone="success"
           />
           <StatTile
-            decorativeChart
             label="Remaining"
             value={totalToday - attendanceMarkedCount}
             caption="Still scheduled"
@@ -286,6 +286,8 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
         </StatTileGroup>
       )}
 
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
+      <div className="flex min-w-0 flex-col gap-6">
       <DashboardTodaysClasses
         sessions={todaysSessions}
         showInstructor={isAdmin}
@@ -295,7 +297,7 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
         description={isAdmin ? "All classes scheduled for today." : "Your assigned yoga classes for today."}
       />
 
-      <DashboardSection>
+      <DashboardSection className="sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             <span
@@ -312,6 +314,7 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
           {isAdmin ? (
             <Button variant="outline" size="sm" className="self-start" render={<Link href="/schedule" />} nativeButton={false}>
               View Full Schedule
+              <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           ) : null}
         </div>
@@ -324,6 +327,14 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
           </div>
         )}
       </DashboardSection>
+      </div>
+
+      <aside aria-label="Calendar and shortcuts" className="flex min-w-0 flex-col gap-6">
+        <DashboardCalendar month={month} today={today} monthDays={dateNavigation.monthDays} />
+        {isAdmin ? <DashboardQuickActions /> : null}
+        {isAdmin && recentActivity ? <DashboardRecentActivity items={recentActivity} timeZone={timeZone} /> : null}
+      </aside>
+      </div>
     </div>
   );
 }
@@ -345,7 +356,7 @@ async function DashboardContent({ isAdmin, today, timeZone }) {
  * operational content. The dashboard prioritizes daily tasks rather than
  * complex analytics" is the section's own stated principle.
  */
-export default async function Home() {
+export default async function Home({ searchParams }) {
   // Authorization boundary — the proxy is only a first-pass check.
   const user = await requireUser();
   const isAdmin = user.role === ROLES.ADMIN;
@@ -353,6 +364,9 @@ export default async function Home() {
   const timeZone = await getCenterTimezone();
   const today = todayInCentreTimezone(new Date(), timeZone);
   const greeting = getGreetingPresentation(user.name, timeZone);
+  const rawParams = await searchParams;
+  // The calendar's month (`?month=YYYY-MM`); the centre's current month by default.
+  const month = isValidMonth(rawParams?.month) ? rawParams.month : monthOf(today);
 
   return (
     <AppShell role={user.role} user={user}>
@@ -364,7 +378,7 @@ export default async function Home() {
           sm+: greeting left, date right. Sidebar remains lg-only.
         */}
         <div className="flex flex-col gap-8">
-        <header className={SECTION_FRAME}>
+        <header className={cn(SECTION_FRAME, "bg-linear-to-r from-brand/10 via-surface to-surface")}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <span
@@ -375,16 +389,7 @@ export default async function Home() {
             </span>
             <div className="min-w-0">
               <h1 className="text-page-title font-semibold break-words text-text-primary">
-                {greeting.inlineIdentity ? (
-                  <>
-                    {greeting.salutation}, {greeting.identity}{" "}
-                    <span aria-hidden="true">👋</span>
-                  </>
-                ) : (
-                  <>
-                    {greeting.salutation}, <span aria-hidden="true">👋</span>
-                  </>
-                )}
+                {greeting.inlineIdentity ? `${greeting.salutation}, ${greeting.identity}` : greeting.salutation}
               </h1>
               {!greeting.inlineIdentity && greeting.identity ? (
                 <p className="text-body mt-1 font-medium break-words text-text-primary">
@@ -400,7 +405,7 @@ export default async function Home() {
           </div>
 
           {/* Date chip: keep bg-brand/5, rounded-card, padding, and top-aligned icon. */}
-          <div className="flex w-full min-w-0 items-start gap-3 self-start rounded-card bg-brand/5 px-4 py-3 sm:w-auto sm:shrink-0">
+          <div className="flex w-full min-w-0 items-start gap-3 self-start rounded-card border border-border bg-surface px-4 py-3 shadow-xs sm:w-auto sm:shrink-0">
             <Calendar className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
             <div className="min-w-0">
               <p className="text-small font-medium tracking-wide text-text-secondary uppercase">Today</p>
@@ -413,7 +418,7 @@ export default async function Home() {
         </header>
 
         <Suspense fallback={<DashboardSkeleton isAdmin={isAdmin} />}>
-          <DashboardContent isAdmin={isAdmin} today={today} timeZone={timeZone} />
+          <DashboardContent isAdmin={isAdmin} today={today} timeZone={timeZone} month={month} />
         </Suspense>
         </div>
       </Container>

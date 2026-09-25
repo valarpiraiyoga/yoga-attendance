@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
+import SessionContext, { sessionContextOf } from "@/app/attendance/session-context";
 import { calculateEndTime } from "@/lib/schedules/validation";
 import { validateSessionEditInput } from "@/lib/class-sessions/validation";
 
@@ -209,6 +210,7 @@ export default function SessionForm({ action, session, instructorOptions, cancel
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Review session change"
+        context={<SessionContext context={sessionContextOf(session)} />}
         description="This change applies only to this session and does not modify the recurring schedule. This session will no longer follow future changes made to the recurring schedule."
         confirmLabel="Confirm & Save"
         isPending={isPending}

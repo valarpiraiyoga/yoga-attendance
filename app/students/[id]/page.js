@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCentreToday } from "@/lib/center-profile/settings";
 import {
-  ArrowLeft,
   ArrowRight,
   Calendar,
   CalendarDays,
@@ -18,13 +17,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
+import BatchAvatar from "@/components/ui/batch-avatar";
 import EmptyState from "@/components/ui/empty-state";
+import FlashToast from "@/components/ui/flash-toast";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import Container from "@/components/layout/Container";
 import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
+import PageHeader from "@/components/layout/PageHeader";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { getRecentStudentAttendance } from "@/lib/reports/data";
+import { InstructorCell } from "@/components/ui/session-cells";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   listEnrollmentsForStudent,
@@ -35,7 +39,6 @@ import { DAY_LABELS, DAYS_OF_WEEK } from "@/lib/schedules/validation";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
 import { formatDate, formatDateShort, formatDateWithWeekday, formatTimeRange } from "@/lib/format";
 import { formatCurrency } from "@/lib/currencies";
-import { cn } from "@/lib/utils";
 import { ENTITY_STATUS, MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import StudentStatusButton from "@/app/students/[id]/student-status-button";
 import StudentCardMenu from "@/app/students/student-card-menu";
@@ -53,17 +56,6 @@ const SUCCESS_MESSAGES = {
 // header row is hidden and the instructor drops to its own line under the time.
 const SCHEDULE_COLUMNS =
   "grid grid-cols-[3rem_minmax(0,1fr)] gap-x-4 sm:grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)]";
-
-/** "Hatha Yoga General" -> "HYG": the first letters of up to three words. */
-function batchAbbreviation(name) {
-  const letters = String(name ?? "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 3)
-    .map((word) => word[0].toUpperCase())
-    .join("");
-  return letters || "?";
-}
 
 /** Monday-first, then by start time — a stable, readable order for the schedule table. */
 function sortAssignmentsByWeek(assignments) {
@@ -86,14 +78,14 @@ function Value({ children, className }) {
 }
 
 /**
- * One Student Information field: a small muted label above the value. The
- * panel is full width, so the fields sit in a 1 / 2 / 4-column grid.
+ * One field of a side panel: the muted label on the left, the value on the right,
+ * for the narrow column the Membership and Profile & Contact panels sit in.
  */
-function InfoRow({ label, children, valueClassName, className }) {
+function DetailRow({ label, children, valueClassName }) {
   return (
-    <div className={cn("grid min-w-0 content-start gap-0.5", className)}>
-      <dt className="text-small text-text-secondary">{label}</dt>
-      <dd>
+    <div className="flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0">
+      <dt className="text-small shrink-0 text-text-secondary">{label}</dt>
+      <dd className="min-w-0 text-right">
         <Value className={valueClassName}>{children}</Value>
       </dd>
     </div>
@@ -129,15 +121,13 @@ async function loadRecentAttendance(studentId, today) {
  * Student Details (wireframe p10; `04 Student detail.png`) — a single page,
  * not tabs (02-ux.md: "Student Details is a single page, not tabs" — settled
  * explicitly to resolve the earlier IA/wireframe conflict, and confirmed for
- * this refinement). Hierarchy, top to bottom: the identity header (who; status,
- * ID, gender, joined; actions) — the same compact header as Membership Details;
- * four compact summary tiles; a full-width Student Information panel (notes
- * included); one working row with Batch Enrollments (wider) and Current
- * Membership (a summary and entry point); then the quiet secondary sections,
- * Additional Information and Recent Attendance. Additional Information holds an honest empty
- * state: no supported student field is left to show there (notes live in
- * Student Information; the schema has no emergency contact, address or
- * medical fields).
+ * this refinement). Hierarchy, top to bottom: the page strip; the identity header
+ * (who; status, ID, gender, joined; actions) — the same header as Membership
+ * Details; four compact summary cards; the working content in two columns from `xl`
+ * (left: Batch Enrollments then Recent Attendance; right: Current Membership, a summary
+ * and entry point, then Profile & Contact: phone, email, date of birth, gender); and
+ * Additional Information (the notes) full width at the bottom. No student field is
+ * dropped: name, ID and join date are in the identity header, the rest below it.
  */
 export default async function StudentDetailsPage({ params, searchParams }) {
   await requireRole(ROLES.ADMIN);
@@ -174,26 +164,26 @@ export default async function StudentDetailsPage({ params, searchParams }) {
       />
     );
   }
-  const activeEnrollmentCount = enrollments.filter((enrollment) => enrollment.status === "active").length;
   const membershipStatus = currentMembership
     ? (MEMBERSHIP_STATUS[currentMembership.status] ?? { label: currentMembership.status, variant: "neutral" })
     : null;
   const studentStatus = ENTITY_STATUS[student.status] ?? ENTITY_STATUS.inactive;
   const isActive = student.status === "active";
+  const activeEnrollmentCount = enrollments.filter((enrollment) => enrollment.status === "active").length;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link
-        href="/students"
-        className="text-body inline-flex w-fit items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Students
-      </Link>
-
+    <>
+      <PageHeader
+        compact
+        back={{ href: "/students", label: "Back to Students" }}
+        title="Student Details"
+        description={`Profile, enrollments and membership for ${student.full_name}.`}
+      />
+      <Container className="flex flex-col gap-6">
       <>
         <EntityDetailHeader
           decorative={false}
+          wash
           className="mb-0"
           avatar={<Avatar name={student.full_name} src={student.photo_url} size="lg" />}
           title={student.full_name}
@@ -218,7 +208,12 @@ export default async function StudentDetailsPage({ params, searchParams }) {
           }
           actions={
             <>
-              <StudentStatusButton studentId={student.id} studentName={student.full_name} status={student.status} />
+              <StudentStatusButton
+                studentId={student.id}
+                studentName={student.full_name}
+                status={student.status}
+                student={{ full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }}
+              />
               <Button variant="outline" render={<Link href={`/students/${student.id}/edit`} />} nativeButton={false}>
                 <Pencil className="size-4" aria-hidden="true" />
                 Edit Student
@@ -265,40 +260,17 @@ export default async function StudentDetailsPage({ params, searchParams }) {
         </StatTileGroup>
       </>
 
-      {message ? (
-        <div
-          role="status"
-          className="rounded-input border border-success/30 bg-success/5 px-3 py-2 text-body text-success"
-        >
-          {message}
-        </div>
-      ) : null}
+      {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
+      <FlashToast message={message} />
 
-      <Panel>
-        <PanelHeader icon={UserRound} title="Student Information" />
-        <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
-          <InfoRow label="Full Name">{student.full_name}</InfoRow>
-          <InfoRow label="Student ID">{student.student_code}</InfoRow>
-          <InfoRow label="Phone">{formatPhone(student.phone, student.phone_country_code)}</InfoRow>
-          <InfoRow label="Email" valueClassName="break-all">
-            {student.email || "—"}
-          </InfoRow>
-          <InfoRow label="Join Date">{formatDate(student.join_date)}</InfoRow>
-          <InfoRow label="Date of Birth">{student.date_of_birth ? formatDate(student.date_of_birth) : "—"}</InfoRow>
-          <InfoRow label="Gender" valueClassName="capitalize">
-            {student.gender || "—"}
-          </InfoRow>
-        </dl>
-        <div className="mt-3 border-t border-border pt-3">
-          <p className="text-small text-text-secondary">Notes</p>
-          <p className="text-body mt-0.5 break-words whitespace-pre-line text-text-primary">
-            {student.notes || "No notes."}
-          </p>
-        </div>
-      </Panel>
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
-        <Panel>
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start xl:grid-cols-[minmax(0,1fr)_22rem]">
+        {/* From `xl`: two columns, the working panels on the left (enrollments, then attendance) and the
+            reference panels on the right (membership, then profile). Below `xl` the wrappers dissolve
+            (`contents`) and the four panels are laid out by `order`: enrollments, membership, profile,
+            attendance - one column on a phone, and from `lg` enrollments and attendance full width with
+            membership and profile side by side between them. */}
+        <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
+        <Panel className="order-1 lg:col-span-2 xl:order-none xl:col-span-1">
           <PanelHeader
             icon={Layers}
             title="Batch Enrollments"
@@ -332,12 +304,7 @@ export default async function StudentDetailsPage({ params, searchParams }) {
                     {/* One flat row per enrollment (no nested card): the batch tile, name with its status,
                         code, and the edit control — then its schedule table. */}
                     <div className="flex items-start gap-3">
-                      <span
-                        aria-hidden="true"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 px-1 text-small font-semibold text-brand"
-                      >
-                        {batchAbbreviation(batchName)}
-                      </span>
+                      <BatchAvatar batch={{ ...enrollment.batches, name: batchName }} size="md" className="shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <p className="text-body font-semibold break-words text-text-primary">{batchName}</p>
@@ -426,91 +393,7 @@ export default async function StudentDetailsPage({ params, searchParams }) {
           )}
         </Panel>
 
-        <Panel>
-          <PanelHeader
-            icon={CreditCard}
-            title="Current Membership"
-            className="flex-col items-start sm:flex-row sm:items-center"
-            action={
-              <Button
-                variant="outline"
-                size="sm"
-                render={<Link href={`/students/${student.id}/memberships/new`} />}
-                nativeButton={false}
-              >
-                <Plus className="size-4" aria-hidden="true" />
-                Add Membership
-              </Button>
-            }
-          />
-          {currentMembership ? (
-            <div>
-              {/* A summary and entry point — the full record lives on Membership Details. */}
-              <div className="flex items-start gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <p className="text-body font-semibold text-text-primary">
-                      {PLAN[currentMembership.plan] ?? currentMembership.plan} Membership
-                    </p>
-                    <Badge variant={membershipStatus.variant}>{membershipStatus.label}</Badge>
-                  </div>
-                  <div className="text-small flex flex-wrap items-center gap-x-3 gap-y-0.5 text-text-secondary">
-                    <span>ID: {currentMembership.membership_code}</span>
-                    <Link
-                      href={`/memberships/${currentMembership.id}`}
-                      className="inline-flex items-center gap-1 font-medium text-brand hover:underline"
-                    >
-                      View Membership
-                      <ArrowRight className="size-3.5" aria-hidden="true" />
-                    </Link>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
-                  aria-label={`Edit membership ${currentMembership.membership_code}`}
-                  title="Edit Membership"
-                  render={<Link href={`/memberships/${currentMembership.id}/edit`} />}
-                  nativeButton={false}
-                >
-                  <Pencil className="size-4" aria-hidden="true" />
-                </Button>
-              </div>
-
-              <div className="@container mt-3 border-t border-border pt-3">
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 @md:grid-cols-3">
-                  <InfoRow label="Validity" className="col-span-2 @md:col-span-1">
-                    {formatPeriod(currentMembership.start_date, currentMembership.end_date)}
-                  </InfoRow>
-                  <InfoRow label="Amount">{formatCurrency(currentMembership.amount, currentMembership.currency)}</InfoRow>
-                  <div className="grid min-w-0 content-start gap-0.5">
-                    <dt className="text-small text-text-secondary">Payment</dt>
-                    <dd>
-                      <Badge variant={(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).variant}>
-                        {(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).label}
-                      </Badge>
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-          ) : (
-            <EmptyState size="sm" description="No membership yet for this student." />
-          )}
-        </Panel>
-      </div>
-
-      <Panel>
-        <PanelHeader icon={FileText} title="Additional Information" className="mb-2" />
-        <EmptyState
-          size="compact"
-          title="No additional information yet"
-          description="Extra student details will appear here when they are available."
-        />
-      </Panel>
-
-      <Panel>
+      <Panel className="order-4 lg:col-span-2 xl:order-none xl:col-span-1">
         <PanelHeader icon={ClipboardList} title="Recent Attendance" className="mb-2" />
         {!recentAttendance ? (
           <EmptyState
@@ -549,8 +432,8 @@ export default async function StudentDetailsPage({ params, searchParams }) {
                     <TableCell>
                       <Badge variant={status.variant}>{status.label}</Badge>
                     </TableCell>
-                    <TableCell className="hidden text-text-secondary sm:table-cell">
-                      {session.instructor?.full_name ?? "—"}
+                    <TableCell className="hidden sm:table-cell">
+                      <InstructorCell name={session.instructor?.full_name} photoUrl={session.instructor?.photo_url} />
                     </TableCell>
                   </TableRow>
                 );
@@ -559,6 +442,103 @@ export default async function StudentDetailsPage({ params, searchParams }) {
           </Table>
         )}
       </Panel>
-    </div>
+        </div>
+        <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
+        <Panel className="order-2 xl:order-none">
+          <PanelHeader
+            icon={CreditCard}
+            title="Current Membership"
+            action={
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label="Add Membership"
+                title="Add Membership"
+                render={<Link href={`/students/${student.id}/memberships/new`} />}
+                nativeButton={false}
+              >
+                <Plus className="size-4" aria-hidden="true" />
+              </Button>
+            }
+          />
+          {currentMembership ? (
+            <div>
+              {/* A summary and entry point — the full record lives on Membership Details. */}
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <p className="text-body font-semibold text-text-primary">
+                      {PLAN[currentMembership.plan] ?? currentMembership.plan} Membership
+                    </p>
+                    <Badge variant={membershipStatus.variant}>{membershipStatus.label}</Badge>
+                  </div>
+                  <div className="text-small flex flex-wrap items-center gap-x-3 gap-y-0.5 text-text-secondary">
+                    <span>ID: {currentMembership.membership_code}</span>
+                    <Link
+                      href={`/memberships/${currentMembership.id}`}
+                      className="inline-flex items-center gap-1 font-medium text-brand hover:underline"
+                    >
+                      View Membership
+                      <ArrowRight className="size-3.5" aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
+                  aria-label={`Edit membership ${currentMembership.membership_code}`}
+                  title="Edit Membership"
+                  render={<Link href={`/memberships/${currentMembership.id}/edit`} />}
+                  nativeButton={false}
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
+                </Button>
+              </div>
+
+              <dl className="mt-3 flex flex-col divide-y divide-border border-t border-border pt-3">
+                <DetailRow label="Validity">{formatPeriod(currentMembership.start_date, currentMembership.end_date)}</DetailRow>
+                <DetailRow label="Amount">{formatCurrency(currentMembership.amount, currentMembership.currency)}</DetailRow>
+                <DetailRow label="Payment">
+                  <Badge variant={(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).variant}>
+                    {(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).label}
+                  </Badge>
+                </DetailRow>
+              </dl>
+            </div>
+          ) : (
+            <EmptyState size="sm" description="No membership yet for this student." />
+          )}
+        </Panel>
+
+        <Panel className="order-3 xl:order-none">
+          <PanelHeader icon={UserRound} title="Profile & Contact" />
+          <dl className="flex flex-col divide-y divide-border">
+            <DetailRow label="Phone">{formatPhone(student.phone, student.phone_country_code)}</DetailRow>
+            <DetailRow label="Email" valueClassName="break-all">
+              {student.email || "—"}
+            </DetailRow>
+            <DetailRow label="Date of Birth">{student.date_of_birth ? formatDate(student.date_of_birth) : "—"}</DetailRow>
+            <DetailRow label="Gender" valueClassName="capitalize">
+              {student.gender || "—"}
+            </DetailRow>
+          </dl>
+        </Panel>
+        </div>
+      </div>
+
+      <Panel>
+        <PanelHeader icon={FileText} title="Additional Information" className="mb-2" />
+        {student.notes ? (
+          <div>
+            <p className="text-small text-text-secondary">Notes</p>
+            <p className="text-body mt-0.5 break-words whitespace-pre-line text-text-primary">{student.notes}</p>
+          </div>
+        ) : (
+          <EmptyState size="compact" title="No additional information yet" />
+        )}
+      </Panel>
+      </Container>
+    </>
   );
 }

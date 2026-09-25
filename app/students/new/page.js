@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import PageHeader from "@/components/layout/PageHeader";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { createStudent } from "@/lib/students/actions";
 import StudentForm from "@/app/students/student-form";
@@ -17,25 +16,21 @@ export default async function NewStudentPage() {
   await requireRole(ROLES.ADMIN);
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <Link
-        href="/students"
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Students
-      </Link>
+    <>
+      <PageHeader
+        compact
+        back={{ href: "/students", label: "Back to Students" }}
+        title="Add Student"
+        description="Create a student profile to begin their enrollment setup."
+      />
 
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Add Student</h1>
-      <p className="text-body mt-1 text-text-secondary">
-        Create a student profile to begin their enrollment setup.
-      </p>
+      <div className="mx-auto max-w-5xl">
+        <GuidedSteps current={1} className="mt-0" />
 
-      <GuidedSteps current={1} />
-
-      <div className="rounded-card border border-border bg-surface p-6 shadow-xs sm:p-8">
-        <StudentForm action={createStudent} submitLabel="Save Student" pendingLabel="Saving…" />
+        <div className="rounded-card border border-border bg-surface p-6 shadow-xs sm:p-8">
+          <StudentForm action={createStudent} submitLabel="Save Student" pendingLabel="Saving…" />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

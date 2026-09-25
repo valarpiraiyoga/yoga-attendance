@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft,
   CalendarDays,
   CircleCheck,
   CircleMinus,
@@ -17,7 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import BatchAvatar from "@/components/ui/batch-avatar";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
+import Container from "@/components/layout/Container";
 import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
+import PageHeader from "@/components/layout/PageHeader";
 import FieldRow from "@/components/layout/FieldRow";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
@@ -90,16 +91,17 @@ export default async function AttendanceDetailsPage({ params, searchParams }) {
   const editHref = `/attendance-history/${scheduleId}/${date}/edit`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link
-        href="/attendance-history"
-        className="text-body inline-flex w-fit items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Attendance History
-      </Link>
-
+    <>
+      <PageHeader
+        compact
+        back={{ href: "/attendance-history", label: "Back to Attendance History" }}
+        title="Attendance Details"
+        description={`Recorded attendance for ${batchName}.`}
+      />
+      <Container className="flex flex-col gap-6">
       <EntityDetailHeader
+        decorative={false}
+        wash
         className="mb-0"
         avatar={<BatchAvatar batch={{ ...session.batches, name: batchName }} size="lg" />}
         title={batchName}
@@ -170,6 +172,7 @@ export default async function AttendanceDetailsPage({ params, searchParams }) {
         />
         <AttendanceDetailsRoster students={eligibleStudents} marksByStudentId={marksByStudentId} editHref={editHref} />
       </Panel>
-    </div>
+      </Container>
+    </>
   );
 }

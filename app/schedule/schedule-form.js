@@ -6,6 +6,8 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import BatchIdentityHeader from "@/components/ui/batch-identity-header";
+import ScheduleContext, { scheduleContextOf } from "@/app/schedule/schedule-context";
 import {
   Select,
   SelectContent,
@@ -53,7 +55,8 @@ function formatTime(value) {
  *
  * `batch` fixes the batch as read-only context (Edit mode, always — a
  * schedule's batch does not change; and Add Schedule launched from Batch
- * Details). Without it, a Batch Select renders from `batchOptions`
+ * Details), shown as the card's header (`BatchIdentityHeader`: its own mark, name and
+ * code), as on Edit Batch. Without it, a Batch Select renders from `batchOptions`
  * (standalone Add Schedule).
  *
  * `requireConfirmation` is false for Add (02-ux.md Flow 03 saves directly,
@@ -333,14 +336,11 @@ export default function ScheduleForm({
         ) : null}
 
         {batch ? (
-          <div className="flex flex-col gap-2">
-            <Label>Batch</Label>
-            <div className="flex flex-wrap items-baseline gap-x-3 rounded-lg border border-border bg-background/60 p-3">
-              <span className="text-body font-medium text-text-primary">{batch.name}</span>
-              <span className="text-small text-text-secondary">{batch.code}</span>
-            </div>
+          <>
+            {/* The batch is fixed context, so it is the card's header (its own mark, name and code), as on Edit Batch. */}
+            <BatchIdentityHeader batch={batch} />
             <input type="hidden" name="batch_id" value={batch.id} />
-          </div>
+          </>
         ) : (
           <div className="flex flex-col gap-2">
             <Label htmlFor="batch_id">Batch</Label>
@@ -654,6 +654,11 @@ export default function ScheduleForm({
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
           title="Review schedule change"
+          context={
+            <ScheduleContext
+              context={scheduleContextOf(schedule, batch ?? batchOptions?.find((option) => option.id === batchId))}
+            />
+          }
           description={
             directEdit
               ? "Confirm these details before saving. This schedule has no sessions, attendance or student history yet, so the changes are applied to it directly — no new version is created."

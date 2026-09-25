@@ -25,9 +25,9 @@ const STEPS = [
  * membership) but not "unavailable" — the page for that step provides its
  * own Skip action; this stepper just shows progress.
  */
-export default function GuidedSteps({ current, complete = false }) {
+export default function GuidedSteps({ current, complete = false, className }) {
   return (
-    <ol aria-label="Add Student progress" className="mt-5 mb-6 flex items-center gap-3 sm:gap-4">
+    <ol aria-label="Add Student progress" className={cn("mt-5 mb-6 flex items-center gap-3 sm:gap-4", className)}>
       {STEPS.map((step, index) => {
         const isCurrent = !complete && step.number === current;
         const isDone = complete || step.number < current;

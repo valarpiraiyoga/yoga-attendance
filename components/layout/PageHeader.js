@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import MobileHeaderAction from "@/components/layout/MobileHeaderAction";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +34,12 @@ import { cn } from "@/lib/utils";
  * own (Settings): the mobile top bar names the page and nothing sits under it.
  * It defaults to whether `mobileActions` was given.
  *
+ * `back` (`{ href, label }`) puts a compact, boxed arrow-only button before the title for a
+ * page reached from another record (an Edit page); `label` is its accessible name
+ * ("Back to Kavish Kannan"), not visible text. It stays visible at every width -
+ * below `lg`, where a compact strip drops the title and description, it is the one
+ * thing the strip still shows - so the way back is never lost.
+ *
  * `mobileActions` puts a page-level control in the mobile top bar's right-hand
  * slot (`MobileHeaderAction`) — a compact icon-sized control; the `actions`
  * node then shows only from `lg` up. Without it, `actions` show at every
@@ -43,13 +51,20 @@ export default function PageHeader({
   actions,
   mobileActions,
   collapseOnMobile,
+  back,
   compact = false,
   className,
 }) {
   const collapseMobile = collapseOnMobile ?? Boolean(mobileActions);
-  const heading = (
+  const titleBlock = (
     <div className="min-w-0">
-      <h1 className={cn("text-section-title font-semibold break-words text-text-primary", compact && "max-lg:sr-only")}>
+      <h1
+        className={cn(
+          "font-semibold break-words text-text-primary",
+          // The compact strip is one size on every page: a small title keeps it short.
+          compact ? "text-body max-lg:sr-only" : "text-section-title"
+        )}
+      >
         {title}
       </h1>
       {description ? (
@@ -58,6 +73,22 @@ export default function PageHeader({
         </p>
       ) : null}
     </div>
+  );
+
+  const heading = back ? (
+    <div className="flex min-w-0 items-center gap-2">
+      <Link
+        href={back.href}
+        aria-label={back.label}
+        title={back.label}
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-text-secondary shadow-xs hover:bg-background hover:text-text-primary"
+      >
+        <ArrowLeft className="size-4" aria-hidden="true" />
+      </Link>
+      {titleBlock}
+    </div>
+  ) : (
+    titleBlock
   );
 
   const actionArea = actions ? (
@@ -79,7 +110,8 @@ export default function PageHeader({
       >
         <div
           className={cn(
-            "mx-auto flex max-w-[1264px] flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8 lg:py-3",
+            "mx-auto flex max-w-[1264px] flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8",
+            "py-1.5 lg:py-2",
             collapseMobile && "max-lg:sr-only"
           )}
         >

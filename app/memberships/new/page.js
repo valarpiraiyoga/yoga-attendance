@@ -1,12 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent, listStudentOptions } from "@/lib/students/data";
 import { createMembership } from "@/lib/memberships/actions";
 import MembershipForm from "@/app/memberships/membership-form";
 import { getCenterCurrency } from "@/lib/center-profile/settings";
 import SelectStudentStep from "@/app/memberships/new/select-student-step";
+import PageHeader from "@/components/layout/PageHeader";
 
 /**
  * Standalone Add Membership (02-ux.md Flow 14: "Memberships → Add
@@ -29,22 +28,19 @@ export default async function NewMembershipPage({ searchParams }) {
     const studentOptions = await listStudentOptions();
 
     return (
-      <div className="mx-auto max-w-3xl">
-        <Link
-          href="/memberships"
-          className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-        >
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to Memberships
-        </Link>
-
-        <h1 className="text-page-title mt-3 font-semibold text-text-primary">Add Membership</h1>
-        <p className="text-body mt-1 text-text-secondary">Select the student this membership belongs to.</p>
-
-        <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
-          <SelectStudentStep studentOptions={studentOptions} />
+      <>
+        <PageHeader
+          compact
+          back={{ href: "/memberships", label: "Back to Memberships" }}
+          title="Add Membership"
+          description="Select the student this membership belongs to."
+        />
+        <div className="mx-auto w-full max-w-3xl">
+          <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+            <SelectStudentStep studentOptions={studentOptions} />
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -56,29 +52,26 @@ export default async function NewMembershipPage({ searchParams }) {
   const createMembershipForStudent = createMembership.bind(null, studentId, "standalone");
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Link
-        href="/memberships"
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Memberships
-      </Link>
-
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Add Membership</h1>
-      <p className="text-body mt-1 text-text-secondary">Create a membership for {student.full_name}.</p>
-
-      <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
-        <MembershipForm
-          action={createMembershipForStudent}
-          currency={await getCenterCurrency()}
-          student={student}
-          requireConfirmation
-          submitLabel="Save Membership"
-          pendingLabel="Saving…"
-          cancelHref="/memberships"
-        />
+    <>
+      <PageHeader
+        compact
+        back={{ href: "/memberships", label: "Back to Memberships" }}
+        title="Add Membership"
+        description={<>Create a membership for {student.full_name}.</>}
+      />
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+          <MembershipForm
+            action={createMembershipForStudent}
+            currency={await getCenterCurrency()}
+            student={student}
+            requireConfirmation
+            submitLabel="Save Membership"
+            pendingLabel="Saving…"
+            cancelHref="/memberships"
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

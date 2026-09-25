@@ -30,13 +30,20 @@ import { cn } from "@/lib/utils";
  * Details): 12px padding, a 32px icon tile, an 18px value that wraps instead of
  * truncating. `children` renders under the caption (a progress bar, say).
  *
- * `decorativeChart` adds the small bar graphic from the list-page
- * references. It is purely decorative: `aria-hidden`, one fixed shape for
- * every tile, and it encodes no data — it must never be read as a trend.
- * Both `aside` and the chart are supplementary, so the right-hand cluster
- * yields wherever the tile is too narrow to carry it without squeezing the
- * label: hidden below `sm`, and in the `lg` band (1024–1279px) where the
- * sidebar leaves four tiles ~170px each. It shows again from `xl`.
+ * From `xl`, where four tiles have room, every tile's icon box is as tall as its
+ * text block (label, value, caption) and square, so the box and the figures share
+ * one height on the Dashboard, list pages, reports and detail summaries alike. Below
+ * `xl` the standard 40px (`compact`: 32px) icon is kept. At `xl` a label that does
+ * not fit wraps at a space (the icon box grows with it) instead of being cut with an
+ * ellipsis.
+ *
+ * There is deliberately no chart or trend graphic: the application keeps no
+ * history to draw one from, and a decoration shaped like a trend would imply
+ * analytics it does not have. `aside` (a real figure such as a share of the
+ * total) is supplementary, so its right-hand cluster yields wherever the tile is
+ * too narrow to carry it without squeezing the label: hidden below `sm`, and from
+ * `lg` to `xl` (four tiles ~170px each) and `xl` to `2xl` (where the larger icon
+ * box takes the room). It shows from `sm` to `lg` and again from `2xl`.
  */
 const TONE_STYLES = {
   brand: "bg-brand/10 text-brand",
@@ -56,44 +63,19 @@ const TONE_TEXT = {
   neutral: "text-text-secondary",
 };
 
-// Fixed decorative shape (heights on the 4px spacing scale). Identical for
-// every tile by design — see the note above.
-const CHART_BARS = [
-  "h-2 opacity-30",
-  "h-3 opacity-40",
-  "h-4 opacity-60",
-  "h-5 opacity-80",
-  "h-6 opacity-100",
-];
-
-function DecorativeChart() {
-  return (
-    <span
-      aria-hidden="true"
-      data-slot="stat-tile-chart"
-      className="mt-auto flex items-end gap-1"
-    >
-      {CHART_BARS.map((bar) => (
-        <span key={bar} className={cn("w-1 rounded-full bg-current", bar)} />
-      ))}
-    </span>
-  );
-}
-
 export function StatTile({
   icon: Icon,
   label,
   value,
   caption,
   aside,
-  decorativeChart = false,
   tone = "brand",
   valueFirst = false,
   compact = false,
   children,
   className,
 }) {
-  const hasRightCluster = Boolean(aside) || decorativeChart;
+  const hasRightCluster = Boolean(aside);
 
   return (
     <div
@@ -110,10 +92,11 @@ export function StatTile({
           className={cn(
             "flex size-10 shrink-0 items-center justify-center rounded-lg",
             compact && "size-8",
+            "xl:size-auto xl:aspect-square xl:self-stretch xl:rounded-xl",
             TONE_STYLES[tone] ?? TONE_STYLES.brand
           )}
         >
-          <Icon className={compact ? "size-4" : "size-5"} aria-hidden="true" />
+          <Icon className={cn(compact ? "size-4" : "size-5", "xl:size-7")} aria-hidden="true" />
         </span>
       ) : null}
       <div className={cn("min-w-0", compact && "flex-1", valueFirst && "flex flex-col-reverse")}>
@@ -127,7 +110,7 @@ export function StatTile({
           className={
             valueFirst
               ? "text-small font-normal text-text-secondary break-words"
-              : "truncate text-small font-medium tracking-wide text-text-secondary uppercase"
+              : "truncate text-small font-medium tracking-wide text-text-secondary uppercase xl:overflow-visible xl:whitespace-normal"
           }
         >
           {label}
@@ -158,7 +141,9 @@ export function StatTile({
       {hasRightCluster ? (
         <div
           className={cn(
-            "ml-auto hidden shrink-0 flex-col items-end gap-1 self-stretch sm:flex lg:hidden xl:flex",
+            "ml-auto hidden shrink-0 flex-col items-end gap-1 self-stretch",
+            // The larger icon box leaves the label less room, so the supplementary figure waits for a wide screen.
+            "sm:max-lg:flex 2xl:flex",
             TONE_TEXT[tone] ?? TONE_TEXT.brand
           )}
         >
@@ -167,7 +152,6 @@ export function StatTile({
               {aside}
             </span>
           ) : null}
-          {decorativeChart ? <DecorativeChart /> : null}
         </div>
       ) : null}
     </div>

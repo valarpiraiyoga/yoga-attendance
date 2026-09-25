@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getSessionOccurrence } from "@/lib/class-sessions/data";
 import { isValidDateString } from "@/lib/schedules/validation";
@@ -9,6 +7,7 @@ import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { updateClassSession } from "@/lib/class-sessions/actions";
 import SessionForm from "@/app/attendance/session-form";
+import PageHeader from "@/components/layout/PageHeader";
 
 /**
  * Edit This Session (02-ux.md Flow 06). Reading this page never writes
@@ -41,35 +40,30 @@ export default async function EditSessionPage({ params }) {
   }
 
   if (deriveDisplayStatus(session, new Date(), await getCenterTimezone()) !== "upcoming") {
-    redirect(`/attendance/${scheduleId}/${date}`);
+    redirect(`/attendance/${scheduleId}/${date}/details`);
   }
 
   const instructorOptions = await listInstructorOptions();
   const updateClassSessionForOccurrence = updateClassSession.bind(null, scheduleId, date);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Link
-        href={`/attendance/${scheduleId}/${date}`}
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Session Details
-      </Link>
-
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Edit This Session</h1>
-      <p className="text-body mt-1 text-text-secondary">
-        Change the instructor and/or time for this session only. The recurring schedule is not affected.
-      </p>
-
-      <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
-        <SessionForm
-          action={updateClassSessionForOccurrence}
-          session={session}
-          instructorOptions={instructorOptions}
-          cancelHref={`/attendance/${scheduleId}/${date}`}
-        />
+    <>
+      <PageHeader
+        compact
+        back={{ href: `/attendance/${scheduleId}/${date}/details`, label: "Back to Session Details" }}
+        title="Edit This Session"
+        description="Change the instructor and/or time for this session only. The recurring schedule is not affected."
+      />
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+          <SessionForm
+            action={updateClassSessionForOccurrence}
+            session={session}
+            instructorOptions={instructorOptions}
+            cancelHref={`/attendance/${scheduleId}/${date}/details`}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

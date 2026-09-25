@@ -23,6 +23,10 @@ import { cn } from "@/lib/utils";
  * surface card, still pinned) — Membership Details does, to stay a compact
  * identification header.
  *
+ * `wash` gives a plain (`decorative={false}`) header the Dashboard greeting card's
+ * background: a soft teal wash on the left fading to the surface colour on the
+ * right, with no shapes. Student, Membership, Batch and Schedule Details all use it.
+ *
  * Its background is a soft brand-tinted gradient with a few faint abstract
  * shapes (circles / rings) — the one approved decorative-gradient exception
  * besides the sidebar tint (06-ui-implementation-rules.md §2). Built from the
@@ -38,12 +42,14 @@ export function EntityDetailHeader({
   highlight,
   actions,
   decorative = true,
+  wash = false,
   className,
 }) {
   return (
     <div
       className={cn(
         "relative isolate mb-6 flex flex-col gap-4 overflow-hidden rounded-card border border-border bg-surface p-4 shadow-xs sm:sticky sm:-top-6 sm:z-20 sm:p-5 print:static",
+        wash && "bg-linear-to-r from-brand/10 via-surface to-surface",
         className
       )}
     >

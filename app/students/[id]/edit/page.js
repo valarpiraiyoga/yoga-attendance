@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import PageHeader from "@/components/layout/PageHeader";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { updateStudent } from "@/lib/students/actions";
@@ -22,28 +21,27 @@ export default async function EditStudentPage({ params }) {
   const updateStudentById = updateStudent.bind(null, id);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Link
-        href={`/students/${id}`}
-        className="text-body inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to {student.full_name}
-      </Link>
+    <>
+      {/* The finalized compact page header (as the Students list): back link, title and
+          description on the left. It is a direct child of the shell's <main>; the body has
+          its own container beside it. */}
+      <PageHeader
+        compact
+        back={{ href: `/students/${id}`, label: `Back to ${student.full_name}` }}
+        title="Edit Student"
+        description={`Update ${student.full_name}’s details.`}
+      />
 
-      <h1 className="text-page-title mt-3 font-semibold text-text-primary">Edit Student</h1>
-      <p className="text-body mt-1 text-text-secondary">
-        Update {student.full_name}&rsquo;s details.
-      </p>
-
-      <div className="mt-6 rounded-card border border-border bg-surface p-6 shadow-xs">
-        <StudentForm
-          action={updateStudentById}
-          student={student}
-          submitLabel="Save Changes"
-          pendingLabel="Saving…"
-        />
+      <div className="mx-auto max-w-5xl">
+        <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+          <StudentForm
+            action={updateStudentById}
+            student={student}
+            submitLabel="Save Changes"
+            pendingLabel="Saving…"
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

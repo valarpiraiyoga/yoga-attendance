@@ -20,7 +20,7 @@ import DeleteScheduleDialog from "@/app/schedule/delete-schedule-dialog";
  * a schedule that has been used; Delete opens `DeleteScheduleDialog`, which
  * says whether the schedule can be deleted at all. Mirrors `BatchCardMenu`.
  */
-export default function ScheduleCardMenu({ scheduleId, batchId, batchName, onOpenChange }) {
+export default function ScheduleCardMenu({ scheduleId, batchId, batchName, scheduleContext, onOpenChange }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
@@ -63,7 +63,12 @@ export default function ScheduleCardMenu({ scheduleId, batchId, batchName, onOpe
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <DeleteScheduleDialog scheduleId={scheduleId} open={deleteOpen} onOpenChange={setDeleteOpen} />
+      <DeleteScheduleDialog
+        scheduleId={scheduleId}
+        scheduleContext={scheduleContext}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+      />
     </>
   );
 }
