@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import TabContentHeading from "@/components/layout/TabContentHeading";
+import ResetPasswordCard from "@/app/settings/roles-permissions/reset-password-card";
 import { NAV_ITEMS, ROLE_LABELS } from "@/app/data/navigation";
 
 /**
@@ -136,6 +137,11 @@ export default async function RolesPermissionsPage() {
         * Instructor access is limited to assigned classes / relevant attendance history. Instructors have
         focused operational access to assigned classes and attendance.
       </p>
+
+      {/* The signed-in user's own account: change their own password. */}
+      <div className="mt-6">
+        <ResetPasswordCard />
+      </div>
     </div>
   );
 }
