@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Eye } from "lucide-react";
+import { Receipt } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -33,7 +33,9 @@ const HEAD = "h-10 px-2 text-small tracking-normal";
  * Payment, Status, Days Left, Action. Status and Days Left come from the
  * existing validity helpers (`getMembershipValidity` / `getValidityLabel`,
  * against the centre-timezone `today` the page passes down), never computed
- * here; Action is the finalized eye (View) + overflow menu.
+ * here; Action is the receipt icon (View Receipt) + overflow menu, whose
+ * first item, View Membership, opens the membership detail page — the eye
+ * icon is deliberately not used here, so it stays a receipt-only mark.
  */
 function MembershipRow({ membership, today }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -91,11 +93,11 @@ function MembershipRow({ membership, today }) {
             variant="ghost"
             size="icon-sm"
             className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`View membership ${membership.membership_code}`}
-            render={<Link href={`/memberships/${membership.id}`} />}
+            aria-label={`View receipt for membership ${membership.membership_code}`}
+            render={<Link href={`/memberships/${membership.id}/receipt`} />}
             nativeButton={false}
           >
-            <Eye className="size-4" aria-hidden="true" />
+            <Receipt className="size-4" aria-hidden="true" />
           </Button>
           <MembershipCardMenu membershipId={membership.id} studentId={student?.id} onOpenChange={setMenuOpen} />
         </div>

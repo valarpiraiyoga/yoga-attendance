@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Eye, Banknote } from "lucide-react";
+import { CalendarDays, Receipt, Banknote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -27,8 +27,10 @@ function validityTone(validity) {
  * badge, and a validity footer — "N days left" with "N / total days" and the
  * progress bar while it runs, or a red "Expired" block with a full red bar.
  * Everything comes from the existing validity helpers and status maps. Card
- * actions follow the finalized pattern: eye icon (View) + overflow menu (which
- * also has the receipt). Composed from `EntityCard`; only the interactive
+ * actions follow the finalized pattern: receipt icon (View Receipt) +
+ * overflow menu, whose first item, View Membership, opens the membership
+ * detail page — the eye icon is deliberately not used here, so it stays a
+ * receipt-only mark. Composed from `EntityCard`; only the interactive
  * menu-open tint is local state.
  */
 export default function MembershipCardItem({ membership, today }) {
@@ -60,11 +62,11 @@ export default function MembershipCardItem({ membership, today }) {
             variant="ghost"
             size="icon-sm"
             className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`View membership for ${student?.full_name ?? membership.membership_code}`}
-            render={<Link href={`/memberships/${membership.id}`} />}
+            aria-label={`View receipt for ${student?.full_name ?? membership.membership_code}`}
+            render={<Link href={`/memberships/${membership.id}/receipt`} />}
             nativeButton={false}
           >
-            <Eye className="size-4" aria-hidden="true" />
+            <Receipt className="size-4" aria-hidden="true" />
           </Button>
           <MembershipCardMenu
             membershipId={membership.id}
