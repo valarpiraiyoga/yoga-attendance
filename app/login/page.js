@@ -2,7 +2,7 @@ import AuthCardLayout from "@/components/auth/AuthCardLayout";
 import LoginForm from "./login-form";
 
 export const metadata = {
-  title: "Sign in · Yoga Center Attendance System",
+  title: "Sign in · YogaSync",
 };
 
 // Never echo Supabase's own error text on this page. app/auth/confirm's

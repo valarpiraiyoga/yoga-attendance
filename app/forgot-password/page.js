@@ -1,14 +1,14 @@
 import Link from "next/link";
-import AuthLayout from "@/components/auth/AuthLayout";
+import AuthCardLayout from "@/components/auth/AuthCardLayout";
 import ForgotPasswordForm from "./forgot-password-form";
 
 export const metadata = {
-  title: "Reset password · Yoga Center Attendance System",
+  title: "Reset password · YogaSync",
 };
 
 export default function ForgotPasswordPage() {
   return (
-    <AuthLayout>
+    <AuthCardLayout>
       <div className="mb-8">
         <h1 className="text-page-title font-semibold text-text-primary">
           Reset your password
@@ -25,6 +25,6 @@ export default function ForgotPasswordPage() {
           Back to sign in
         </Link>
       </p>
-    </AuthLayout>
+    </AuthCardLayout>
   );
 }

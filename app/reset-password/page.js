@@ -1,13 +1,13 @@
-import AuthLayout from "@/components/auth/AuthLayout";
+import AuthCardLayout from "@/components/auth/AuthCardLayout";
 import ResetPasswordForm from "./reset-password-form";
 
 export const metadata = {
-  title: "Set a new password · Yoga Center Attendance System",
+  title: "Set a new password · YogaSync",
 };
 
 export default function ResetPasswordPage() {
   return (
-    <AuthLayout>
+    <AuthCardLayout>
       <div className="mb-8">
         <h1 className="text-page-title font-semibold text-text-primary">
           Set a new password
@@ -18,6 +18,6 @@ export default function ResetPasswordPage() {
       </div>
 
       <ResetPasswordForm />
-    </AuthLayout>
+    </AuthCardLayout>
   );
 }

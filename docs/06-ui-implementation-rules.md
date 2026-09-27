@@ -78,7 +78,8 @@ aligned with it and is **correct as-is**. Do not retune it in a UI task.
 ### Locked values
 
 ```
-Brand / Primary   #0F8B87      Background  #F8FAFA     Surface   #FFFFFF
+Brand / Primary   #1E40AF      Brand / Secondary #06B6D4   Brand / Accent #5B21B6
+Background        #F5F7FB      Surface   #FFFFFF
 Text Primary      #1F2933      Text Secondary #667085  Border    #E4E7EC
 
 Success #22C55E   Warning #F59E0B   Danger #EF4444   Info #3B82F6   Neutral #98A2B3

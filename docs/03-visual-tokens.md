@@ -10,10 +10,15 @@ Minimal visual foundation for the application UI.
 
 ### Brand & Neutral
 
+The brand palette follows the YogaSync mark (`public/yogasync.png`): a deep
+blue primary with a cyan/teal secondary and a violet accent.
+
 | Token | Hex | Usage |
 |---|---|---|
-| Primary / Teal | `#0F8B87` | Primary brand color, primary actions, active navigation, focus and key highlights |
-| Background | `#F8FAFA` | Main application/page background |
+| Primary / Deep Blue | `#1E40AF` | Primary brand color, primary actions, links, active navigation, focus and key highlights |
+| Secondary / Cyan-Teal | `#06B6D4` | Secondary brand accent — sidebar wash, the default ("Teal") batch identity color |
+| Accent / Violet | `#5B21B6` | Restrained accent only — a faint wash behind highlighted menu/select rows, never a fill |
+| Background | `#F5F7FB` | Main application/page background (a cool blue-white) |
 | Surface | `#FFFFFF` | Cards, forms, tables and panels |
 | Text Primary | `#1F2933` | Headings and primary content |
 | Text Secondary | `#667085` | Supporting text and descriptions |
@@ -32,7 +37,8 @@ Minimal visual foundation for the application UI.
 ### Color Principles
 
 - Keep approximately **70–80% of the interface neutral**.
-- Use approximately **15–20% teal/brand** for primary actions, active navigation, focus and important highlights.
+- Use approximately **15–20% brand** (primary blue, plus the smaller secondary/accent washes) for primary actions, active navigation, focus and important highlights.
+- The accent (violet) stays a faint wash, never a fill — purple-heavy UI is still avoided.
 - Keep semantic status colors to a small percentage of the interface.
 - **Reuse an existing semantic token before creating a new color.**
 - Do not introduce a new status color simply because a new status name is added.
@@ -159,7 +165,7 @@ The visual language should feel clean, calm and professional while remaining pra
 Prefer:
 
 - Neutral surfaces
-- Teal as the primary accent
+- Deep blue as the primary accent, with cyan/teal and violet as restrained secondary/accent washes
 - Inter typography
 - Consistent 4px-based spacing
 - Subtle borders
@@ -194,7 +200,7 @@ When a new UI state appears:
 
 ### Batch Identity accents
 
-A batch has a user-chosen accent color (Teal, Blue, Indigo, Purple, Pink, Orange, Amber, Green, Red, Slate), stored as a stable key. The colors are the `--batch-*` tokens in `app/globals.css` (Teal is the brand color); `lib/batches/identity.js` maps each key to its classes. They are an **accent only** (a dot, a tint, a left edge) and never replace the semantic status colors above. The batch name or code is always shown beside them, so color is never the only identifier.
+A batch has a user-chosen accent color (Teal, Blue, Indigo, Purple, Pink, Orange, Amber, Green, Red, Slate), stored as a stable key. The colors are the `--batch-*` tokens in `app/globals.css` (Teal is the brand's secondary color, the default); `lib/batches/identity.js` maps each key to its classes. They are an **accent only** (a dot, a tint, a left edge) and never replace the semantic status colors above. The batch name or code is always shown beside them, so color is never the only identifier.
 
 ---
 
@@ -203,8 +209,10 @@ A batch has a user-chosen accent color (Teal, Blue, Indigo, Purple, Pink, Orange
 ```text
 COLORS
 
-Primary / Teal     #0F8B87
-Background          #F8FAFA
+Primary / Deep Blue     #1E40AF
+Secondary / Cyan-Teal   #06B6D4
+Accent / Violet         #5B21B6
+Background          #F5F7FB
 Surface             #FFFFFF
 Text Primary        #1F2933
 Text Secondary      #667085

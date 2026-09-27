@@ -1,5 +1,3 @@
-import { Flower2 } from "lucide-react";
-
 /**
  * A single leaf: pointed at two opposite corners, drawn from the brand colour at a very low
  * opacity so it reads as a soft shape behind the card, never as content.
@@ -14,15 +12,15 @@ function Leaf({ className }) {
 
 /**
  * The sign-in screen's chrome: a soft teal-white wash with large translucent leaves in two
- * corners, the brand mark and name centred above a single white card, and the copyright line
- * below. The card's own content (heading, form, help text) is the page's `children`.
+ * corners, the YogaSync mark centred above a single white card, and the copyright line below.
+ * The card's own content (heading, form, help text) is the page's `children`.
  *
- * Branding stays text plus one generic mark: no approved logo asset exists in the repository (the
- * centre's own logo is uploaded in Settings, behind the sign-in), so a flower glyph stands in for
- * it here rather than an invented logo. Everything decorative is `aria-hidden`.
+ * This is the product's own brand (the YogaSync logo), separate from a centre's own uploaded
+ * logo shown after sign-in (`CenterLogo`, Center Settings). Everything decorative is
+ * `aria-hidden`.
  *
- * Used by the sign-in page. The other authentication screens (forgot / reset password, invitation
- * and recovery links) still use `AuthLayout`.
+ * Used by the sign-in, forgot-password and reset-password screens — the recovery flow a signed-out
+ * visitor walks end to end. Invitation and account-recovery links still use `AuthLayout`.
  */
 export default function AuthCardLayout({ children }) {
   return (
@@ -36,15 +34,14 @@ export default function AuthCardLayout({ children }) {
 
       <div className="flex w-full max-w-md flex-col items-center">
         <div className="mb-6 flex flex-col items-center text-center">
-          <Flower2 className="size-12 text-brand" strokeWidth={1.5} aria-hidden="true" />
-          <p className="text-section-title mt-2 font-semibold text-text-primary">Yoga Center</p>
-          <p className="text-body text-text-secondary">Attendance System</p>
+          {/* eslint-disable-next-line @next/next/no-img-element -- same tradeoff as CenterLogo */}
+          <img src="/yogasync.png" alt="YogaSync" className="h-40 w-auto" />
         </div>
 
         <main className="w-full rounded-card border border-border bg-surface p-6 shadow-sm sm:p-8">{children}</main>
 
         <p className="text-small mt-8 text-center text-text-secondary">
-          © {new Date().getFullYear()} Yoga Center. All rights reserved.
+          © {new Date().getFullYear()} YogaSync. All rights reserved.
         </p>
       </div>
     </div>
