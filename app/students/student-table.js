@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Eye } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import { ENTITY_STATUS, MEMBERSHIP_SUMMARY } from "@/lib/status";
 import { formatPhone } from "@/lib/phone";
@@ -28,7 +25,7 @@ const HEAD = "h-10 px-2 text-small tracking-normal";
  * Phone, Batch, Membership, Status, Action. Statuses come from the existing
  * `ENTITY_STATUS` / `MEMBERSHIP_SUMMARY` maps (the membership summary is
  * derived in the data layer against the centre timezone, not here); Action is
- * the finalized eye + overflow menu.
+ * the overflow menu, with View Student as its first item.
  */
 function StudentRow({ student }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -58,25 +55,12 @@ function StudentRow({ student }) {
         <Badge variant={entityStatus.variant}>{entityStatus.label}</Badge>
       </TableCell>
       <TableCell className="w-px py-3 pr-3 pl-1 whitespace-nowrap">
-        <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`View student ${student.full_name}`}
-            render={<Link href={`/students/${student.id}`} />}
-            nativeButton={false}
-          >
-            <Eye className="size-4" aria-hidden="true" />
-          </Button>
-          <StudentCardMenu
-            studentId={student.id}
-            membershipId={student.currentMembershipId}
-            enrollmentId={student.primaryEnrollmentId}
-            onOpenChange={setMenuOpen}
-          />
-        </div>
+        <StudentCardMenu
+          studentId={student.id}
+          membershipId={student.currentMembershipId}
+          enrollmentId={student.primaryEnrollmentId}
+          onOpenChange={setMenuOpen}
+        />
       </TableCell>
     </TableRow>
   );

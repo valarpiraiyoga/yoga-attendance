@@ -1,10 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import BatchAvatar from "@/components/ui/batch-avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BATCH_STATUS } from "@/lib/status";
@@ -32,7 +29,7 @@ const HEAD = "h-10 px-2 text-small tracking-normal";
  * Status, Action. The schedule-derived cells summarise the batch's current
  * schedules (unmodified `summarizeCurrentSchedules`, plus
  * `BatchInstructorSummary` for the Instructor cell's avatar(s)); Action is the
- * finalized eye + overflow menu.
+ * overflow menu, with View Batch as its first item.
  */
 function BatchRow({ batch }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -81,20 +78,7 @@ function BatchRow({ batch }) {
         <Badge variant={status.variant}>{status.label}</Badge>
       </TableCell>
       <TableCell className="w-px py-3 pr-3 pl-1 whitespace-nowrap">
-        <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`View batch ${batch.name}`}
-            render={<Link href={`/batches/${batch.id}`} />}
-            nativeButton={false}
-          >
-            <Eye className="size-4" aria-hidden="true" />
-          </Button>
-          <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} />
-        </div>
+        <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} />
       </TableCell>
     </TableRow>
   );

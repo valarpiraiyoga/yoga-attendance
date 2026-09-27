@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Eye } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import { ENTITY_STATUS } from "@/lib/status";
 import { formatPhone } from "@/lib/phone";
@@ -23,15 +20,14 @@ const HEAD = "h-10 px-2 text-small tracking-normal";
 /**
  * One Instructor table row (wireframe p39; `18 Settings instructor.png`):
  * identity (initials / photo avatar + name), Phone, Email, Status, and the
- * finalized action pair — eye icon + overflow menu. Instructors have no
- * separate details screen: the edit page is the one place an instructor's
- * record (and login access) is shown, so the eye opens it, and the menu
- * repeats it as Edit Instructor beside Activate / Deactivate.
+ * overflow menu. Instructors have no separate details screen: the edit page
+ * is the one place an instructor's record (and login access) is shown, so
+ * the menu's Edit Instructor item is the row's only way in, beside
+ * Activate / Deactivate.
  */
 function InstructorRow({ instructor, isUpdating, disabled, onToggleStatus }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const status = ENTITY_STATUS[instructor.status] ?? ENTITY_STATUS.inactive;
-  const editHref = `/settings/instructors/${instructor.id}/edit`;
 
   return (
     <TableRow className={cn((menuOpen || isUpdating) && "bg-brand/10 hover:bg-brand/10")}>
@@ -49,28 +45,15 @@ function InstructorRow({ instructor, isUpdating, disabled, onToggleStatus }) {
         <Badge variant={status.variant}>{status.label}</Badge>
       </TableCell>
       <TableCell className="w-px py-3 pr-3 pl-1 whitespace-nowrap">
-        <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`View instructor ${instructor.full_name}`}
-            render={<Link href={editHref} />}
-            nativeButton={false}
-          >
-            <Eye className="size-4" aria-hidden="true" />
-          </Button>
-          <InstructorRowMenu
-            instructorId={instructor.id}
-            instructorName={instructor.full_name}
-            isActive={instructor.status === "active"}
-            isUpdating={isUpdating}
-            disabled={disabled}
-            onToggleStatus={onToggleStatus}
-            onOpenChange={setMenuOpen}
-          />
-        </div>
+        <InstructorRowMenu
+          instructorId={instructor.id}
+          instructorName={instructor.full_name}
+          isActive={instructor.status === "active"}
+          isUpdating={isUpdating}
+          disabled={disabled}
+          onToggleStatus={onToggleStatus}
+          onOpenChange={setMenuOpen}
+        />
       </TableCell>
     </TableRow>
   );
