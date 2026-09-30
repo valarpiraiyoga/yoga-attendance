@@ -5,11 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
+import EmptyState from "@/components/ui/empty-state";
 import MarkButton from "@/components/ui/mark-button";
-import { validateAttendanceMarks } from "@/lib/attendance/validation";
+import SearchInput from "@/components/ui/search-input";
+import { Panel } from "@/components/layout/Panel";
+import { MarkedProgress } from "@/app/attendance/[scheduleId]/[date]/attendance-panel";
+import { computeAttendanceSummary, validateAttendanceMarks } from "@/lib/attendance/validation";
 import { cn } from "@/lib/utils";
 
-const PAGE_SIZE = 10;
+const ROW_TONE = { present: "bg-success/5", absent: "bg-danger/5" };
+
+// Same threshold as Take Attendance: search only earns its place on a long list.
+const SEARCH_THRESHOLD = 8;
 
 export function pendingReviewStorageKey(scheduleId, date) {
   return `attendance-history:pending-review:${scheduleId}:${date}`;
@@ -24,18 +31,37 @@ function marksToMap(marks) {
 }
 
 /**
- * Edit Attendance roster — the shared `MarkButton` Present/Absent controls
- * (the same ones Take Attendance uses) and the shared `Avatar`. Nothing is saved here; Review Changes hands off via sessionStorage.
+ * Edit Attendance roster, laid out like Take Attendance (`attendance-panel.js`): a
+ * card of student rows with the shared Present | Absent `MarkButton`s, Mark All
+ * Present (fills only unmarked students) and a search field on a long list, then
+ * a bottom bar with the "n of N marked" progress beside Cancel / Review Changes.
+ * Nothing is saved here; Review Changes hands off via sessionStorage.
  */
 export default function EditAttendanceForm({ scheduleId, date, students, initialMarks }) {
   const router = useRouter();
   const [marks, setMarks] = useState(() => marksToMap(initialMarks ?? []));
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState("");
   const [error, setError] = useState(null);
+
+  const summary = computeAttendanceSummary(
+    students.length,
+    Object.values(marks).map((status) => ({ status }))
+  );
 
   function setMark(studentId, status) {
     setError(null);
     setMarks((prev) => ({ ...prev, [studentId]: status }));
+  }
+
+  function markAllPresent() {
+    setError(null);
+    setMarks((prev) => {
+      const next = { ...prev };
+      for (const student of students) {
+        if (!next[student.id]) next[student.id] = "present";
+      }
+      return next;
+    });
   }
 
   function handleReviewChanges() {
@@ -59,129 +85,110 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
     router.push(`/attendance-history/${scheduleId}/${date}/review`);
   }
 
+  const detailsHref = `/attendance-history/${scheduleId}/${date}`;
+
   if (students.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-border bg-background/40 px-6 py-16 text-center">
-        <p className="text-body max-w-sm text-text-secondary">
-          No students were eligible for this session.
-        </p>
-        <Button variant="outline" render={<Link href={`/attendance-history/${scheduleId}/${date}`} />} nativeButton={false}>
-          Cancel
-        </Button>
-      </div>
+      <Panel>
+        <EmptyState size="sm" title="No eligible students" description="No students were eligible for this session." />
+        <div className="mt-4 flex justify-center">
+          <Button variant="outline" render={<Link href={detailsHref} />} nativeButton={false}>
+            Cancel
+          </Button>
+        </div>
+      </Panel>
     );
   }
 
-  const totalPages = Math.max(1, Math.ceil(students.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const pageStudents = students.slice(start, start + PAGE_SIZE);
-  const rangeStart = start + 1;
-  const rangeEnd = Math.min(students.length, start + PAGE_SIZE);
+  const normalizedQuery = query.trim().toLowerCase();
+  const showSearch = students.length > SEARCH_THRESHOLD;
+  const visibleStudents = students.filter(
+    (student) =>
+      !normalizedQuery ||
+      [student.full_name, student.student_code, student.phone].some((value) =>
+        String(value ?? "").toLowerCase().includes(normalizedQuery)
+      )
+  );
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {error ? (
-        <p role="alert" className="mb-4 rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-body text-danger">
+        <p role="alert" className="rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-body text-danger">
           {error}
         </p>
       ) : null}
 
-      <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border" aria-label="Edit Attendance">
-        {pageStudents.map((student) => {
-          const status = marks[student.id];
-          const rowTone =
-            status === "present"
-              ? "bg-success/5"
-              : status === "absent"
-                ? "bg-danger/5"
-                : "bg-surface";
-
-          return (
-            <li
-              key={student.id}
-              className={cn(
-                "flex flex-col gap-3 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
-                rowTone
-              )}
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <Avatar name={student.full_name} />
-                <div className="min-w-0">
-                  <p className="truncate text-body font-semibold text-text-primary">{student.full_name}</p>
-                  <p className="text-small truncate text-text-secondary">
-                    {student.student_code}
-                    {student.phone ? ` · ${student.phone}` : ""}
-                  </p>
-                </div>
-              </div>
-
-              <div role="group" aria-label={`Attendance for ${student.full_name}`} className="flex w-full gap-2 sm:w-auto">
-                <MarkButton
-                  status="present"
-                  selected={status === "present"}
-                  studentName={student.full_name}
-                  onSelect={() => setMark(student.id, "present")}
-                  className="flex-1 sm:flex-none"
-                />
-                <MarkButton
-                  status="absent"
-                  selected={status === "absent"}
-                  studentName={student.full_name}
-                  onSelect={() => setMark(student.id, "absent")}
-                  className="flex-1 sm:flex-none"
-                />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-small text-text-secondary">
-          Showing {rangeStart}–{rangeEnd} of {students.length} entries
-        </p>
-
-        <nav aria-label="Edit Attendance pagination" className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={currentPage === 1}
-            onClick={() => setPage(currentPage - 1)}
-          >
-            Previous
-          </Button>
-          {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-            <Button
-              key={pageNumber}
-              type="button"
-              variant={pageNumber === currentPage ? "default" : "outline"}
-              size="sm"
-              onClick={() => setPage(pageNumber)}
-            >
-              {pageNumber}
+      <Panel>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          {showSearch ? (
+            <SearchInput
+              id="edit-attendance-search"
+              label="Search students"
+              type="search"
+              placeholder="Search students"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onClear={() => setQuery("")}
+              className="w-full sm:max-w-xs"
+            />
+          ) : null}
+          <div className={cn("flex flex-wrap gap-2", showSearch && "sm:ml-auto")}>
+            <Button type="button" variant="outline" onClick={markAllPresent}>
+              Mark All Present
             </Button>
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={currentPage === totalPages}
-            onClick={() => setPage(currentPage + 1)}
-          >
-            Next
-          </Button>
-        </nav>
-      </div>
+          </div>
+        </div>
 
-      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-        <Button variant="outline" render={<Link href={`/attendance-history/${scheduleId}/${date}`} />} nativeButton={false}>
-          Cancel
-        </Button>
-        <Button type="button" onClick={handleReviewChanges}>
-          Review Changes
-        </Button>
+        {visibleStudents.length === 0 ? (
+          <EmptyState size="sm" title="No students found" description="No students match your search." />
+        ) : (
+          <ul aria-label="Edit Attendance" className="flex flex-col gap-1">
+            {visibleStudents.map((student) => {
+              const status = marks[student.id];
+
+              return (
+                <li key={student.id} className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5", ROW_TONE[status])}>
+                  {/* The avatar is dropped on a phone so the two buttons keep their room. */}
+                  <Avatar name={student.full_name} size="sm" className="hidden shrink-0 sm:flex" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold break-words text-text-primary">{student.full_name}</p>
+                    <p className="text-small truncate text-text-secondary">{student.student_code}</p>
+                  </div>
+                  <div role="group" aria-label={`Attendance for ${student.full_name}`} className="flex shrink-0 gap-2">
+                    <MarkButton
+                      status="present"
+                      selected={status === "present"}
+                      studentName={student.full_name}
+                      className="h-10 sm:h-9"
+                      onSelect={() => setMark(student.id, "present")}
+                    />
+                    <MarkButton
+                      status="absent"
+                      selected={status === "absent"}
+                      studentName={student.full_name}
+                      className="h-10 sm:h-9"
+                      onSelect={() => setMark(student.id, "absent")}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Panel>
+
+      <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-card border border-border bg-surface p-3 shadow-md sm:flex-row sm:items-center sm:gap-6 sm:p-4">
+        <div className="min-w-0 flex-1">
+          <MarkedProgress summary={summary} />
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0 sm:items-center">
+          <Button variant="outline" render={<Link href={detailsHref} />} nativeButton={false}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleReviewChanges}>
+            Review Changes
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -50,7 +50,7 @@ function CountsLine({ summary }) {
 }
 
 /** "n of N marked" over a two-part bar (Present green, Absent red): the whole session's progress at a glance. */
-function MarkedProgress({ summary }) {
+export function MarkedProgress({ summary }) {
   const total = summary.eligibleCount;
   const marked = summary.presentCount + summary.absentCount;
   const percent = (count) => (total > 0 ? (count / total) * 100 : 0);
