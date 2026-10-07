@@ -37,6 +37,7 @@ const DOCUMENT_TITLE_OPTIONS = [
 
 const BLUR_VALIDATED_FIELDS = new Set([
   "starting_invoice_number",
+  "invoice_prefix",
   "tax_name",
   "tax_rate",
   "terms",
@@ -49,6 +50,7 @@ function readInput(formData) {
   return {
     document_title: formData.get("document_title"),
     starting_invoice_number: formData.get("starting_invoice_number"),
+    invoice_prefix: formData.get("invoice_prefix"),
     tax_enabled: formData.get("tax_enabled"),
     tax_name: formData.get("tax_name"),
     tax_rate: formData.get("tax_rate"),
@@ -293,6 +295,27 @@ export default function InvoiceReceiptForm({ action, settings, startingLocked, s
                     />
                   )
                 }
+                </FormField>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="invoice_prefix">Invoice Number Prefix</Label>
+                  <HelpPopover label="About the invoice number prefix" title="Invoice number prefix">
+                    Optional prefix used for new invoices. Changing the prefix affects future invoices only;
+                    existing invoices keep their original prefix.
+                  </HelpPopover>
+                </div>
+                <FormField id="invoice_prefix" error={fieldErrors.invoice_prefix}>
+                  {(field) => (
+                    <Input
+                      {...field}
+                      name="invoice_prefix"
+                      autoComplete="off"
+                      disabled={isPending}
+                      defaultValue={state?.values?.invoice_prefix ?? settings?.invoice_prefix ?? ""}
+                    />
+                  )}
                 </FormField>
               </div>
             </Panel>

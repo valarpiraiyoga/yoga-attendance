@@ -37,7 +37,7 @@ checks as (
           'created_at', 'updated_at'
         )
     )
-    and (select count(*) = 33 from information_schema.columns where table_schema = 'public' and table_name = 'invoices') as ok,
+    and (select count(*) in (33, 34) from information_schema.columns where table_schema = 'public' and table_name = 'invoices') as ok,
     '' as detail
   union all
   select 2, 'invoices has no status / void / issued_by / payment / refund / credit-note column',

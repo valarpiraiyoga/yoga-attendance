@@ -246,19 +246,43 @@ A membership has **zero or one** issued invoice (Membership 1 : 0..1 Invoice). V
 ### Invoice Number
 - Generated automatically and sequentially, and unique.
 - The existing client already uses invoice numbers, so the sequence continues from them rather than starting again: with a last existing number of 1223, a Starting Invoice Number of 1224 makes the first new invoice 1224, then 1225, 1226 and so on. (1223 is an example only; the real starting number is configured for the client during implementation.)
-- The sequence is global within this V1 instance, which has one implicit center. The Starting Invoice Number is configured in Settings, and the numbers carry no prefix (not, for example, `RCT-`).
+- The sequence is global within this V1 instance, which has one implicit center. The Starting Invoice Number is configured in Settings.
+- The invoice number itself is always a plain whole number (stored as a number, never as text). An optional prefix can be shown in front of it — see Invoice Number Prefix below.
 - Existing invoice numbers are never renumbered or changed.
-- Admin can edit the number when a genuine correction is required.
+- Admin can edit the number when a genuine correction is required. Only the numeric invoice number is edited — never the prefix — and the new number must be a positive whole number, must not already be used by another invoice, and must not be below the Starting Invoice Number.
 - The Starting Invoice Number must never be able to cause a duplicate invoice number.
 
+### Invoice Number Prefix
+An optional prefix can be shown in front of the invoice number, for example `INV-` so that invoice number 786 reads **INV-786**. With no prefix it reads **786**.
+
+- **Optional.** Prefix **OFF** is represented by *no value* (NULL); there is no separate on/off setting. Turning it OFF and later ON again means entering the prefix again.
+- **Separate from the number.** The numeric invoice number remains the source of truth for sequencing: it is a number, it continues sequentially under the existing numbering rules (786, 787, 788 …), and it is globally unique. The prefix is stored separately and is only a label shown before it. It does not take part in numbering, and it does not take part in uniqueness: no rule requires the prefix and number combination to be unique, because the number alone already is.
+- **Configured in Invoice / Receipt Settings** (§11), and it **can be changed even after invoices exist** — unlike the Starting Invoice Number, it is never locked.
+- **A changed prefix affects only future invoices.** The prefix in force when an invoice is issued is copied into that invoice (the same snapshot principle as the title, tax, terms and signatory), and it is **frozen** once the invoice is issued. For example, with prefix `INV-` invoices 788 and 789 read INV-788 and INV-789; if the prefix is later changed to `YC-`, the next invoices read YC-790 and YC-791, while 788 and 789 still read INV-788 and INV-789.
+- **Editing an invoice does not change its prefix.** Invoice Edit changes only the numeric number and the date (§5A "Editing an Issued Invoice"). If INV-788 is edited to number 800 it becomes INV-800, and it stays INV-800 even if the prefix setting later changes to `YC-`.
+
+**Prefix rules** (enforced by the database, and validated by the application for a clear message):
+- NULL is valid and means the prefix is OFF.
+- An empty string is not valid.
+- 1 to 20 characters.
+- No leading whitespace and no trailing whitespace. Whitespace includes spaces, tabs and newlines.
+- The prefix must not end with a digit.
+- Spaces inside the prefix are allowed, and no other characters are restricted.
+- Valid examples: `INV-`, `INV/`, `YC-`, `FY26-`, `Receipt-`, `Yoga Center-`.
+- Invalid examples: `" INV-"` (leading space), `"INV- "` (trailing space), `"INV-"` followed by a tab, a newline followed by `INV-`, `INV123` (ends with a digit), an empty string, and anything longer than 20 characters.
+
+**Existing invoices.** Adding the prefix does not back-fill or alter any existing invoice. An invoice issued without a prefix stays without a prefix, and its number, date and every other stored value are unchanged.
+
 ### Invoice Date
-- Stored on the invoice.
-- Defaults to the payment date when the invoice is issued.
-- Admin can edit it. It does not otherwise change.
+- Stored on the invoice, independently of the Payment Date (the Payment Date belongs to the membership and is not changed by anything done to the invoice).
+- Defaults to the Payment Date when the invoice is issued.
+- Admin can edit it.
+- It cannot be earlier than the Payment Date and cannot be in the future (the centre's current date).
+- An existing invoice's date is never silently recalculated; it changes only when an Admin edits it.
 
 ### Stored Document and Snapshot
 An issued invoice stores:
-- its number and date;
+- its number and date, and the invoice number prefix (if any) that was in force when it was issued;
 - its financial values (amount and, when tax is enabled, the tax values);
 - the customer and business information used on the document;
 - the tax information used;
@@ -267,11 +291,13 @@ An issued invoice stores:
 Later changes to the Center Profile, tax settings, terms, logo, signature, or the student's details do not change an already-issued invoice.
 
 ### Editing an Issued Invoice
-Admin Edit is deliberately limited to:
-- Invoice number
+After an invoice is issued, Admin may edit **only**:
+- Invoice number (the numeric number)
 - Invoice date
 
-It does not edit the student/customer identity, membership amount, membership dates, tax values, business identity or any other issued content. V1 has no accounting correction workflow.
+The invoice prefix is **not** editable from Invoice Edit: the historical prefix stored on the invoice stays unchanged when its number is edited. The number must still obey the existing rules (a positive whole number, unique, not below the Starting Invoice Number), and the date must still obey the Invoice Date rules above.
+
+It does not edit the student/customer identity, membership amount, membership dates, payment date, tax values, terms, signatory, signature, invoice prefix, business identity or any other issued content. V1 has no accounting correction workflow.
 
 ### Tax
 - Tax can be enabled or disabled, with a configurable tax name and tax rate.
@@ -677,6 +703,7 @@ The Logo is uploaded from Center Profile (PNG, JPG or WebP, up to 2 MB) and appe
 ### Invoice / Receipt Settings
 *(V1 Invoice / Receipt Enhancement.)* A new Settings area for Invoice / Receipt configuration. Admin can set:
 - **Starting Invoice Number** — the first number the new feature uses (for example 1224 when the last existing invoice is 1223). Later invoices continue sequentially, and the setting must never cause a duplicate number.
+- **Invoice Number Prefix** — optional (§5A Invoice Number Prefix). Blank means no prefix. It can be changed at any time, even after invoices exist, and affects only invoices issued afterwards; it is not locked like the Starting Invoice Number.
 - **Tax** — enabled or disabled; tax name; tax rate (§5A Tax)
 - **Terms & Conditions**
 - **Signatory name** and **signatory designation**
@@ -756,8 +783,11 @@ Deriving status from dates, rather than storing it, prevents a membership from s
 *(V1 Invoice / Receipt Enhancement — §5A.)*
 - An invoice is issued when a membership becomes Paid, or by the explicit Issue Invoice action for a membership that was already Paid.
 - Invoice numbers are sequential, unique and continue from the configured Starting Invoice Number; existing invoice numbers are never renumbered or changed.
-- Invoice date defaults to the payment date and is stored.
-- Admin may edit only the invoice number and invoice date of an issued invoice.
+- Invoice date defaults to the payment date and is stored independently of it; it cannot be before the payment date or in the future, and it is never silently recalculated.
+- The invoice number prefix is optional (none = prefix OFF). It is stored separately from the numeric invoice number, is copied into each invoice when it is issued, is frozen afterwards, may be changed in settings even after invoices exist (affecting only future invoices), and takes no part in numbering or uniqueness. The numeric invoice number stays globally unique and sequential.
+- Prefix validation: 1–20 characters, no leading or trailing whitespace, must not end with a digit; an empty string is invalid.
+- Adding the prefix feature never back-fills or alters existing invoices.
+- Admin may edit only the invoice number (the numeric part) and invoice date of an issued invoice; the prefix is not editable and stays as issued.
 - An issued invoice preserves its financial, customer, business, tax, terms and signatory information; later settings or profile changes never alter it.
 - Tax is tax-inclusive: the membership amount is the final amount and tax is back-calculated when tax is enabled.
 - Once an invoice is issued for a membership, the application prevents an unsafe Paid → Pending change and the issued invoice is preserved.

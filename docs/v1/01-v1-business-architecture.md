@@ -11,7 +11,7 @@
 | Purpose | Business architecture reference for V2 planning |
 | Source | Existing V1 implementation |
 | Baseline | Repository `main` at commit `75b1664` (1 Oct 2026), database migrations `0001`–`0024` |
-| Enhancements | V1 Invoice / Receipt Enhancement (Section 11A) — approved and documented; **not yet implemented**. Everything else in this document remains the baseline. |
+| Enhancements | V1 Invoice / Receipt Enhancement (Section 11A) — approved and documented; the stored invoice, Invoice / Receipt Settings and membership integration are implemented. Invoice Number Prefix (Section 11A.2A): approved and documented; **database foundation implemented and verified; application and UI implementation pending**. Everything else in this document remains the baseline. |
 | Audience | Product, design and development teams |
 
 ### How to read this document
@@ -508,7 +508,10 @@ entity (§11A).
 
 ## 11A. V1 Invoice / Receipt Enhancement
 
-**Status.** Approved and documented; not yet implemented. A later V1
+**Status.** Approved and documented; the stored invoice, Invoice / Receipt
+Settings and membership integration are implemented. Invoice Number Prefix
+(11A.2A): approved and documented; database foundation implemented and
+verified; application and UI implementation pending. A later V1
 enhancement to the working application. The baseline in Sections 1–25 is not
 rewritten: the original V1 generated a receipt on demand and stored nothing.
 Existing students, memberships, attendance, batches, schedules, instructors
@@ -545,10 +548,43 @@ transactions, partial payments, refunds or credit notes. *(Enhancement)*
 | Generation | Automatic, sequential, unique. |
 | Continuity | The client already uses invoice numbers, so the sequence continues from them. Example only: last existing number 1223 → Starting Invoice Number 1224 → first new invoice 1224, then 1225, 1226… The actual number is configured for the client during implementation; 1223 is not assumed. |
 | Scope of the sequence | Global within this V1 instance, which has one implicit center. |
-| Format | A plain number with no prefix (not, for example, `RCT-`). |
+| Number | Always a whole number, stored as a number (never text). An optional prefix can be shown in front of it (Section 11A.2A). |
 | Existing numbers | Never renumbered or changed. A new sequence is not started. |
 | Starting Invoice Number | Configured in Settings (Section 17). It must never be able to cause a duplicate invoice number. |
-| Correction | Admin can edit the number when a genuine correction is required; it must stay unique. |
+| Correction | Admin can edit the numeric number when a genuine correction is required; it must be a positive whole number, unique, and not below the Starting Invoice Number. The prefix is not edited. |
+
+### 11A.2A Invoice number prefix
+
+An optional label shown before the invoice number: with prefix `INV-`, invoice
+number 786 reads **INV-786**; with no prefix it reads **786**. *(Enhancement)*
+
+| Rule | Detail |
+|---|---|
+| Optional | Prefix OFF is represented by **NULL**. There is no separate on/off flag; turning it OFF and later ON again means entering the prefix again. |
+| Stored separately | `invoice_number` stays a numeric `bigint` and remains the source of truth for sequencing (786 → 787 → 788 …). The prefix is a separate stored value and never takes part in numbering. |
+| Uniqueness | The numeric number stays globally unique. The prefix is not part of any uniqueness rule; no constraint exists on the prefix and number together. |
+| Configured in | Invoice / Receipt Settings (Section 17). |
+| Changeable after invoices exist | Yes. Unlike the Starting Invoice Number, the prefix is never locked. |
+| Future invoices only | A changed prefix applies only to invoices issued afterwards. |
+| Snapshot | The prefix in force when an invoice is issued is copied into that invoice, by the same single issuing function used for automatic and manual issuing, from the same settings state as the number. |
+| Frozen | Once issued, an invoice's prefix cannot change (the invoice snapshot protection covers it). |
+| Invoice Edit | Editing the invoice number never changes the stored prefix: INV-788 edited to 800 becomes INV-800, and stays INV-800 if the prefix setting later becomes `YC-`. |
+| Existing invoices | No back-fill and no change. An invoice issued without a prefix stays without one. |
+
+Example: prefix `INV-` → invoices INV-788, INV-789. The prefix is later changed to
+`YC-` → the next invoices are YC-790, YC-791; the earlier two still read INV-788 and
+INV-789. *(Enhancement)*
+
+**Prefix validation** *(DB; the application validates the same rules)*:
+
+- NULL is valid and means prefix OFF; an empty string is invalid.
+- 1–20 characters.
+- No leading and no trailing whitespace (spaces, tabs and newlines all count).
+- Must not end with a digit.
+- Internal spaces are allowed; no other characters are restricted.
+- Valid: `INV-`, `INV/`, `YC-`, `FY26-`, `Receipt-`, `Yoga Center-`.
+- Invalid: `" INV-"`, `"INV- "`, `"INV-"` + tab, newline + `"INV-"`, `INV123`, an empty
+  string, anything over 20 characters.
 
 ### 11A.3 Payment date and invoice date
 
@@ -558,12 +594,19 @@ transactions, partial payments, refunds or credit notes. *(Enhancement)*
   historical payment date**. None is invented. They receive an invoice only
   through an explicit **Issue Invoice** action, where the Admin confirms the
   required invoice/payment date.
-- The **invoice date** is stored, defaults to the payment date when the
-  invoice is issued, and can be edited by Admin. It does not otherwise change.
+- The **invoice date** is stored independently of the payment date (the payment
+  date belongs to the membership and is not changed by anything done to the
+  invoice), defaults to the payment date when the invoice is issued, and can be
+  edited by Admin.
+- The invoice date cannot be before the payment date and cannot be in the future
+  (the center's current date). *(DB)*
+- An existing invoice's date is never silently recalculated; it changes only when
+  an Admin edits it.
 
 ### 11A.4 Stored document and snapshot
 
-An issued invoice stores its number, its date and its financial values, and
+An issued invoice stores its number, the invoice number prefix (if any) in force
+when it was issued, its date and its financial values, and
 preserves the customer and business information, the tax information and the
 terms and signatory information used when it was issued. Later changes to the
 Center Profile, tax settings, terms, logo, signature or the student's details
@@ -571,10 +614,15 @@ do not change an issued invoice. *(Enhancement)*
 
 ### 11A.5 Editing an issued invoice
 
-Admin Edit is deliberately limited to the **invoice number** and the
-**invoice date**. Customer identity, membership amount, membership dates, tax
-values, business identity and the rest of the issued content are not editable
-through it. No accounting correction workflow exists. *(Enhancement)*
+Admin Edit is deliberately limited to the **invoice number** (the numeric
+number) and the **invoice date**. The **invoice prefix is not editable**: the
+historical prefix stays unchanged when the number is edited. The number must
+still obey the existing rules (positive whole number, unique, not below the
+Starting Invoice Number) and the date the rules in 11A.3. Customer identity,
+membership amount, membership dates, payment date, tax values, terms,
+signatory, signature, invoice prefix, business identity and the rest of the
+issued content are not editable through it. No accounting correction workflow
+exists. *(Enhancement)*
 
 ### 11A.6 Tax
 
@@ -894,7 +942,7 @@ ranges (both dates required), and read eligibility from the frozen lists.
 |---|---|---|---|
 | Center Profile | Name (required, ≤ 100), logo, address (≤ 300), phone (digits), email | Exactly **one** center profile can exist; it cannot be created or deleted from the app. The name and logo appear in the application shell and on receipts. | DB, App |
 | Regional Settings (part of Center Profile) | Time zone (IANA, default Asia/Kolkata), currency (ISO 4217, default INR) | Invalid zones/codes rejected. Time zone governs every business date (Section 18). Changing currency **never converts** existing amounts; each membership keeps its own currency. | DB, App, Test |
-| Invoice / Receipt *(Enhancement, §11A)* | Starting Invoice Number; tax enabled/disabled, tax name, tax rate; Terms & Conditions; signatory name and designation; signature image; document title (Invoice or Receipt; default Invoice for the current client). | A new Settings area. Business identity comes from Center Profile and is not duplicated. Changing these settings affects only invoices issued afterwards. | Enhancement |
+| Invoice / Receipt *(Enhancement, §11A)* | Starting Invoice Number; optional Invoice Number Prefix (changeable after invoices exist; future invoices only; §11A.2A); tax enabled/disabled, tax name, tax rate; Terms & Conditions; signatory name and designation; signature image; document title (Invoice or Receipt; default Invoice for the current client). | A new Settings area. Business identity comes from Center Profile and is not duplicated. Changing these settings affects only invoices issued afterwards. | Enhancement |
 | Instructors | See Section 7. | | |
 | Roles & Permissions | Read-only description of Admin and Instructor access; Change Password card for the signed-in Admin. | No role configuration. | App |
 
@@ -1056,6 +1104,9 @@ Consolidated register. Section numbers point to the detail.
 | R28 | *(Enhancement)* Only the invoice number and date of an issued invoice are editable. | Enhancement | 11A |
 | R29 | *(Enhancement)* Once an invoice is issued, an unsafe Paid → Pending change is prevented. | Enhancement | 11A |
 | R30 | *(Enhancement)* No historical payment date is invented; already-Paid memberships get an invoice only through an explicit Issue Invoice action. | Enhancement | 11A |
+| R31 | *(Enhancement)* The invoice number prefix is optional (NULL = off), stored separately from the numeric `invoice_number`, copied into each invoice when issued and frozen afterwards; it may change after invoices exist, affects only future invoices, and plays no part in numbering or uniqueness. Editing an invoice number never changes its prefix. | DB | 11A.2A |
+| R32 | *(Enhancement)* A prefix is NULL or 1–20 characters with no leading or trailing whitespace and not ending in a digit; an empty string is invalid. | DB | 11A.2A |
+| R33 | *(Enhancement)* The invoice date is stored independently of the payment date, defaults to it, and cannot be before it or in the future; existing invoices are never back-filled or recalculated. | DB | 11A.3 |
 
 ---
 

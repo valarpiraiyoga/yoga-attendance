@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import FieldRow from "@/components/layout/FieldRow";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { formatDate } from "@/lib/format";
+import { formatInvoiceNumberOf } from "@/lib/invoices/invoice-number";
 import {
   DOCUMENT_TITLE_LABEL,
   getInvoiceSectionState,
@@ -56,7 +57,7 @@ export default function InvoicePanel({ membership, invoice, student, membershipS
             <Value>{DOCUMENT_TITLE_LABEL[invoice.document_title] ?? invoice.document_title}</Value>
           </FieldRow>
           <FieldRow icon={Hash} label="Invoice Number">
-            <Value>{invoice.invoice_number}</Value>
+            <Value>{formatInvoiceNumberOf(invoice)}</Value>
           </FieldRow>
           <FieldRow icon={CalendarDays} label="Invoice Date">
             <Value>{formatDate(invoice.invoice_date)}</Value>
