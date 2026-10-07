@@ -4,8 +4,8 @@ import SettingsChrome from "@/app/settings/settings-chrome";
 
 /**
  * Shared Settings shell: the page chrome, plus (via `settings-chrome.js`) the compact
- * page-header strip and the three approved tabs (`app/settings/settings-tabs.js` —
- * docs/02-ux.md "Settings"; wireframe p.38–40) around the three tab pages. On mobile the
+ * page-header strip and the four approved tabs (`app/settings/settings-tabs.js` —
+ * docs/02-ux.md "Settings"; wireframe p.38–40, plus Invoice / Receipt) around the four tab pages. On mobile the
  * top bar names the page ("Settings", `mobileTitle`) and the strip steps aside. Add /
  * Edit Instructor are task screens and draw their own strip with a back button.
  *

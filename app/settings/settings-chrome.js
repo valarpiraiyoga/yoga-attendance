@@ -5,13 +5,18 @@ import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import SettingsTabs from "@/app/settings/settings-tabs";
 
-// The three approved Settings tab pages (docs/02-ux.md "Settings"). Anything deeper - Add / Edit
-// Instructor - is a task screen with its own back-button strip, not a fourth tab.
-const TAB_PAGES = ["/settings/center-profile", "/settings/instructors", "/settings/roles-permissions"];
+// The four approved Settings tab pages (docs/02-ux.md "Settings"). Anything deeper - Add / Edit
+// Instructor - is a task screen with its own back-button strip, not a fifth tab.
+const TAB_PAGES = [
+  "/settings/center-profile",
+  "/settings/invoice-receipt",
+  "/settings/instructors",
+  "/settings/roles-permissions",
+];
 
 /**
- * The Settings chrome, only where it belongs: the compact "Settings" strip and the three tabs
- * around the three tab pages. A deeper page (Add / Edit Instructor) gets the children as they
+ * The Settings chrome, only where it belongs: the compact "Settings" strip and the four tabs
+ * around the four tab pages. A deeper page (Add / Edit Instructor) gets the children as they
  * are and draws its own strip with a back button, like every other task screen.
  *
  * A Client Component because a layout has no other way to know which child route is current
@@ -30,7 +35,7 @@ export default function SettingsChrome({ children }) {
         compact
         collapseOnMobile
         title="Settings"
-        description="Manage center information, instructors, and access permissions."
+        description="Manage your center, invoices, instructors, and access permissions."
       />
 
       <Container>
