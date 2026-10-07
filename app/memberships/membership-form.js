@@ -17,6 +17,7 @@ import {
 import StudentContext from "@/components/ui/student-context";
 import ReviewDialog, { ReviewRow } from "@/components/ui/review-dialog";
 import { formatCurrency } from "@/lib/currencies";
+import { getFormPaymentDateState, paymentDateText } from "@/lib/invoices/membership-invoice";
 import StudentIdentityHeader from "@/components/ui/student-identity-header";
 import { validateMembershipInput, calculateMembershipEndDate } from "@/lib/memberships/validation";
 
@@ -67,6 +68,7 @@ export default function MembershipForm({
   currency,
   student,
   membership,
+  hasInvoice = false,
   initialValues,
   requireConfirmation = false,
   submitLabel,
@@ -88,6 +90,8 @@ export default function MembershipForm({
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [reviewData, setReviewData] = useState(null);
+  // Read-only: the form never sends a payment date. The database records it when a membership becomes Paid and locks it once an invoice exists.
+  const paymentDateState = getFormPaymentDateState({ paymentStatus, membership, hasInvoice });
   const formRef = useRef(null);
 
   const [prevState, setPrevState] = useState(state);
@@ -184,7 +188,8 @@ export default function MembershipForm({
         className="flex flex-col gap-5"
         noValidate
       >
-        {state?.error ? (
+        {/* A message already shown against its own field (e.g. the invoice rule on Payment Status) is not repeated here. */}
+        {state?.error && !Object.values(fieldErrors).includes(state.error) ? (
           <p
             role="alert"
             className="text-body rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-danger"
@@ -303,7 +308,11 @@ export default function MembershipForm({
               onValueChange={setPaymentStatus}
               disabled={isPending}
             >
-              <SelectTrigger id="payment_status" aria-invalid={Boolean(fieldErrors.payment_status)}>
+              <SelectTrigger
+                id="payment_status"
+                aria-invalid={Boolean(fieldErrors.payment_status)}
+                aria-describedby="payment_date-note"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -319,6 +328,9 @@ export default function MembershipForm({
                 {fieldErrors.payment_status}
               </p>
             ) : null}
+            <p id="payment_date-note" className="text-small text-text-secondary">
+              Payment date: {paymentDateText(paymentDateState)}
+            </p>
           </div>
         </div>
 

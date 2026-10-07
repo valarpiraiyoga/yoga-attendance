@@ -37,6 +37,7 @@ import FieldRow from "@/components/layout/FieldRow";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getMembership, listMembershipsForStudent, listCoveredEnrollments, todayDateString } from "@/lib/memberships/data";
+import { getInvoiceForMembership } from "@/lib/invoices/data";
 import { getMembershipValidity } from "@/lib/memberships/validity";
 import { formatDate, formatDateShort } from "@/lib/format";
 import { formatCurrency } from "@/lib/currencies";
@@ -46,6 +47,7 @@ import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import CancelMembership from "@/app/memberships/[id]/cancel-membership";
 import CoveredEnrollmentRow from "@/app/memberships/[id]/covered-enrollment-row";
 import MembershipHistoryRow from "@/app/memberships/[id]/membership-history-row";
+import InvoicePanel from "@/app/memberships/[id]/invoice-panel";
 
 const SUCCESS_MESSAGES = {
   created: "Membership created successfully.",
@@ -110,9 +112,10 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const [history, coveredEnrollments] = await Promise.all([
+  const [history, coveredEnrollments, invoice] = await Promise.all([
     listMembershipsForStudent(membership.student_id),
     listCoveredEnrollments(membership),
+    getInvoiceForMembership(id),
   ]);
   const otherMemberships = history.filter((entry) => entry.id !== id);
 
@@ -274,6 +277,17 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
 
       {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
       <FlashToast message={message} />
+
+      <InvoicePanel
+        membership={membership}
+        invoice={invoice}
+        student={
+          student
+            ? { full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }
+            : null
+        }
+        membershipSummary={{ code: membership.membership_code, planLabel, period }}
+      />
 
       <Panel>
         <PanelHeader
