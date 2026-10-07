@@ -162,6 +162,7 @@ Manage the student's valid membership period and use it as part of attendance el
 - End date
 - Amount
 - Payment status
+- Payment date — recorded when the membership is Paid (see "Payment Date" below; part of the V1 Invoice / Receipt Enhancement, §5A)
 - Status
 - Notes — optional
 
@@ -170,6 +171,15 @@ Manage the student's valid membership period and use it as part of attendance el
 - Pending
 
 No online payment gateway is required for V1. Payment Status defaults to Pending.
+
+Payment Status remains a simple Paid / Pending attribute of the membership. V1 has no payment transaction record, no partial payments, no payment methods, no refunds and no multiple payments against one membership.
+
+### Payment Date
+*(V1 Invoice / Receipt Enhancement — see §5A.)*
+
+A Paid membership has a payment date, which the stored Invoice / Receipt uses as its default date.
+- When a membership becomes Paid, the payment date defaults to the current date in the centre timezone.
+- Memberships already marked Paid before this enhancement have no reliable historical payment date. The system does not invent one: such memberships receive an invoice only through the explicit "Issue Invoice" action (§5A), where the Admin confirms the required date.
 
 ### Membership Status
 - Upcoming
@@ -211,6 +221,82 @@ Membership and batch enrollment are independent. One membership can cover multip
 
 ### Expiry
 When membership expires, the student remains in the system and historical records remain available, but the student is not normally eligible for attendance until a valid membership is active again.
+
+---
+
+## 5A. Invoice / Receipt (V1 Invoice / Receipt Enhancement)
+
+### Purpose
+Give every paid membership a stored, numbered Invoice / Receipt document that can be viewed, edited (number and date only), printed, downloaded as a PDF and shared.
+
+This is a later enhancement to the working V1 application. The original V1 baseline had a printable receipt generated on demand and stored nothing; this enhancement replaces and extends that behaviour with a stored document. All other V1 behaviour — students, memberships, attendance, batches, schedules, instructors — is unchanged. The existing on-demand receipt continues to operate unchanged until the enhancement is implemented.
+
+### Scope
+This is a simple V1 document feature, not an accounting system. There are no separate Invoice, Receipt and Tax Invoice systems: one document type is presented as an Invoice or a Receipt according to the configured document title (§11 Invoice / Receipt Settings). The intended default presentation for the current client is **Invoice**.
+
+### Issuing
+- Membership → Payment Status = Paid → payment date → invoice issued → stored invoice.
+- A new invoice is issued when a membership becomes Paid.
+- A membership that was already Paid before this enhancement receives its invoice through an explicit Admin action, **Issue Invoice**, in which the Admin confirms the required invoice/payment date. No invoice or payment date is created for it automatically.
+- Issuing, viewing and editing an invoice are Admin only, matching the existing V1 receipt behaviour. Instructors have no access to invoices.
+
+### Membership ↔ Invoice
+A membership has **zero or one** issued invoice (Membership 1 : 0..1 Invoice). V1 does not support multiple invoices for one membership, payment transactions, partial payments, refunds or credit notes.
+
+### Invoice Number
+- Generated automatically and sequentially, and unique.
+- The existing client already uses invoice numbers, so the sequence continues from them rather than starting again: with a last existing number of 1223, a Starting Invoice Number of 1224 makes the first new invoice 1224, then 1225, 1226 and so on. (1223 is an example only; the real starting number is configured for the client during implementation.)
+- The sequence is global within this V1 instance, which has one implicit center. The Starting Invoice Number is configured in Settings, and the numbers carry no prefix (not, for example, `RCT-`).
+- Existing invoice numbers are never renumbered or changed.
+- Admin can edit the number when a genuine correction is required.
+- The Starting Invoice Number must never be able to cause a duplicate invoice number.
+
+### Invoice Date
+- Stored on the invoice.
+- Defaults to the payment date when the invoice is issued.
+- Admin can edit it. It does not otherwise change.
+
+### Stored Document and Snapshot
+An issued invoice stores:
+- its number and date;
+- its financial values (amount and, when tax is enabled, the tax values);
+- the customer and business information used on the document;
+- the tax information used;
+- the terms, signatory and document title used, where applicable.
+
+Later changes to the Center Profile, tax settings, terms, logo, signature, or the student's details do not change an already-issued invoice.
+
+### Editing an Issued Invoice
+Admin Edit is deliberately limited to:
+- Invoice number
+- Invoice date
+
+It does not edit the student/customer identity, membership amount, membership dates, tax values, business identity or any other issued content. V1 has no accounting correction workflow.
+
+### Tax
+- Tax can be enabled or disabled, with a configurable tax name and tax rate.
+- V1 uses a tax-inclusive model: the membership amount is the customer's final amount, and when tax is enabled the tax is calculated (back-calculated) from that amount.
+- The tax used is preserved on each issued invoice.
+
+### Paid → Pending
+Once an invoice has been issued for a membership, the issued invoice is preserved and is never silently invalidated. V1 has no refund, void or credit-note handling, so the application prevents an unsafe Paid → Pending change after an invoice has been issued. The exact guard is an implementation matter.
+
+### Actions
+A stored invoice is intended to support:
+- View
+- Edit (number and date only)
+- Print
+- Download PDF
+- Share / WhatsApp
+
+WhatsApp remains a plain click-to-chat / share workflow, not a WhatsApp Business API integration. `wa.me` cannot attach a file; where the browser supports it, the Web Share API can share the generated PDF, and otherwise the PDF can be downloaded and a text message shared. The PDF technique is an implementation decision.
+
+### Not Included
+- Partial payments, payment methods, a payment transaction table, multiple payments against one membership
+- Online payment gateway, automatic billing
+- Refunds, credit notes, void or correction workflows
+- Full accounting, revenue accounting, financial ledger, payment history system
+- Multi-center or multi-organization billing
 
 ---
 
@@ -577,6 +663,8 @@ Admin can manage:
 
 Center profile information can also be used in exported reports.
 
+Center name, address, phone, email and logo are also the business identity used on the Invoice / Receipt (§5A); they are not duplicated in the Invoice / Receipt Settings.
+
 ### Regional Settings
 Part of Center Profile. Admin can set:
 - **Time Zone** — the centre's IANA time zone (searchable by country, city or identifier). Default **Asia/Kolkata**. It is the business timezone for every date the application derives: today, session status, membership validity, attendance eligibility, schedule dates (§7A "Centre Timezone").
@@ -584,7 +672,18 @@ Part of Center Profile. Admin can set:
 
 Changing the currency never converts an amount. Each membership records the currency it was priced in (existing memberships are INR), so past amounts keep their original meaning after the centre changes currency; a renewal starts blank rather than carrying over an amount priced in a different currency.
 
-The Logo is uploaded from Center Profile (PNG, JPG or WebP, up to 2 MB) and appears in the application's brand slot and on receipts.
+The Logo is uploaded from Center Profile (PNG, JPG or WebP, up to 2 MB) and appears in the application's brand slot and on the Invoice / Receipt. An invoice that has already been issued keeps the logo it was issued with (§5A).
+
+### Invoice / Receipt Settings
+*(V1 Invoice / Receipt Enhancement.)* A new Settings area for Invoice / Receipt configuration. Admin can set:
+- **Starting Invoice Number** — the first number the new feature uses (for example 1224 when the last existing invoice is 1223). Later invoices continue sequentially, and the setting must never cause a duplicate number.
+- **Tax** — enabled or disabled; tax name; tax rate (§5A Tax)
+- **Terms & Conditions**
+- **Signatory name** and **signatory designation**
+- **Signature image**
+- **Document title** — configurable; the document is presented as either **Invoice** or **Receipt**. The intended default for the current client is Invoice. This changes only how one document is titled; it does not create separate Invoice and Receipt systems.
+
+Business identity (name, address, phone, email, logo) continues to come from Center Profile. Changing these settings affects invoices issued afterwards, never invoices already issued.
 
 ### Instructors
 Admin can:
@@ -644,12 +743,25 @@ One active enrollment per batch keeps attendance eligibility unambiguous: a dupl
 - End date cannot precede start date; a same-day start and end date is allowed.
 - Renewal's default start date is the previous membership's end date plus one day.
 - Payment status does not determine membership status.
+- Payment status does not affect attendance eligibility.
 - Attendance eligibility requires active membership on the session date.
 - Renewals create new membership records.
 - Expired memberships remain in history.
 - Cancelled memberships remain in history; cancellation does not delete the record.
+- A Paid membership has a payment date; it defaults to the current date in the centre timezone when the membership becomes Paid. Historical payment dates are never invented for memberships that were Paid before the Invoice / Receipt Enhancement.
 
 Deriving status from dates, rather than storing it, prevents a membership from silently remaining Active after its end date passes. Overlap prevention keeps a student's eligibility unambiguous on any date — the same reasoning as one active enrollment per batch.
+
+### Invoice / Receipt
+*(V1 Invoice / Receipt Enhancement — §5A.)*
+- An invoice is issued when a membership becomes Paid, or by the explicit Issue Invoice action for a membership that was already Paid.
+- Invoice numbers are sequential, unique and continue from the configured Starting Invoice Number; existing invoice numbers are never renumbered or changed.
+- Invoice date defaults to the payment date and is stored.
+- Admin may edit only the invoice number and invoice date of an issued invoice.
+- An issued invoice preserves its financial, customer, business, tax, terms and signatory information; later settings or profile changes never alter it.
+- Tax is tax-inclusive: the membership amount is the final amount and tax is back-calculated when tax is enabled.
+- Once an invoice is issued for a membership, the application prevents an unsafe Paid → Pending change and the issued invoice is preserved.
+- V1 has no refunds, credit notes, void workflow, partial payments or payment methods.
 
 ### Batch
 - A batch can have multiple recurring schedules.
@@ -774,13 +886,15 @@ Historical records must be protected when:
 - CSV/Excel export
 - Center profile
 - Basic settings
+- Stored Invoice / Receipt with invoice settings (V1 Invoice / Receipt Enhancement, §5A)
 
 ### Not Included in V1
 - Student login
 - Online payment gateway
 - Automatic billing
 - Payment reminders
-- WhatsApp/SMS/email integrations
+- Partial payments, payment methods, refunds, credit notes, full accounting
+- WhatsApp/SMS/email integrations (a plain WhatsApp click-to-chat / share workflow for the Invoice / Receipt is not an integration)
 - QR attendance
 - Face recognition
 - Student mobile app
