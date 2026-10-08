@@ -87,6 +87,11 @@ export default function MembershipForm({
   const [endDate, setEndDate] = useState(
     state?.values?.end_date ?? membership?.end_date ?? initialValues?.end_date ?? ""
   );
+  // Controlled like Plan and the dates: its first value can come from the saved membership, the renewal, or
+  // the values a failed save hands back, so it is never an uncontrolled field whose default changes later.
+  const [amount, setAmount] = useState(
+    String(state?.values?.amount ?? membership?.amount ?? initialValues?.amount ?? "")
+  );
   const [paymentStatus, setPaymentStatus] = useState(
     state?.values?.payment_status ?? membership?.payment_status ?? initialValues?.payment_status ?? "pending"
   );
@@ -289,7 +294,8 @@ export default function MembershipForm({
               step="0.01"
               required
               disabled={isPending}
-              defaultValue={state?.values?.amount ?? membership?.amount ?? initialValues?.amount ?? ""}
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
               placeholder="Enter amount"
               aria-invalid={Boolean(fieldErrors.amount)}
               aria-describedby={fieldErrors.amount ? "amount-error" : undefined}
