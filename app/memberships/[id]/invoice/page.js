@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getInvoiceForMembership } from "@/lib/invoices/data";
@@ -25,6 +27,12 @@ import PrintInvoiceButton from "@/app/memberships/[id]/invoice/print-invoice-but
  * The sidebar and header are `print:hidden` (see `AppShell`), so is this page's header (back link,
  * title and the button), and `@page` asks for A4 with a 14mm margin, as the membership receipt does.
  * The document carries its own print rules (see invoice-document.js).
+ *
+ * Download PDF: a plain link to the PDF route beside it (app/memberships/[id]/invoice/pdf/route.js),
+ * which answers with an attachment - so the browser downloads it; nothing is fetched or built in the
+ * page. It is a plain `<a>`, not a `next/link`, because the target is a file download and not a page.
+ * Both actions sit in the header's `actions`, which show at every width (the header's own pattern),
+ * and both are `print:hidden` with it.
  */
 export default async function InvoiceDetailPage({ params }) {
   await requireRole(ROLES.ADMIN);
@@ -46,7 +54,19 @@ export default async function InvoiceDetailPage({ params }) {
       <PageHeader
         compact
         className="print:hidden"
-        actions={<PrintInvoiceButton />}
+        actions={
+          <>
+            <PrintInvoiceButton />
+            <Button
+              variant="outline"
+              render={<a href={`/memberships/${id}/invoice/pdf`} />}
+              nativeButton={false}
+            >
+              <Download className="size-4" aria-hidden="true" />
+              Download PDF
+            </Button>
+          </>
+        }
         back={{ href: `/memberships/${id}`, label: "Back to Membership" }}
         title={`${invoiceDocument.title} ${invoiceDocument.number}`}
         description="The stored document, as it was issued."
