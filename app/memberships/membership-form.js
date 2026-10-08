@@ -24,6 +24,8 @@ import { validateMembershipInput, calculateMembershipEndDate } from "@/lib/membe
 const PLAN_OPTIONS = [
   { value: "monthly", label: "Monthly" },
   { value: "quarterly", label: "Quarterly" },
+  { value: "half_yearly", label: "Half Yearly" },
+  { value: "annual", label: "Annual" },
   { value: "custom", label: "Custom duration" },
 ];
 

@@ -20,7 +20,7 @@ import MembershipFilters from "@/app/memberships/membership-filters";
 import MembershipList from "@/app/memberships/membership-list";
 
 const PAGE_SIZE = 10;
-const PLANS = ["monthly", "quarterly", "custom"];
+const PLANS = ["monthly", "quarterly", "half_yearly", "annual", "custom"];
 const PAYMENT_STATUSES = ["paid", "pending"];
 const MEMBERSHIP_STATUSES = ["upcoming", "active", "expired", "cancelled"];
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;

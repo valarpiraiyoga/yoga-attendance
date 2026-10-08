@@ -904,7 +904,7 @@ export const MEMBERSHIP_STATUS = {
   expired:   { label: "Expired",   variant: "neutral" },
   cancelled: { label: "Cancelled", variant: "danger"  },
 };
-export const PLAN          = { monthly: "Monthly", quarterly: "Quarterly", custom: "Custom duration" };
+export const PLAN          = { monthly: "Monthly", quarterly: "Quarterly", half_yearly: "Half Yearly", annual: "Annual", custom: "Custom duration" };
 export const PAYMENT       = { paid: {…}, pending: {…} };
 export const ENTITY_STATUS = { active: {…}, inactive: {…} };
 export const ATTENDANCE    = { present: {…}, absent: {…}, unmarked: {…} };

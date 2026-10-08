@@ -12,7 +12,7 @@ import StudentIdentityHeader from "@/components/ui/student-identity-header";
 import GuidedSteps from "@/app/students/guided-steps";
 import PageHeader from "@/components/layout/PageHeader";
 
-const PLAN_LABELS = { monthly: "Monthly", quarterly: "Quarterly", custom: "Custom duration" };
+const PLAN_LABELS = { monthly: "Monthly", quarterly: "Quarterly", half_yearly: "Half Yearly", annual: "Annual", custom: "Custom duration" };
 const MEMBERSHIP_STATUS_LABELS = { upcoming: "Upcoming", active: "Active", expired: "Expired", cancelled: "Cancelled" };
 const MEMBERSHIP_STATUS_VARIANTS = { upcoming: "default", active: "success", expired: "neutral", cancelled: "danger" };
 

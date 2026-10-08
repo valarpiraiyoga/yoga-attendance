@@ -152,6 +152,8 @@ Manage the student's valid membership period and use it as part of attendance el
 ### Plans
 - Monthly
 - Quarterly
+- Half Yearly
+- Annual
 - Custom duration
 
 ### Membership Information
@@ -204,6 +206,8 @@ End date is calculated from the selected plan and start date, but remains
 editable:
 - Monthly: start date + 1 month − 1 day
 - Quarterly: start date + 3 months − 1 day
+- Half Yearly: start date + 6 months − 1 day
+- Annual: start date + 12 months − 1 day
 - Custom duration: entered manually
 
 End date cannot precede start date. A same-day start and end date is allowed.

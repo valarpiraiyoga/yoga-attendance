@@ -23,6 +23,8 @@ const PLAN_OPTIONS = [
   { value: "all", label: "All Plans" },
   { value: "monthly", label: "Monthly" },
   { value: "quarterly", label: "Quarterly" },
+  { value: "half_yearly", label: "Half Yearly" },
+  { value: "annual", label: "Annual" },
   { value: "custom", label: "Custom duration" },
 ];
 
