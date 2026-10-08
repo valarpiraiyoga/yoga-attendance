@@ -139,8 +139,7 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
           <tbody>
             <tr className="border-b border-border print:break-inside-avoid">
               <td className="py-4 pr-4 align-top">
-                <p className="text-body font-medium break-words text-text-primary">{line.description}</p>
-                <p className="text-small break-words text-text-secondary">{line.period}</p>
+                <ServiceCell line={line} />
               </td>
               {amounts.tax ? (
                 <>
@@ -237,5 +236,74 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
         </div>
       ) : null}
     </article>
+  );
+}
+
+// The Services cell. Without stored service details it is the description and the period, as it has
+// always been. One batch: the batch above the plan, its schedule below, then the period. Several: the
+// plan and period, then a Sl. No. / Batch / Schedule list (the number is generated here, not stored).
+function ServiceCell({ line }) {
+  const { service } = line;
+
+  if (!service) {
+    return (
+      <>
+        <p className="text-body font-medium break-words text-text-primary">{line.description}</p>
+        <p className="text-small break-words text-text-secondary">{line.period}</p>
+      </>
+    );
+  }
+
+  if (!service.table) {
+    return (
+      <>
+        <p className="text-body font-medium break-words text-text-primary">{service.lead}</p>
+        <p className="text-small break-words text-text-secondary">{line.description}</p>
+        {service.schedule.map((schedule) => (
+          <p key={schedule} className="text-small break-words text-text-secondary">
+            {schedule}
+          </p>
+        ))}
+        <p className="text-small break-words text-text-secondary">{line.period}</p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <p className="text-body font-medium break-words text-text-primary">{line.description}</p>
+      <p className="text-small break-words text-text-secondary">{line.period}</p>
+      <table className="text-small mt-3 w-full text-left">
+        <caption className="sr-only">Classes covered by this membership</caption>
+        <thead>
+          <tr className="border-y border-border text-text-secondary">
+            <th scope="col" className="w-14 py-1 pr-3 font-medium">
+              Sl. No.
+            </th>
+            <th scope="col" className="py-1 pr-3 font-medium">
+              Batch / Class
+            </th>
+            <th scope="col" className="py-1 font-medium">
+              Schedule
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {service.table.map((row) => (
+            <tr key={row.number} className="border-b border-border align-top print:break-inside-avoid">
+              <td className="py-1.5 pr-3 tabular-nums text-text-secondary">{row.number}</td>
+              <td className="py-1.5 pr-3 break-words text-text-primary">{row.batch}</td>
+              <td className="py-1.5 break-words text-text-secondary">
+                {row.schedule.map((schedule) => (
+                  <span key={schedule} className="block">
+                    {schedule}
+                  </span>
+                ))}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 }
