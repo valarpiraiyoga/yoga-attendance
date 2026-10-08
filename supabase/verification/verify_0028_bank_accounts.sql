@@ -184,15 +184,16 @@ checks as (
     ), ''
   -- ---- existing invoices are untouched ---------------------------------------------
   union all
-  select 21, 'invoices has no bank columns yet (the snapshot is a later migration)',
-    not exists (
-      select 1 from information_schema.columns
+  select 21, 'invoices has no bank columns (before 0029) or exactly the five snapshot columns (0029) — never a bank_account_id or a link',
+    (
+      select count(*) in (0, 5) from information_schema.columns
       where table_schema = 'public' and table_name = 'invoices' and column_name like '%bank%'
     )
-    and (select count(*) = 34 from information_schema.columns where table_schema = 'public' and table_name = 'invoices'), ''
+    and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'invoices' and column_name like '%bank_account_id%')
+    and (select count(*) in (34, 39) from information_schema.columns where table_schema = 'public' and table_name = 'invoices'), ''
   union all
-  select 22, 'issue_invoice_core does not mention bank accounts yet',
-    (select def not ilike '%bank%' from fn where proname = 'issue_invoice_core'), ''
+  select 22, 'issue_invoice_core does not mention bank accounts (before 0029), or only reads the active account (0029)',
+    (select def not ilike '%bank%' or def like '%from public.bank_accounts%where is_active%' from fn where proname = 'issue_invoice_core'), ''
   union all
   select 23, 'the invoice freeze, validate and delete triggers and the settings guard are all still in place',
     (

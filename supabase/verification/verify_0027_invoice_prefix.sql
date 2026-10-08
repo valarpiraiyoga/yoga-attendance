@@ -172,7 +172,7 @@ checks as (
     and not exists (select 1 from pg_indexes where schemaname = 'public' and tablename = 'invoices' and indexdef ilike '%invoice_prefix%'), ''
   union all
   select 21, 'invoices has the 33 existing columns plus invoice_prefix, and still no status / void / payment columns',
-    (select count(*) = 34 from information_schema.columns where table_schema = 'public' and table_name = 'invoices')
+    (select count(*) in (34, 39) from information_schema.columns where table_schema = 'public' and table_name = 'invoices')
     and not exists (
       select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'invoices'

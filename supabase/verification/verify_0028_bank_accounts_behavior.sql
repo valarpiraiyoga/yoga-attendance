@@ -319,8 +319,9 @@ begin
     into v_hash1
   from public.invoices i;
   perform pg_temp.rec('I1 every existing invoice is byte-for-byte unchanged', v_hash0 = v_hash1, v_count0 || ' invoice(s) fingerprinted');
-  perform pg_temp.rec('I2 invoices still has no bank column', not exists (
-    select 1 from information_schema.columns where table_schema = 'public' and table_name = 'invoices' and column_name like '%bank%'), '');
+  perform pg_temp.rec('I2 invoices has no bank column (before 0029) or just the five snapshot columns (0029) — and never a link to an account',
+    (select count(*) in (0, 5) from information_schema.columns where table_schema = 'public' and table_name = 'invoices' and column_name like '%bank%')
+    and not exists (select 1 from pg_constraint where conrelid = 'public.invoices'::regclass and contype = 'f' and confrelid = 'public.bank_accounts'::regclass), '');
 end $$;
 
 insert into _verify_results
