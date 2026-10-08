@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Receipt, Banknote } from "lucide-react";
+import { CalendarDays, FilePlus, FileText, Receipt, Banknote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import EntityCard from "@/components/ui/entity-card";
 import Progress from "@/components/ui/progress";
 import { formatDate } from "@/lib/format";
+import { membershipDocumentAction } from "@/lib/memberships/document-action";
+import MembershipIssueInvoiceDialog from "@/app/memberships/membership-issue-invoice";
 import { formatCurrency } from "@/lib/currencies";
 import { MEMBERSHIP_STATUS, PAYMENT_STATUS } from "@/lib/status";
 import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/validity";
@@ -27,18 +29,25 @@ function validityTone(validity) {
  * badge, and a validity footer — "N days left" with "N / total days" and the
  * progress bar while it runs, or a red "Expired" block with a full red bar.
  * Everything comes from the existing validity helpers and status maps. Card
- * actions follow the finalized pattern: receipt icon (View Receipt) +
- * overflow menu, whose first item, View Membership, opens the membership
- * detail page — the eye icon is deliberately not used here, so it stays a
- * receipt-only mark. Composed from `EntityCard`; only the interactive
+ * actions follow the finalized pattern: document icon + overflow menu,
+ * whose first item, View Membership, opens the membership detail page — the
+ * eye icon is deliberately not used here, so it stays a document-only mark.
+ * The document icon follows the payment status and the invoice: Pending -> the file
+ * icon, View Due Notice; Paid with a receipt -> the receipt icon, View Paid
+ * Invoice; Paid without one -> the file-plus icon, Issue Receipt (the existing dialog). Composed from `EntityCard`; only the interactive
  * menu-open tint is local state.
  */
+const DOCUMENT_ICON = { "due-notice": FileText, "receipt": Receipt, "issue-receipt": FilePlus };
+
 export default function MembershipCardItem({ membership, today }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [issueOpen, setIssueOpen] = useState(false);
 
   const student = membership.students;
   const status = MEMBERSHIP_STATUS[membership.status] ?? MEMBERSHIP_STATUS.expired;
   const payment = PAYMENT_STATUS[membership.payment_status] ?? PAYMENT_STATUS.pending;
+  const documentAction = membershipDocumentAction(membership.id, membership.payment_status, membership.invoice_exists);
+  const DocumentIcon = DOCUMENT_ICON[documentAction.kind];
   const validity = getMembershipValidity(membership, today);
   const validityLabel = getValidityLabel(validity);
   const isExpired = validity.status === "expired";
@@ -62,17 +71,25 @@ export default function MembershipCardItem({ membership, today }) {
             variant="ghost"
             size="icon-sm"
             className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`View receipt for ${student?.full_name ?? membership.membership_code}`}
-            render={<Link href={`/memberships/${membership.id}/receipt`} />}
-            nativeButton={false}
+            aria-label={`${documentAction.label} for ${student?.full_name ?? membership.membership_code}`}
+            title={documentAction.label}
+            {...(documentAction.href
+              ? { render: <Link href={documentAction.href} />, nativeButton: false }
+              : { onClick: () => setIssueOpen(true) })}
           >
-            <Receipt className="size-4" aria-hidden="true" />
+            <DocumentIcon className="size-4" aria-hidden="true" />
           </Button>
           <MembershipCardMenu
             membershipId={membership.id}
             studentId={student?.id}
+            paymentStatus={membership.payment_status}
+            invoiceExists={membership.invoice_exists}
+            onIssueInvoice={() => setIssueOpen(true)}
             onOpenChange={setMenuOpen}
           />
+          {documentAction.kind === "issue-receipt" ? (
+            <MembershipIssueInvoiceDialog membership={membership} student={student} open={issueOpen} onOpenChange={setIssueOpen} />
+          ) : null}
         </div>
       }
       meta={[

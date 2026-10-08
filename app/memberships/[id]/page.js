@@ -38,8 +38,10 @@ import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getMembership, listMembershipsForStudent, listCoveredEnrollments, todayDateString } from "@/lib/memberships/data";
 import { getInvoiceForMembership } from "@/lib/invoices/data";
+import { getInvoiceSectionState } from "@/lib/invoices/membership-invoice";
 import { getMembershipValidity } from "@/lib/memberships/validity";
-import { formatDate, formatDateShort } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { formatPeriod } from "@/lib/memberships/period";
 import { formatCurrency } from "@/lib/currencies";
 import { centreDateOf } from "@/lib/class-sessions/validation";
 import { getCenterTimezone } from "@/lib/center-profile/settings";
@@ -65,14 +67,6 @@ function formatDuration(startDate, endDate) {
   if (days < 60) return `${days} days`;
   const months = Math.round(days / 30);
   return months === 1 ? "~1 month" : `~${months} months`;
-}
-
-/** `Sep 1 – Sep 30, 2026` within a year; both years shown when the period crosses one. */
-function formatPeriod(startDate, endDate) {
-  if (!startDate || !endDate) return "—";
-  return startDate.slice(0, 4) === endDate.slice(0, 4)
-    ? `${formatDateShort(startDate)} – ${formatDate(endDate)}`
-    : `${formatDate(startDate)} – ${formatDate(endDate)}`;
 }
 
 /** Validity bar colour, as on the Memberships list: red once Expired, orange while payment is Pending, else green. */
@@ -123,6 +117,7 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
 
   const student = membership.students;
+  const invoiceState = getInvoiceSectionState({ membership, invoice });
   const status = MEMBERSHIP_STATUS[membership.status] ?? { label: membership.status, variant: "neutral" };
   const payment = PAYMENT_STATUS[membership.payment_status] ?? PAYMENT_STATUS.pending;
   const planLabel = PLAN[membership.plan] ?? membership.plan;
@@ -215,6 +210,16 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
               <CancelMembership
                 membershipId={membership.id}
                 studentId={student?.id}
+                paymentStatus={membership.payment_status}
+                invoiceExists={Boolean(invoice)}
+                invoiceToIssue={
+                  invoiceState.canIssue
+                    ? {
+                        needsPaymentDate: invoiceState.needsPaymentDate,
+                        paymentDateLabel: invoiceState.paymentDate.kind === "recorded" ? formatDate(invoiceState.paymentDate.date) : null,
+                      }
+                    : null
+                }
                 isCancelled={membership.status === "cancelled"}
                 student={
                   student
@@ -356,7 +361,7 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
               </TableHeader>
               <TableBody>
                 {otherMemberships.map((entry) => (
-                  <MembershipHistoryRow key={entry.id} entry={entry} />
+                  <MembershipHistoryRow key={entry.id} entry={entry} student={student} />
                 ))}
               </TableBody>
             </Table>

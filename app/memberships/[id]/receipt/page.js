@@ -44,14 +44,15 @@ function ContactLine({ icon: Icon, children }) {
 }
 
 /**
- * Membership Receipt — generated on the fly from the membership record, the
+ * Payment Due Notice (the Pending membership's document; formerly titled Membership Receipt, the
+ * route is still /receipt) — generated on the fly from the membership record, the
  * student and the Center Profile; nothing is stored. The membership code is
- * the receipt number, the membership's own creation date is the receipt date,
+ * the notice number, the membership's own creation date is the notice date,
  * and the plan / period / amount / payment status are the record's own values.
  * The schema holds no tax, discount, payment-method or bank details, so none
  * are shown: the total is the membership's amount.
  *
- * Print: `Print Receipt` calls `window.print()`. The sidebar, header, back
+ * Print: `Print Due Notice` calls `window.print()`. The sidebar, header, back
  * link and buttons are `print:hidden` (see `AppShell`), the article drops its
  * frame, and `@page` asks for A4 with a 14mm margin.
  *
@@ -88,8 +89,8 @@ export default async function MembershipReceiptPage({ params }) {
   const cancelledOn = membership.cancelled_at ? formatDate(centreDateOf(membership.cancelled_at, timeZone)) : null;
 
   const whatsAppMessage = [
-    center?.name ? `${center.name} – Membership Receipt` : "Membership Receipt",
-    `Receipt No.: ${membership.membership_code}`,
+    center?.name ? `${center.name} – Payment Due Notice` : "Payment Due Notice",
+    `Notice No.: ${membership.membership_code}`,
     `Student: ${student?.full_name ?? "—"}`,
     `Membership: ${planLabel} Membership`,
     `Start Date: ${formatDate(membership.start_date)}`,
@@ -108,8 +109,8 @@ export default async function MembershipReceiptPage({ params }) {
         compact
         className="print:hidden"
         back={{ href: `/memberships/${id}`, label: "Back to Membership" }}
-        title="Membership Receipt"
-        description={`Receipt ${membership.membership_code}: print it or send it on WhatsApp.`}
+        title="Payment Due Notice"
+        description={`Payment Due Notice ${membership.membership_code}: print it or send it on WhatsApp.`}
         actions={
           <>
             <PrintReceiptButton />
@@ -137,7 +138,7 @@ export default async function MembershipReceiptPage({ params }) {
       <div className="mx-auto w-full max-w-3xl print:max-w-none">
 
       <article
-        aria-label={`Receipt ${membership.membership_code}`}
+        aria-label={`Payment Due Notice ${membership.membership_code}`}
         className="rounded-card border border-border bg-surface p-6 shadow-xs sm:p-10 print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
         <header className="flex flex-col gap-6 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between">
@@ -152,7 +153,7 @@ export default async function MembershipReceiptPage({ params }) {
               />
             ) : null}
             <p className="text-page-title font-semibold break-words text-text-primary">
-              {center?.name ?? "Membership Receipt"}
+              {center?.name ?? "Payment Due Notice"}
             </p>
             {center?.address ? (
               <p className="text-small mt-1 break-words whitespace-pre-line text-text-secondary">{center.address}</p>
@@ -166,9 +167,9 @@ export default async function MembershipReceiptPage({ params }) {
           </div>
 
           <div className="sm:text-right">
-            <h1 className="text-page-title font-semibold tracking-wide text-brand uppercase">Receipt</h1>
+            <h1 className="text-page-title font-semibold tracking-wide text-brand uppercase">Payment Due Notice</h1>
             <dl className="mt-2 flex flex-col gap-1">
-              <Detail label="Receipt No.">{membership.membership_code}</Detail>
+              <Detail label="Notice No.">{membership.membership_code}</Detail>
               <Detail label="Date">{receiptDate}</Detail>
             </dl>
           </div>
@@ -200,7 +201,7 @@ export default async function MembershipReceiptPage({ params }) {
 
         <section aria-label="Items" className="border-b border-border py-6">
           <div className="overflow-x-auto rounded-lg border border-border">
-            <Table aria-label="Receipt items">
+            <Table aria-label="Notice items">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="whitespace-nowrap">Description</TableHead>
@@ -240,9 +241,9 @@ export default async function MembershipReceiptPage({ params }) {
         ) : null}
 
         <footer className="flex flex-col gap-1 pt-6 text-small text-text-secondary sm:flex-row sm:items-center sm:justify-between">
-          <span>{center?.name ?? "Membership Receipt"}</span>
+          <span>{center?.name ?? "Payment Due Notice"}</span>
           <span>
-            Receipt {membership.membership_code} · Generated {formatDate(today)}
+            Notice {membership.membership_code} · Generated {formatDate(today)}
           </span>
         </footer>
       </article>

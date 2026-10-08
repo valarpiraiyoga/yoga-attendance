@@ -11,15 +11,18 @@ import { formatCurrency } from "@/lib/currencies";
 import { MEMBERSHIP_STATUS, PLAN } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import MembershipCardMenu from "@/app/memberships/membership-card-menu";
+import MembershipIssueInvoiceDialog from "@/app/memberships/membership-issue-invoice";
 
 /**
  * One row of Membership Details' Membership History table — one of the
  * student's other memberships: ID, plan, period, amount, status, and the
  * finalized action pair (eye icon + the same overflow menu the Memberships
- * list uses: View / Edit / Renew Membership).
+ * list uses: View / Edit / Renew Membership, and the status-aware document action - for a Paid
+ * membership with no receipt, that is Issue Receipt, which opens the existing dialog from here).
  */
-export default function MembershipHistoryRow({ entry }) {
+export default function MembershipHistoryRow({ entry, student }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [issueOpen, setIssueOpen] = useState(false);
   const status = MEMBERSHIP_STATUS[entry.status] ?? MEMBERSHIP_STATUS.expired;
 
   return (
@@ -51,7 +54,16 @@ export default function MembershipHistoryRow({ entry }) {
           >
             <Eye className="size-4" aria-hidden="true" />
           </Button>
-          <MembershipCardMenu membershipId={entry.id} onOpenChange={setMenuOpen} />
+          <MembershipCardMenu
+            membershipId={entry.id}
+            paymentStatus={entry.payment_status}
+            invoiceExists={entry.invoice_exists}
+            onIssueInvoice={() => setIssueOpen(true)}
+            onOpenChange={setMenuOpen}
+          />
+          {entry.payment_status === "paid" && !entry.invoice_exists ? (
+            <MembershipIssueInvoiceDialog membership={entry} student={student} open={issueOpen} onOpenChange={setIssueOpen} />
+          ) : null}
         </div>
       </TableCell>
     </TableRow>

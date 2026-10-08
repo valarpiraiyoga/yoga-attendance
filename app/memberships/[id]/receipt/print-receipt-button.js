@@ -8,7 +8,7 @@ export default function PrintReceiptButton() {
   return (
     <Button type="button" onClick={() => window.print()}>
       <Printer className="size-4" aria-hidden="true" />
-      Print Receipt
+      Print Due Notice
     </Button>
   );
 }

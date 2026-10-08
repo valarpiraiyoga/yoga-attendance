@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { membershipDocumentAction } from "@/lib/memberships/document-action";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +14,11 @@ import {
 
 /**
  * Memberships card / row overflow — links only to routes that already
- * exist (Membership Details, Edit, Renew, Receipt, and the student's own page).
+ * exist (Membership Details, Edit, Renew, the membership's document, and the student's own page).
+ * The document item follows the payment status and the invoice (`membershipDocumentAction`): View
+ * Payment Due Notice for a Pending membership, View Receipt for a Paid one with an invoice, and
+ * Issue Receipt for a Paid one without - which opens the existing Issue Receipt dialog through
+ * `onIssueInvoice` (the host owns the dialog) instead of linking to a page that would not exist.
  * Cancel is deliberately not here: it needs its confirmation dialog, which
  * lives on Membership Details. Mirrors `StudentCardMenu`.
  *
@@ -25,6 +30,9 @@ import {
 export default function MembershipCardMenu({
   membershipId,
   studentId,
+  paymentStatus,
+  invoiceExists = false,
+  onIssueInvoice,
   onOpenChange,
   triggerVariant = "ghost",
   triggerSize = "icon-sm",
@@ -33,6 +41,8 @@ export default function MembershipCardMenu({
   triggerDisabled = false,
   extraItems = null,
 }) {
+  const documentAction = membershipDocumentAction(membershipId, paymentStatus, invoiceExists);
+
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
@@ -59,9 +69,13 @@ export default function MembershipCardMenu({
         <DropdownMenuItem render={<Link href={`/memberships/${membershipId}/renew`} />} nativeButton={false}>
           Renew Membership
         </DropdownMenuItem>
-        <DropdownMenuItem render={<Link href={`/memberships/${membershipId}/receipt`} />} nativeButton={false}>
-          View Receipt
-        </DropdownMenuItem>
+        {documentAction.href ? (
+          <DropdownMenuItem render={<Link href={documentAction.href} />} nativeButton={false}>
+            {documentAction.label}
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={onIssueInvoice}>{documentAction.label}</DropdownMenuItem>
+        )}
 
         {studentId ? (
           <>

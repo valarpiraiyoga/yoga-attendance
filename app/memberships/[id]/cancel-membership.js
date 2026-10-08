@@ -6,6 +6,7 @@ import StudentContext from "@/components/ui/student-context";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cancelMembership } from "@/lib/memberships/actions";
 import MembershipCardMenu from "@/app/memberships/membership-card-menu";
+import { IssueInvoiceDialog } from "@/app/memberships/[id]/issue-invoice";
 
 /**
  * Cancel Membership (02-ux.md Flow 15: "Memberships / Membership Details →
@@ -18,15 +19,18 @@ import MembershipCardMenu from "@/app/memberships/membership-card-menu";
  * outside `onConfirm`. The trigger is the finalized overflow (⋮) button
  * beside Edit / Renew; the action, its dialog and its rules are unchanged. The
  * menu around it is the shared `MembershipCardMenu` (View Membership, Edit,
- * Renew, View Receipt, View Student), with Cancel Membership after its own
- * divider.
+ * Renew, the status-aware document action, View Student), with Cancel Membership after its own
+ * divider. For a Paid membership with no receipt the document item is Issue Receipt, which opens the
+ * existing Issue Receipt dialog from here (`invoiceToIssue` carries the same props Membership Details'
+ * own button gives it; it is null when there is nothing to issue).
  *
  * Hidden entirely once already cancelled — cancelling twice is rejected
  * server-side anyway (lib/memberships/actions.js), but there's no reason to
  * offer an action that can only fail.
  */
-export default function CancelMembership({ membershipId, studentId, isCancelled, student, membership }) {
+export default function CancelMembership({ membershipId, studentId, paymentStatus, invoiceExists, invoiceToIssue, isCancelled, student, membership }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [issueOpen, setIssueOpen] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [isPending, startTransition] = useTransition();
 
@@ -49,6 +53,9 @@ export default function CancelMembership({ membershipId, studentId, isCancelled,
       <MembershipCardMenu
         membershipId={membershipId}
         studentId={studentId}
+        paymentStatus={paymentStatus}
+        invoiceExists={invoiceExists}
+        onIssueInvoice={() => setIssueOpen(true)}
         triggerVariant="outline"
         triggerSize="icon"
         triggerClassName=""
@@ -65,6 +72,18 @@ export default function CancelMembership({ membershipId, studentId, isCancelled,
         <p role="status" className="text-small w-full text-right text-danger">
           {feedback.text}
         </p>
+      ) : null}
+
+      {invoiceToIssue ? (
+        <IssueInvoiceDialog
+          open={issueOpen}
+          onOpenChange={setIssueOpen}
+          membershipId={membershipId}
+          needsPaymentDate={invoiceToIssue.needsPaymentDate}
+          paymentDateLabel={invoiceToIssue.paymentDateLabel}
+          student={student}
+          membership={membership}
+        />
       ) : null}
 
       <ConfirmDialog
