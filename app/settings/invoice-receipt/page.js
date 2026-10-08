@@ -3,7 +3,9 @@ import { requireRole, ROLES } from "@/lib/auth/dal";
 import TabContentHeading from "@/components/layout/TabContentHeading";
 import { getInvoiceSettings, getSignaturePreviewUrl, hasAnyInvoice } from "@/lib/invoice-settings/data";
 import { updateInvoiceSettings } from "@/lib/invoice-settings/actions";
+import { getBankAccounts } from "@/lib/bank-accounts/data";
 import InvoiceReceiptForm from "@/app/settings/invoice-receipt/invoice-receipt-form";
+import BankAccounts from "@/app/settings/invoice-receipt/bank-accounts";
 
 const SUCCESS_MESSAGES = {
   updated: "Invoice / Receipt settings updated successfully.",
@@ -24,6 +26,9 @@ const SUCCESS_MESSAGES = {
  * `hasAnyInvoice` tells the form whether the starting number is locked (an
  * invoice has been issued — the database enforces the lock). The signature is
  * in a private bucket, so its preview is a temporary signed link.
+ *
+ * Bank Accounts (0028) sit below the form, outside it: they have their own actions and dialogs and
+ * are not part of the settings save.
  */
 export default async function InvoiceReceiptSettingsPage({ searchParams }) {
   await requireRole(ROLES.ADMIN);
@@ -31,7 +36,7 @@ export default async function InvoiceReceiptSettingsPage({ searchParams }) {
   const rawParams = await searchParams;
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
 
-  const [settings, startingLocked] = await Promise.all([getInvoiceSettings(), hasAnyInvoice()]);
+  const [settings, startingLocked, bankAccounts] = await Promise.all([getInvoiceSettings(), hasAnyInvoice(), getBankAccounts()]);
   const signatureUrl = settings?.signature_path ? await getSignaturePreviewUrl(settings.signature_path) : null;
 
   return (
@@ -54,12 +59,22 @@ export default async function InvoiceReceiptSettingsPage({ searchParams }) {
       ) : null}
 
       {settings ? (
-        <InvoiceReceiptForm
-          action={updateInvoiceSettings}
-          settings={settings}
-          startingLocked={startingLocked}
-          signatureUrl={signatureUrl}
-        />
+        <div className="flex flex-col gap-6">
+          <InvoiceReceiptForm
+            action={updateInvoiceSettings}
+            settings={settings}
+            startingLocked={startingLocked}
+            signatureUrl={signatureUrl}
+          />
+
+          {bankAccounts ? (
+            <BankAccounts accounts={bankAccounts} />
+          ) : (
+            <p className="text-body rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-danger">
+              The bank accounts could not be loaded. Try refreshing the page.
+            </p>
+          )}
+        </div>
       ) : (
         <p className="text-body rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-danger">
           The invoice settings could not be loaded. Try refreshing the page.

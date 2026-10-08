@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { CalendarDays, FileText, Hash, Receipt } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import FieldRow from "@/components/layout/FieldRow";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { formatDate } from "@/lib/format";
@@ -39,7 +41,11 @@ export default function InvoicePanel({ membership, invoice, student, membershipS
         description="The stored document for this membership's payment."
         className="mb-4 min-h-8"
         action={
-          state.canIssue ? (
+          invoice ? (
+            <Button variant="outline" render={<Link href={`/memberships/${membership.id}/invoice`} />} nativeButton={false}>
+              View Invoice
+            </Button>
+          ) : state.canIssue ? (
             <IssueInvoice
               membershipId={membership.id}
               needsPaymentDate={state.needsPaymentDate}
