@@ -19,6 +19,7 @@ import { getActiveBatchCount } from "@/lib/batches/data";
 import { cn } from "@/lib/utils";
 import DashboardTodaysClasses from "@/app/dashboard-todays-classes";
 import DashboardUpcomingClasses from "@/app/dashboard-upcoming-classes";
+import DashboardSystemUsage from "@/app/dashboard-system-usage";
 import { DashboardCalendar, DashboardQuickActions, DashboardRecentActivity } from "@/app/dashboard-side-panels";
 
 // How many days ahead Upcoming Classes looks, and how many rows it shows —
@@ -333,6 +334,7 @@ async function DashboardContent({ isAdmin, today, timeZone, month }) {
         <DashboardCalendar month={month} today={today} monthDays={dateNavigation.monthDays} />
         {isAdmin ? <DashboardQuickActions /> : null}
         {isAdmin && recentActivity ? <DashboardRecentActivity items={recentActivity} timeZone={timeZone} /> : null}
+        {isAdmin ? <DashboardSystemUsage /> : null}
       </aside>
       </div>
     </div>
