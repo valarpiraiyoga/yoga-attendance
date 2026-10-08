@@ -15,7 +15,9 @@ import ShareInvoiceButton from "@/app/memberships/[id]/invoice/share-invoice-but
 
 /**
  * Invoice Detail (V1 Invoice / Receipt Enhancement): the STORED invoice for a membership,
- * shown as the document it is. Only its number and date can be edited (see Edit below).
+ * shown as the document it is. Its number and date can be edited (see Edit below); its amount,
+ * plan and period follow the membership in the DATABASE (migration 0030), so this page still reads
+ * only the invoice row.
  *
  * Everything on the page comes from the invoice record itself. It deliberately does not read
  * the membership, the student, the Center Profile or the Invoice / Receipt Settings: an
@@ -84,7 +86,7 @@ export default async function InvoiceDetailPage({ params }) {
         }
         back={{ href: `/memberships/${id}`, label: "Back to Membership" }}
         title={`${invoiceDocument.title} ${invoiceDocument.number}`}
-        description="The stored document, as it was issued."
+        description="The receipt follows the membership details. Receipt number remains assigned to this membership."
       />
 
       <div className="mx-auto w-full max-w-3xl print:max-w-none">

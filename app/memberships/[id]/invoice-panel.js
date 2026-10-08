@@ -38,7 +38,7 @@ export default function InvoicePanel({ membership, invoice, student, membershipS
       <PanelHeader
         icon={Receipt}
         title="Invoice / Receipt"
-        description="The stored document for this membership's payment."
+        description="The receipt follows the membership details. Its number stays assigned to this membership."
         className="mb-4 min-h-8"
         action={
           invoice ? (

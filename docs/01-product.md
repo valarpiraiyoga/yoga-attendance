@@ -249,6 +249,7 @@ A membership has **zero or one** issued invoice (Membership 1 : 0..1 Invoice). V
 - The sequence is global within this V1 instance, which has one implicit center. The Starting Invoice Number is configured in Settings.
 - The invoice number itself is always a plain whole number (stored as a number, never as text). An optional prefix can be shown in front of it — see Invoice Number Prefix below.
 - Existing invoice numbers are never renumbered or changed.
+- **A number is never reused.** A number that has ever been assigned to an invoice can never be assigned to another invoice. If an invoice's number is edited, its old number is retired for good: it is never assigned again - not to another invoice, and not to the invoice that held it - and the automatic numbering skips it. This is enforced by the database, not by the unique constraint alone.
 - Admin can edit the number when a genuine correction is required. Only the numeric invoice number is edited — never the prefix — and the new number must be a positive whole number, must not already be used by another invoice, and must not be below the Starting Invoice Number.
 - The Starting Invoice Number must never be able to cause a duplicate invoice number.
 
@@ -290,6 +291,14 @@ An issued invoice stores:
 
 Later changes to the Center Profile, tax settings, terms, logo, signature, or the student's details do not change an already-issued invoice.
 
+### The Receipt Follows the Membership
+A Paid membership has exactly one invoice (receipt), and that invoice **follows the membership's editable details**. After the invoice exists, Admin may still edit the membership's amount, plan, start date, end date and notes. When the amount, plan or dates change, the same invoice is updated automatically, in the same save:
+- the plan and the membership description;
+- the membership period (start and end date);
+- the total amount, and — when the invoice has tax — the taxable amount and the tax amount, recalculated from the new amount with the tax-inclusive rule and the **tax rate the invoice was issued with**.
+
+Editing the membership never issues another invoice and never allocates another number. The invoice number, prefix, invoice date, payment date, currency and tax terms stay as issued, as does everything copied from elsewhere when it was issued (business, customer, bank details, terms, signatory, signature, logo). If the update of the invoice fails, the membership edit fails with it. Membership Details (batch, schedule, duration) will follow the membership in the same way when it is added.
+
 ### Editing an Issued Invoice
 After an invoice is issued, Admin may edit **only**:
 - Invoice number (the numeric number)
@@ -297,7 +306,7 @@ After an invoice is issued, Admin may edit **only**:
 
 The invoice prefix is **not** editable from Invoice Edit: the historical prefix stored on the invoice stays unchanged when its number is edited. The number must still obey the existing rules (a positive whole number, unique, not below the Starting Invoice Number), and the date must still obey the Invoice Date rules above.
 
-It does not edit the student/customer identity, membership amount, membership dates, payment date, tax values, terms, signatory, signature, invoice prefix, business identity or any other issued content. V1 has no accounting correction workflow.
+Invoice Edit does not edit the student/customer identity, membership amount, membership dates, payment date, tax values, terms, signatory, signature, invoice prefix, business identity or any other content: the amount, plan and period change only by editing the membership (see "The Receipt Follows the Membership"), and the rest is a snapshot. V1 has no accounting correction workflow.
 
 ### Tax
 - Tax can be enabled or disabled, with a configurable tax name and tax rate.

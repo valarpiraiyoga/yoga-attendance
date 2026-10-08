@@ -12,10 +12,10 @@ import { updateInvoiceDetails } from "@/lib/invoices/actions";
 import { initialEditValues, submitInvoiceEdit } from "@/lib/invoices/edit-invoice";
 
 /**
- * Edit Invoice - the one edit an issued invoice allows: its number and its date. Nothing else is
- * on the form, and nothing else is sent; the prefix, amounts, tax, customer, business details,
- * terms, signatory, bank details and payment date are a historical snapshot the database will not
- * let change.
+ * Edit Invoice - the one direct edit an issued invoice allows: its number and its date. Nothing else is
+ * on the form, and nothing else is sent. The amount, plan and period are not edited here: they follow the
+ * membership (migration 0030). The prefix, tax terms, customer, business details, terms, signatory, bank
+ * details and payment date are a historical snapshot the database will not let change.
  *
  * Built like the Issue Invoice dialog: the button only opens the
  * dialog, and `updateInvoiceDetails` (called directly inside `startTransition`) runs only from
@@ -86,7 +86,7 @@ export default function EditInvoice({ initial, title, number }) {
             detail={initial.prefix ? `Prefix ${initial.prefix} stays as issued` : null}
           />
         }
-        description="Only the number and the date can be changed. Everything else on the invoice stays as it was issued."
+        description="Only the number and the date can be changed here. The amount, plan and dates follow the membership; the number stays assigned to it."
         confirmLabel="Save Changes"
         isPending={isPending}
         onConfirm={save}
