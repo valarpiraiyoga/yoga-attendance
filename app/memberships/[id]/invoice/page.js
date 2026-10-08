@@ -5,13 +5,17 @@ import PageHeader from "@/components/layout/PageHeader";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getInvoiceForMembership } from "@/lib/invoices/data";
 import { getInvoiceAssetUrls } from "@/lib/invoices/document-data";
+import { editInvoiceInitial } from "@/lib/invoices/edit-invoice";
 import { buildInvoiceDocument } from "@/lib/invoices/invoice-document";
+import { invoiceShareProps } from "@/lib/invoices/share-invoice";
 import InvoiceDocument from "@/app/memberships/[id]/invoice/invoice-document";
+import EditInvoice from "@/app/memberships/[id]/invoice/edit-invoice";
 import PrintInvoiceButton from "@/app/memberships/[id]/invoice/print-invoice-button";
+import ShareInvoiceButton from "@/app/memberships/[id]/invoice/share-invoice-button";
 
 /**
  * Invoice Detail (V1 Invoice / Receipt Enhancement): the STORED invoice for a membership,
- * shown as the document it is. Read-only — editing the number and date is a later step.
+ * shown as the document it is. Only its number and date can be edited (see Edit below).
  *
  * Everything on the page comes from the invoice record itself. It deliberately does not read
  * the membership, the student, the Center Profile or the Invoice / Receipt Settings: an
@@ -31,7 +35,12 @@ import PrintInvoiceButton from "@/app/memberships/[id]/invoice/print-invoice-but
  * Download PDF: a plain link to the PDF route beside it (app/memberships/[id]/invoice/pdf/route.js),
  * which answers with an attachment - so the browser downloads it; nothing is fetched or built in the
  * page. It is a plain `<a>`, not a `next/link`, because the target is a file download and not a page.
- * Both actions sit in the header's `actions`, which show at every width (the header's own pattern),
+ * Edit: the only edit an issued invoice allows - its number and date - in a dialog
+ * (edit-invoice.js). It is given just the four values it needs (`editInvoiceInitial`), not the whole invoice row.
+ * Share / WhatsApp (share-invoice-button.js) shares that same PDF: the native share sheet where the
+ * browser can share files, else a download plus a WhatsApp click-to-chat. It is given the route, file
+ * name, message and chat link by `invoiceShareProps` - nothing is built in the browser.
+ * All the actions sit in the header's `actions`, which show at every width (the header's own pattern),
  * and both are `print:hidden` with it.
  */
 export default async function InvoiceDetailPage({ params }) {
@@ -65,6 +74,12 @@ export default async function InvoiceDetailPage({ params }) {
               <Download className="size-4" aria-hidden="true" />
               Download PDF
             </Button>
+            <EditInvoice
+              initial={editInvoiceInitial(invoice)}
+              title={invoiceDocument.title}
+              number={invoiceDocument.number}
+            />
+            <ShareInvoiceButton share={invoiceShareProps(invoice, invoiceDocument, id)} />
           </>
         }
         back={{ href: `/memberships/${id}`, label: "Back to Membership" }}
