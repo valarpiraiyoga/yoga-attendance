@@ -51,10 +51,14 @@ function TotalRow({ label, children }) {
  * Receipt Settings, so it can show nothing but what was issued. Every part is one the
  * stored invoice actually has; nothing is shown for a field the invoice does not hold.
  *
- * On screen only, in the application's own surface, border and type tokens. Amounts are
+ * In the application's own surface, border and type tokens. Printing uses this same document
+ * (the page's Print button calls window.print()): the brand rule and the grey band keep their
+ * colour (`print-color-adjust`), the frame's rounding and shadow drop away, and the items row,
+ * the terms-and-totals block and the bank-details-and-signature block do not split across pages.
+ * A printed page is wider than `sm`, so it prints the desktop layout. Amounts are
  * right-aligned in their own column; on a narrow screen the table keeps just the item and
  * its amount (the breakdown is in the totals below), and the sections stack, so nothing
- * scrolls sideways. Print, PDF and share come later and will reuse this presentation.
+ * scrolls sideways. PDF and share come later and will reuse this presentation.
  */
 export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatureUrl }) {
   const { business, customer, line, amounts } = doc;
@@ -63,7 +67,7 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
   return (
     <article
       aria-label={`${doc.title} ${doc.number}`}
-      className="overflow-hidden rounded-card border border-border border-t-2 border-t-brand bg-surface shadow-xs"
+      className="overflow-hidden rounded-card border border-border border-t-2 border-t-brand bg-surface shadow-xs [-webkit-print-color-adjust:exact] [print-color-adjust:exact] print:rounded-none print:shadow-none"
     >
       <header className="flex flex-col gap-6 px-6 pt-6 pb-6 sm:flex-row sm:items-start sm:justify-between sm:px-10 sm:pt-8">
         <div className="flex min-w-0 items-start gap-4">
@@ -133,7 +137,7 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-border">
+            <tr className="border-b border-border print:break-inside-avoid">
               <td className="py-4 pr-4 align-top">
                 <p className="text-body font-medium break-words text-text-primary">{line.description}</p>
                 <p className="text-small break-words text-text-secondary">{line.period}</p>
@@ -157,7 +161,7 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
         </table>
       </section>
 
-      <div className="grid gap-6 px-6 py-6 sm:grid-cols-2 sm:px-10">
+      <div className="grid gap-6 px-6 py-6 sm:grid-cols-2 sm:px-10 print:break-inside-avoid">
         <div className="min-w-0">
           {doc.terms ? (
             <section aria-labelledby="invoice-terms">
@@ -194,7 +198,7 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
       </div>
 
       {doc.bank || hasSignatory ? (
-        <div className="grid gap-6 px-6 pt-2 pb-8 sm:grid-cols-2 sm:px-10">
+        <div className="grid gap-6 px-6 pt-2 pb-8 sm:grid-cols-2 sm:px-10 print:break-inside-avoid">
           <div className="min-w-0">
             {doc.bank ? (
               <section aria-labelledby="invoice-bank">

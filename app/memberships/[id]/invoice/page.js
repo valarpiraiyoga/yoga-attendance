@@ -5,6 +5,7 @@ import { getInvoiceForMembership } from "@/lib/invoices/data";
 import { getInvoiceAssetUrls } from "@/lib/invoices/document-data";
 import { buildInvoiceDocument } from "@/lib/invoices/invoice-document";
 import InvoiceDocument from "@/app/memberships/[id]/invoice/invoice-document";
+import PrintInvoiceButton from "@/app/memberships/[id]/invoice/print-invoice-button";
 
 /**
  * Invoice Detail (V1 Invoice / Receipt Enhancement): the STORED invoice for a membership,
@@ -19,6 +20,11 @@ import InvoiceDocument from "@/app/memberships/[id]/invoice/invoice-document";
  *
  * Admin-only (see app/memberships/layout.js for why this is repeated here). A membership with
  * no invoice has nothing to show, so it is a plain not-found, as a missing membership is.
+ *
+ * Print: `Print` calls `window.print()` on this very page - there is no second print document.
+ * The sidebar and header are `print:hidden` (see `AppShell`), so is this page's header (back link,
+ * title and the button), and `@page` asks for A4 with a 14mm margin, as the membership receipt does.
+ * The document carries its own print rules (see invoice-document.js).
  */
 export default async function InvoiceDetailPage({ params }) {
   await requireRole(ROLES.ADMIN);
@@ -35,14 +41,18 @@ export default async function InvoiceDetailPage({ params }) {
 
   return (
     <>
+      <style>{`@media print { @page { size: A4; margin: 14mm; } }`}</style>
+
       <PageHeader
         compact
+        className="print:hidden"
+        actions={<PrintInvoiceButton />}
         back={{ href: `/memberships/${id}`, label: "Back to Membership" }}
         title={`${invoiceDocument.title} ${invoiceDocument.number}`}
         description="The stored document, as it was issued."
       />
 
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full max-w-3xl print:max-w-none">
         <InvoiceDocument invoiceDocument={invoiceDocument} logoUrl={logoUrl} signatureUrl={signatureUrl} />
       </div>
     </>
