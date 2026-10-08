@@ -239,22 +239,15 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
   );
 }
 
-// The Services cell. Without stored service details it is the description and the period, as it has
-// always been. One batch: the batch above the plan, its schedule below, then the period. Several: the
-// plan and period, then a Sl. No. / Batch / Schedule list (the number is generated here, not stored).
+// The Services cell, in the same conditional hierarchy as the PDF (the source of truth for it).
+// - No stored service details: the description and the period, as it has always been.
+// - One batch: the batch, the plan, its schedule line(s), then the period.
+// - Several batches: the plan and the period, then a numbered entry per batch with its schedule line(s)
+//   indented beneath. The number is generated here (it is never stored).
 function ServiceCell({ line }) {
   const { service } = line;
 
-  if (!service) {
-    return (
-      <>
-        <p className="text-body font-medium break-words text-text-primary">{line.description}</p>
-        <p className="text-small break-words text-text-secondary">{line.period}</p>
-      </>
-    );
-  }
-
-  if (!service.table) {
+  if (service && !service.table) {
     return (
       <>
         <p className="text-body font-medium break-words text-text-primary">{service.lead}</p>
@@ -273,37 +266,23 @@ function ServiceCell({ line }) {
     <>
       <p className="text-body font-medium break-words text-text-primary">{line.description}</p>
       <p className="text-small break-words text-text-secondary">{line.period}</p>
-      <table className="text-small mt-3 w-full text-left">
-        <caption className="sr-only">Classes covered by this membership</caption>
-        <thead>
-          <tr className="border-y border-border text-text-secondary">
-            <th scope="col" className="w-14 py-1 pr-3 font-medium">
-              Sl. No.
-            </th>
-            <th scope="col" className="py-1 pr-3 font-medium">
-              Batch / Class
-            </th>
-            <th scope="col" className="py-1 font-medium">
-              Schedule
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+
+      {service?.table ? (
+        <ol className="mt-2 space-y-1.5">
           {service.table.map((row) => (
-            <tr key={row.number} className="border-b border-border align-top print:break-inside-avoid">
-              <td className="py-1.5 pr-3 tabular-nums text-text-secondary">{row.number}</td>
-              <td className="py-1.5 pr-3 break-words text-text-primary">{row.batch}</td>
-              <td className="py-1.5 break-words text-text-secondary">
-                {row.schedule.map((schedule) => (
-                  <span key={schedule} className="block">
-                    {schedule}
-                  </span>
-                ))}
-              </td>
-            </tr>
+            <li key={row.number} className="print:break-inside-avoid">
+              <p className="text-body break-words text-text-primary">
+                {row.number}. {row.batch}
+              </p>
+              {row.schedule.map((schedule) => (
+                <p key={schedule} className="text-small pl-5 break-words text-text-secondary">
+                  {schedule}
+                </p>
+              ))}
+            </li>
           ))}
-        </tbody>
-      </table>
+        </ol>
+      ) : null}
     </>
   );
 }
