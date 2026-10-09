@@ -2,7 +2,7 @@
 
 import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 /**
  * The "Review ... " step of Review -> Confirm -> Save (02-ux.md Flows 09, 10, 14):
@@ -15,8 +15,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
  * header and the details panel.
  *
  * Controlled by the form (`open` / `onOpenChange`); confirming runs the form's own
- * submit (`onConfirm`), so nothing here saves anything. The panel scrolls inside
- * itself when the content is taller than the screen.
+ * submit (`onConfirm`), so nothing here saves anything.
+ *
+ * Viewport safety (06-ui-implementation-rules.md §12): the header and the two actions stay in
+ * view; the context and the details panel sit in one `DialogBody`, which is the only thing that
+ * scrolls when the dialog is taller than the screen (no second scrollbar inside the panel).
  *
  * @param {object} props
  * @param {boolean} props.open
@@ -42,7 +45,7 @@ export default function ReviewDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg gap-5 p-6 sm:p-7">
+      <DialogContent className="max-w-lg gap-5 overflow-hidden p-6 sm:p-7">
         <div className="flex flex-col gap-3 pr-8">
           <span
             aria-hidden="true"
@@ -54,12 +57,16 @@ export default function ReviewDialog({
           <DialogDescription>{description}</DialogDescription>
         </div>
 
-        {context}
+        {context || children ? (
+          <DialogBody className="flex flex-col gap-5 sm:-mx-7 sm:px-7">
+            {context}
 
-        {children ? (
-          <div className="flex max-h-[55vh] flex-col gap-4 overflow-y-auto rounded-lg border border-border bg-background/60 p-4">
-            {children}
-          </div>
+            {children ? (
+              <div className="flex flex-col gap-4 rounded-lg border border-border bg-background/60 p-4">
+                {children}
+              </div>
+            ) : null}
+          </DialogBody>
         ) : null}
 
         <div className="flex gap-3">

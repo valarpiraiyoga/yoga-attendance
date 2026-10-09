@@ -459,6 +459,32 @@ equal-width buttons, Cancel on the left.
    unsaved-changes detection to a form that lacks it is a behaviour change
    (§25).
 
+### Viewport safety (every dialog)
+
+Every centered dialog is built on the shared `DialogContent`
+(`components/ui/dialog.jsx`), which guarantees, for every size:
+
+1. **A 16px gutter on each side** — the dialog is never wider than the screen
+   less 2rem, so it never touches the screen edges on a phone.
+2. **Never taller than the screen** — at most the dynamic viewport height
+   (`dvh`, which follows mobile browser bars) less 2rem. A tall dialog can no
+   longer extend past the top or bottom of the screen.
+3. **The header and the actions stay in view.** `ConfirmDialog` and
+   `ReviewDialog` keep the icon, title, description and close button at the
+   top and the Cancel / Confirm footer at the bottom; only the middle — the
+   context card, note and form or review content, in one `DialogBody` —
+   scrolls. There is one scrollbar: no scrolling panel inside the scrolling
+   body.
+4. **Focus rings are not clipped** by the scrolling area.
+5. **Menus inside a dialog are not clipped.** Select, dropdown and popover
+   menus render outside the dialog and fit the space available on screen,
+   scrolling when they must.
+
+Size is a separate choice from viewport safety. `ConfirmDialog` keeps its
+standard confirmation width by default; `size="lg"` widens a dialog that
+holds a longer form (Record Payment, the bank account form). `ReviewDialog`
+is `lg`. The locked anatomy above does not change with size.
+
 ---
 
 ## 13. Empty states

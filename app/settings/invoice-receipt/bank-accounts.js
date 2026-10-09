@@ -245,6 +245,7 @@ export default function BankAccounts({ accounts }) {
         open={editor !== null}
         onOpenChange={closeEditor}
         title={editing ? "Edit bank account" : "Add bank account"}
+        size="lg"
         context={<AccountContext account={editor?.account} />}
         description={
           editing

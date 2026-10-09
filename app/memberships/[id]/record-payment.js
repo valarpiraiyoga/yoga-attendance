@@ -93,6 +93,7 @@ export default function RecordPayment({ membershipId, balancePaise, currency, to
         open={open}
         onOpenChange={handleOpenChange}
         title="Record payment"
+        size="lg"
         context={<StudentContext student={student} membership={membership} />}
         description={`Outstanding balance: ${formatCurrency(fromPaise(balancePaise), currency)}. A payment can combine several methods.`}
         confirmLabel="Record Payment"

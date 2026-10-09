@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Info, Trash2 } from "lucide-react"
 
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -25,6 +26,13 @@ const TONE_CIRCLE = {
   warning: "bg-warning/10 text-warning",
   info: "bg-info/10 text-info",
   success: "bg-success/10 text-success",
+}
+
+// Width only: `default` keeps DialogContent's max-w-md; `lg` is for dialogs that hold a longer
+// form (Record Payment, the bank account form). The 16px mobile gutter applies to both.
+const SIZE_CLASSES = {
+  default: "",
+  lg: "max-w-lg",
 }
 
 const NOTE_TONE_CLASSES = {
@@ -63,6 +71,13 @@ const NOTE_TONE_CLASSES = {
  * to change) renders as `children` below the centered header, in its own
  * natural (left-aligned) layout — the anatomy in §12 governs the icon/
  * title/description/footer chrome, not caller-supplied review content.
+ *
+ * Viewport safety (§12): the header and the Cancel / Confirm footer stay in
+ * view; the context, note and children sit in a `DialogBody` that scrolls when
+ * the dialog is taller than the screen.
+ *
+ * `size` widens a dialog that holds a longer form ("lg"); the default keeps the
+ * standard confirmation width.
  */
 export default function ConfirmDialog({
   open,
@@ -80,14 +95,16 @@ export default function ConfirmDialog({
   destructive = false,
   tone,
   hideCancel = false,
+  size = "default",
 }) {
   const resolvedTone = tone ?? (destructive ? "danger" : "info")
   const Icon = TONE_ICON[resolvedTone] ?? Info
   const isDangerButton = destructive || resolvedTone === "danger"
+  const hasBody = Boolean(context || note || children)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className={cn("overflow-hidden", SIZE_CLASSES[size] ?? SIZE_CLASSES.default)}>
         <DialogHeader className="items-center gap-3 pr-0 text-center">
           <span
             aria-hidden="true"
@@ -102,20 +119,24 @@ export default function ConfirmDialog({
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
 
-        {context}
+        {hasBody ? (
+          <DialogBody className="flex flex-col gap-4">
+            {context}
 
-        {note ? (
-          <p
-            className={cn(
-              "rounded-card border px-3 py-2.5 text-small",
-              NOTE_TONE_CLASSES[resolvedTone] ?? NOTE_TONE_CLASSES.info
-            )}
-          >
-            {note}
-          </p>
+            {note ? (
+              <p
+                className={cn(
+                  "rounded-card border px-3 py-2.5 text-small",
+                  NOTE_TONE_CLASSES[resolvedTone] ?? NOTE_TONE_CLASSES.info
+                )}
+              >
+                {note}
+              </p>
+            ) : null}
+
+            {children}
+          </DialogBody>
         ) : null}
-
-        {children}
 
         <DialogFooter className="sm:justify-center">
           {hideCancel ? null : (
