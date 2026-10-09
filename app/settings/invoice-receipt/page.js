@@ -1,7 +1,7 @@
 import { Receipt } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import TabContentHeading from "@/components/layout/TabContentHeading";
-import { getInvoiceSettings, getSignaturePreviewUrl, hasAnyInvoice } from "@/lib/invoice-settings/data";
+import { getInvoiceSettings, getSignaturePreviewUrl, hasAnyInvoice, hasAnyPaymentReceipt } from "@/lib/invoice-settings/data";
 import { updateInvoiceSettings } from "@/lib/invoice-settings/actions";
 import { getBankAccounts } from "@/lib/bank-accounts/data";
 import InvoiceReceiptForm from "@/app/settings/invoice-receipt/invoice-receipt-form";
@@ -36,7 +36,12 @@ export default async function InvoiceReceiptSettingsPage({ searchParams }) {
   const rawParams = await searchParams;
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
 
-  const [settings, startingLocked, bankAccounts] = await Promise.all([getInvoiceSettings(), hasAnyInvoice(), getBankAccounts()]);
+  const [settings, startingLocked, receiptStartingLocked, bankAccounts] = await Promise.all([
+    getInvoiceSettings(),
+    hasAnyInvoice(),
+    hasAnyPaymentReceipt(),
+    getBankAccounts(),
+  ]);
   const signatureUrl = settings?.signature_path ? await getSignaturePreviewUrl(settings.signature_path) : null;
 
   return (
@@ -64,6 +69,7 @@ export default async function InvoiceReceiptSettingsPage({ searchParams }) {
             action={updateInvoiceSettings}
             settings={settings}
             startingLocked={startingLocked}
+            receiptStartingLocked={receiptStartingLocked}
             signatureUrl={signatureUrl}
           />
 

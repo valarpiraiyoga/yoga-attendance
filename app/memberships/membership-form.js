@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
-import { Banknote, CalendarDays, CalendarX2, CircleCheck, Layers, UserRound } from "lucide-react";
+import { Banknote, CalendarDays, CalendarX2, Layers, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ import {
 import StudentContext from "@/components/ui/student-context";
 import ReviewDialog, { ReviewRow } from "@/components/ui/review-dialog";
 import { formatCurrency } from "@/lib/currencies";
-import { getFormPaymentDateState, paymentDateText } from "@/lib/invoices/membership-invoice";
+import { PAYMENT_STATUS } from "@/lib/status";
 import StudentIdentityHeader from "@/components/ui/student-identity-header";
 import { validateMembershipInput, calculateMembershipEndDate } from "@/lib/memberships/validation";
 
@@ -29,19 +29,10 @@ const PLAN_OPTIONS = [
   { value: "custom", label: "Custom duration" },
 ];
 
-const PAYMENT_STATUS_OPTIONS = [
-  { value: "pending", label: "Pending" },
-  { value: "paid", label: "Paid" },
-];
-
-const BLUR_VALIDATED_FIELDS = new Set(["plan", "start_date", "end_date", "amount", "payment_status", "notes"]);
+const BLUR_VALIDATED_FIELDS = new Set(["plan", "start_date", "end_date", "amount", "notes"]);
 
 function planLabel(plan) {
   return PLAN_OPTIONS.find((option) => option.value === plan)?.label ?? "—";
-}
-
-function paymentStatusLabel(status) {
-  return PAYMENT_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? "—";
 }
 
 /**
@@ -64,13 +55,17 @@ function paymentStatusLabel(status) {
  *
  * No Status/cancellation field here: cancellation is its own action
  * (app/memberships/[id]/cancel-membership.js), never a field on this form.
+ *
+ * No Payment Status field either (V1 Tax Adjustment): a new membership is Pending with its whole amount
+ * outstanding, and payments recorded on Membership Details determine Pending / Partially Paid / Paid. The
+ * status is shown read-only in both modes - Pending when creating, the saved status when editing - and is
+ * never submitted.
  */
 export default function MembershipForm({
   action,
   currency,
   student,
   membership,
-  hasInvoice = false,
   initialValues,
   requireConfirmation = false,
   submitLabel,
@@ -92,13 +87,8 @@ export default function MembershipForm({
   const [amount, setAmount] = useState(
     String(state?.values?.amount ?? membership?.amount ?? initialValues?.amount ?? "")
   );
-  const [paymentStatus, setPaymentStatus] = useState(
-    state?.values?.payment_status ?? membership?.payment_status ?? initialValues?.payment_status ?? "pending"
-  );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [reviewData, setReviewData] = useState(null);
-  // Read-only: the form never sends a payment date. The database records it when a membership becomes Paid and locks it once an invoice exists.
-  const paymentDateState = getFormPaymentDateState({ paymentStatus, membership, hasInvoice });
   const formRef = useRef(null);
 
   const [prevState, setPrevState] = useState(state);
@@ -134,7 +124,6 @@ export default function MembershipForm({
       start_date: formData.get("start_date"),
       end_date: formData.get("end_date"),
       amount: formData.get("amount"),
-      payment_status: formData.get("payment_status"),
       notes: formData.get("notes"),
     });
 
@@ -161,7 +150,6 @@ export default function MembershipForm({
       start_date: formData.get("start_date"),
       end_date: formData.get("end_date"),
       amount: formData.get("amount"),
-      payment_status: formData.get("payment_status"),
       notes: formData.get("notes"),
     };
 
@@ -176,7 +164,6 @@ export default function MembershipForm({
       startDate: input.start_date,
       endDate: input.end_date,
       amount: input.amount,
-      paymentStatusLabel: paymentStatusLabel(String(input.payment_status).toLowerCase() || "pending"),
     });
     setConfirmOpen(true);
   }
@@ -308,37 +295,9 @@ export default function MembershipForm({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="payment_status">Payment Status</Label>
-            <Select
-              name="payment_status"
-              items={PAYMENT_STATUS_OPTIONS}
-              value={paymentStatus}
-              onValueChange={setPaymentStatus}
-              disabled={isPending}
-            >
-              <SelectTrigger
-                id="payment_status"
-                aria-invalid={Boolean(fieldErrors.payment_status)}
-                aria-describedby="payment_date-note"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {fieldErrors.payment_status ? (
-              <p role="alert" className="text-small text-danger">
-                {fieldErrors.payment_status}
-              </p>
-            ) : null}
-            <p id="payment_date-note" className="text-small text-text-secondary">
-              Payment date: {paymentDateText(paymentDateState)}
-            </p>
+            <p className="text-body font-medium text-text-primary">Payment Status</p>
+            <p className="text-body text-text-primary">{PAYMENT_STATUS[membership?.payment_status ?? "pending"]?.label ?? "—"}</p>
+            <p className="text-small text-text-secondary">Managed from Payments on Membership Details.</p>
           </div>
         </div>
 
@@ -420,9 +379,6 @@ export default function MembershipForm({
               </ReviewRow>
               <ReviewRow icon={Banknote} label="Amount">
                 {formatCurrency(reviewData.amount, currency)}
-              </ReviewRow>
-              <ReviewRow icon={CircleCheck} label="Payment status">
-                {reviewData.paymentStatusLabel}
               </ReviewRow>
             </dl>
           ) : null}

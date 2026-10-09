@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getMembership } from "@/lib/memberships/data";
-import { getInvoiceForMembership } from "@/lib/invoices/data";
 import { updateMembership } from "@/lib/memberships/actions";
 import MembershipForm from "@/app/memberships/membership-form";
 import PageHeader from "@/components/layout/PageHeader";
@@ -26,8 +25,6 @@ export default async function EditMembershipPage({ params }) {
   }
 
   const updateMembershipById = updateMembership.bind(null, id);
-  // Only to show the payment date as locked: the database is what refuses a change once an invoice exists.
-  const hasInvoice = Boolean(await getInvoiceForMembership(id));
 
   return (
     <>
@@ -44,7 +41,6 @@ export default async function EditMembershipPage({ params }) {
             currency={membership.currency}
             student={membership.students}
             membership={membership}
-            hasInvoice={hasInvoice}
             requireConfirmation={false}
             submitLabel="Save Changes"
             pendingLabel="Saving…"

@@ -32,6 +32,7 @@ export default function MembershipCardMenu({
   studentId,
   paymentStatus,
   invoiceExists = false,
+  hasPayments = false,
   onIssueInvoice,
   onOpenChange,
   triggerVariant = "ghost",
@@ -41,7 +42,7 @@ export default function MembershipCardMenu({
   triggerDisabled = false,
   extraItems = null,
 }) {
-  const documentAction = membershipDocumentAction(membershipId, paymentStatus, invoiceExists);
+  const documentAction = membershipDocumentAction(membershipId, paymentStatus, invoiceExists, hasPayments);
 
   return (
     <DropdownMenu onOpenChange={onOpenChange}>

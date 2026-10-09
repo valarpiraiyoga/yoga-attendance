@@ -38,6 +38,8 @@ const DOCUMENT_TITLE_OPTIONS = [
 const BLUR_VALIDATED_FIELDS = new Set([
   "starting_invoice_number",
   "invoice_prefix",
+  "payment_receipt_starting_number",
+  "payment_receipt_prefix",
   "tax_name",
   "tax_rate",
   "terms",
@@ -51,6 +53,8 @@ function readInput(formData) {
     document_title: formData.get("document_title"),
     starting_invoice_number: formData.get("starting_invoice_number"),
     invoice_prefix: formData.get("invoice_prefix"),
+    payment_receipt_starting_number: formData.get("payment_receipt_starting_number") ?? undefined,
+    payment_receipt_prefix: formData.get("payment_receipt_prefix") ?? undefined,
     tax_enabled: formData.get("tax_enabled"),
     tax_name: formData.get("tax_name"),
     tax_rate: formData.get("tax_rate"),
@@ -134,7 +138,7 @@ function HelpPopover({ label, title, children }) {
  * Tax: when off, the name and rate stay visible and disabled with their stored
  * values; disabled fields are not submitted, so the server leaves them as they were.
  */
-export default function InvoiceReceiptForm({ action, settings, startingLocked, signatureUrl }) {
+export default function InvoiceReceiptForm({ action, settings, startingLocked, receiptStartingLocked = false, signatureUrl }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const [fieldErrors, setFieldErrors] = useState(state?.fieldErrors ?? {});
   const [documentTitle, setDocumentTitle] = useState(state?.values?.document_title || settings?.document_title || "invoice");
@@ -171,7 +175,7 @@ export default function InvoiceReceiptForm({ action, settings, startingLocked, s
     const { name } = event.target;
     if (!BLUR_VALIDATED_FIELDS.has(name)) return;
 
-    const result = validateInvoiceSettingsInput(readInput(new FormData(event.currentTarget)), { startingLocked });
+    const result = validateInvoiceSettingsInput(readInput(new FormData(event.currentTarget)), { startingLocked, receiptStartingLocked });
 
     if (result.success || !result.errors[name]) {
       setFieldErrors((current) => {
@@ -193,7 +197,7 @@ export default function InvoiceReceiptForm({ action, settings, startingLocked, s
     }
     if (startingLocked) return;
 
-    const result = validateInvoiceSettingsInput(readInput(new FormData(event.currentTarget)), { startingLocked });
+    const result = validateInvoiceSettingsInput(readInput(new FormData(event.currentTarget)), { startingLocked, receiptStartingLocked });
     const next = result.success ? result.data.starting_invoice_number : null;
 
     if (next !== null && next !== (settings?.starting_invoice_number ?? null)) {
@@ -318,6 +322,55 @@ export default function InvoiceReceiptForm({ action, settings, startingLocked, s
                   )}
                 </FormField>
               </div>
+            </Panel>
+
+            {/* V1 Tax Adjustment: the separate sequence of non-tax payment receipts. */}
+            <Panel className="flex flex-col gap-5">
+              <PanelHeader className="mb-0" title="Payment Receipt Numbering" />
+
+              <FormField
+                id="payment_receipt_starting_number"
+                label="Starting Payment Receipt Number"
+                error={fieldErrors.payment_receipt_starting_number}
+                help={
+                  receiptStartingLocked
+                    ? "Locked: a payment receipt has been issued."
+                    : "Used for payments issued without a tax invoice. Its numbers never use or consume an invoice number."
+                }
+              >
+                {(field) =>
+                  receiptStartingLocked ? (
+                    // Locked: shown, never submitted (no name), and the server ignores it as well.
+                    <Input {...field} disabled readOnly value={String(settings?.payment_receipt_starting_number ?? "")} />
+                  ) : (
+                    <Input
+                      {...field}
+                      name="payment_receipt_starting_number"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      disabled={isPending}
+                      defaultValue={state?.values?.payment_receipt_starting_number ?? settings?.payment_receipt_starting_number ?? ""}
+                    />
+                  )
+                }
+              </FormField>
+
+              <FormField
+                id="payment_receipt_prefix"
+                label="Payment Receipt Number Prefix"
+                error={fieldErrors.payment_receipt_prefix}
+                help="Optional. Affects payment receipts issued afterwards only."
+              >
+                {(field) => (
+                  <Input
+                    {...field}
+                    name="payment_receipt_prefix"
+                    autoComplete="off"
+                    disabled={isPending}
+                    defaultValue={state?.values?.payment_receipt_prefix ?? settings?.payment_receipt_prefix ?? ""}
+                  />
+                )}
+              </FormField>
             </Panel>
 
             <Panel className="flex flex-col gap-5">

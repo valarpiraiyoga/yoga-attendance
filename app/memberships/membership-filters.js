@@ -31,6 +31,7 @@ const PLAN_OPTIONS = [
 const PAYMENT_STATUS_OPTIONS = [
   { value: "all", label: "All Payment Statuses" },
   { value: "paid", label: "Paid" },
+  { value: "partially_paid", label: "Partially Paid" },
   { value: "pending", label: "Pending" },
 ];
 

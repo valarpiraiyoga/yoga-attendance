@@ -62,6 +62,7 @@ function TotalRow({ label, children }) {
  */
 export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatureUrl }) {
   const { business, customer, line, amounts } = doc;
+  const methods = doc.paymentMethods;
   const hasSignatory = doc.signatory.name || doc.signatory.designation || signatureUrl;
 
   return (
@@ -90,8 +91,21 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
           </div>
         </div>
 
-        <h2 className="text-page-title font-semibold tracking-wide text-text-primary uppercase sm:text-right">{doc.title}</h2>
+        <div className="sm:text-right">
+          <h2 className="text-page-title font-semibold tracking-wide text-text-primary uppercase">{doc.title}</h2>
+          {doc.cancellation ? (
+            <p className="text-body mt-1 font-semibold tracking-wide text-danger uppercase">
+              Cancelled{doc.cancellation.date ? ` on ${doc.cancellation.date}` : ""}
+            </p>
+          ) : null}
+        </div>
       </header>
+
+      {doc.cancellation?.reason ? (
+        <p className="text-small border-t border-danger/30 bg-danger/5 px-6 py-2 break-words text-danger sm:px-10">
+          Cancellation reason: {doc.cancellation.reason}
+        </p>
+      ) : null}
 
       <dl className="grid gap-3 border-y border-border bg-background px-6 py-3 sm:grid-cols-3 sm:px-10">
         <Meta label={`${doc.title} No.`}>{doc.number}</Meta>
@@ -160,8 +174,15 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
         </table>
       </section>
 
+      {methods && !methods.beside ? (
+        <div className="px-6 pt-5 sm:px-10 print:break-inside-avoid">
+          <PaymentDetails methods={methods} />
+        </div>
+      ) : null}
+
       <div className="grid gap-6 px-6 py-6 sm:grid-cols-2 sm:px-10 print:break-inside-avoid">
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-col gap-5">
+          {methods?.beside ? <PaymentDetails methods={methods} /> : null}
           {doc.terms ? (
             <section aria-labelledby="invoice-terms">
               <h3 id="invoice-terms" className="text-small font-medium tracking-wide text-text-secondary uppercase">
@@ -236,6 +257,29 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
         </div>
       ) : null}
     </article>
+  );
+}
+
+// How the payment was made (a payment document only): each method with its amount, reference and notes.
+function PaymentDetails({ methods }) {
+  return (
+    <section aria-labelledby="invoice-payment-details">
+      <h3 id="invoice-payment-details" className="text-small font-medium tracking-wide text-text-secondary uppercase">
+        Payment Details
+      </h3>
+      <ul className="mt-1 flex flex-col gap-1.5">
+        {methods.items.map((method, index) => (
+          <li key={index} className="text-small flex items-baseline justify-between gap-4">
+            <span className="min-w-0 break-words text-text-primary">
+              <span className="font-medium">{method.label}</span>
+              {method.reference ? <span className="text-text-secondary"> · Ref: {method.reference}</span> : null}
+              {method.notes ? <span className="block text-text-secondary">{method.notes}</span> : null}
+            </span>
+            <span className="shrink-0 font-medium whitespace-nowrap text-text-primary tabular-nums">{method.amount}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

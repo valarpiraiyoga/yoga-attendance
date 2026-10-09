@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useProfilePhoto } from "@/components/ui/profile-photo-field";
 import ProfilePhotoCard from "@/components/ui/profile-photo-card";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,6 +58,10 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
   const [fieldErrors, setFieldErrors] = useState(state?.fieldErrors ?? {});
   const [gender, setGender] = useState(student?.gender ?? "");
   const [fullName, setFullName] = useState(student?.full_name ?? "");
+  // V1 Tax Adjustment: the student's default tax invoice choice - on unless turned off.
+  const [taxInvoiceDefault, setTaxInvoiceDefault] = useState(
+    state?.values?.tax_invoice_default != null ? state.values.tax_invoice_default !== "0" : student?.tax_invoice_default ?? true
+  );
   const { photo, setPhoto, appendTo } = useProfilePhoto();
 
   const [prevState, setPrevState] = useState(state);
@@ -247,6 +252,25 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
             </p>
           ) : null}
         </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <Label id="tax_invoice_default-label">Issue tax invoice by default</Label>
+          <Switch
+            name="tax_invoice_default"
+            value="1"
+            uncheckedValue="0"
+            checked={taxInvoiceDefault}
+            onCheckedChange={setTaxInvoiceDefault}
+            disabled={isPending}
+            aria-labelledby="tax_invoice_default-label"
+            aria-describedby="tax_invoice_default-help"
+          />
+        </div>
+        <p id="tax_invoice_default-help" className="text-small text-text-secondary">
+          Used as the starting choice when a payment is recorded. It can be changed for one payment without changing this setting.
+        </p>
       </div>
 
       <div className="flex flex-col gap-2">

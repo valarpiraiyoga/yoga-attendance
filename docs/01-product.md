@@ -113,6 +113,7 @@ Maintain students and manage their batch enrollments and attendance history.
 - Profile photo — optional
 - Status: Active / Inactive
 - Notes — optional
+- Tax invoice preference — the student's default for whether a payment is documented with a tax invoice; enabled by default (V1 Tax Adjustment, §5A "Tax Invoice Preference")
 
 ### Management
 Admin can view, search, add, edit, activate/deactivate students, assign students to batches, change batch enrollments, and view attendance history.
@@ -165,16 +166,32 @@ Manage the student's valid membership period and use it as part of attendance el
 - Amount
 - Payment status
 - Payment date — recorded when the membership is Paid (see "Payment Date" below; part of the V1 Invoice / Receipt Enhancement, §5A)
+- Payments — zero or more recorded payments (see "Payments" below; V1 Tax Adjustment)
 - Status
 - Notes — optional
 
 ### Payment Status
-- Paid
 - Pending
+- Partially Paid
+- Paid
 
 No online payment gateway is required for V1. Payment Status defaults to Pending.
 
-Payment Status remains a simple Paid / Pending attribute of the membership. V1 has no payment transaction record, no partial payments, no payment methods, no refunds and no multiple payments against one membership.
+*(V1 Tax Adjustment.)* Payment Status is never chosen by hand: a new membership (including a renewal) is created Pending, with nothing paid and the full membership amount outstanding, and the payments recorded against it determine Pending, Partially Paid or Paid. The Membership form has no Payment Status field; when editing, the current status is shown read-only. Editing a membership never changes its Payment Status. A membership marked Paid before payment records existed keeps that status, with no payment records, and is not changed automatically.
+
+*(V1 Tax Adjustment.)* Payment Status reflects the payments recorded against the membership:
+- **Pending** — no payment has been recorded.
+- **Partially Paid** — payments have been recorded but do not yet cover the full membership amount.
+- **Paid** — the recorded payments cover the full membership amount.
+
+### Payments
+*(V1 Tax Adjustment.)* A membership can be paid in full at once or in installments.
+- One membership can have multiple payments.
+- One payment can combine several payment methods — for example part cash and part UPI. Supported methods include cash, card, UPI and bank transfer.
+- Each payment method entry can capture the details relevant to it, such as a transaction / reference ID (for example for card or UPI) and notes.
+- Each payment has its own document decision and its own document (§5A "Payment Documents").
+
+V1 still has no refunds and no online payment gateway.
 
 ### Payment Date
 *(V1 Invoice / Receipt Enhancement — see §5A.)*
@@ -236,7 +253,9 @@ Give every paid membership a stored, numbered Invoice / Receipt document that ca
 This is a later enhancement to the working V1 application. The original V1 baseline had a printable receipt generated on demand and stored nothing; this enhancement replaces and extends that behaviour with a stored document. All other V1 behaviour — students, memberships, attendance, batches, schedules, instructors — is unchanged. The existing on-demand receipt continues to operate unchanged until the enhancement is implemented.
 
 ### Scope
-This is a simple V1 document feature, not an accounting system. There are no separate Invoice, Receipt and Tax Invoice systems: one document type is presented as an Invoice or a Receipt according to the configured document title (§11 Invoice / Receipt Settings). The intended default presentation for the current client is **Invoice**.
+This is a simple V1 document feature, not an accounting system. Before the V1 Tax Adjustment there were no separate Invoice, Receipt and Tax Invoice systems: one document type was presented as an Invoice or a Receipt according to the configured document title (§11 Invoice / Receipt Settings), and the intended default presentation for the current client is **Invoice**.
+
+*(V1 Tax Adjustment.)* Payments are now documented per payment, either with a **tax invoice** or with a clearly identified **payment receipt**, each with its own numbering sequence (see "Payment Documents" below). The rest of this section continues to describe the existing membership-level invoice; how membership-level and payment-level documents coexist is set out in "Membership-Level and Payment-Level Documents" below.
 
 ### Issuing
 - Membership → Payment Status = Paid → payment date → invoice issued → stored invoice.
@@ -245,7 +264,16 @@ This is a simple V1 document feature, not an accounting system. There are no sep
 - Issuing, viewing and editing an invoice are Admin only, matching the existing V1 receipt behaviour. Instructors have no access to invoices.
 
 ### Membership ↔ Invoice
-A membership has **zero or one** issued invoice (Membership 1 : 0..1 Invoice). V1 does not support multiple invoices for one membership, payment transactions, partial payments, refunds or credit notes.
+Under the original enhancement a membership has **zero or one** issued membership-level invoice (Membership 1 : 0..1 Invoice).
+
+*(V1 Tax Adjustment.)* With payments, a membership can have several documents — one per payment (§5 "Payments", "Payment Documents" below). V1 still does not support refunds or credit notes.
+
+### Membership-Level and Payment-Level Documents
+*(V1 Tax Adjustment.)* A membership is documented either once at membership level or per payment, never both for new documents:
+- A membership with recorded payments is documented per payment. It is never given a new membership-level invoice, whether automatically when it becomes Paid or through **Issue Invoice**.
+- A membership that already has a membership-level invoice is documented by that invoice. New payment-level documents are not issued for its payments: **Issue Document** is not offered for them, and the database refuses the issue with "A membership invoice already exists for this membership."
+- Existing documents of both kinds remain unchanged and viewable. A membership that already holds both a membership-level invoice and payment-level documents keeps them all; nothing is cancelled, converted or renumbered automatically.
+- An existing payment-level document can still be corrected by cancel-and-reissue (see "Corrections" below): the replacement replaces a document and does not add a second one for the payment.
 
 ### Invoice Number
 - Generated automatically and sequentially, and unique.
@@ -310,7 +338,7 @@ After an invoice is issued, Admin may edit **only**:
 
 The invoice prefix is **not** editable from Invoice Edit: the historical prefix stored on the invoice stays unchanged when its number is edited. The number must still obey the existing rules (a positive whole number, unique, not below the Starting Invoice Number), and the date must still obey the Invoice Date rules above.
 
-Invoice Edit does not edit the student/customer identity, membership amount, membership dates, payment date, tax values, terms, signatory, signature, invoice prefix, business identity or any other content: the amount, plan and period change only by editing the membership (see "The Receipt Follows the Membership"), and the rest is a snapshot. V1 has no accounting correction workflow.
+Invoice Edit does not edit the student/customer identity, membership amount, membership dates, payment date, tax values, terms, signatory, signature, invoice prefix, business identity or any other content: the amount, plan and period change only by editing the membership (see "The Receipt Follows the Membership"), and the rest is a snapshot. *(V1 Tax Adjustment.)* Other corrections to an issued document follow cancel-and-reissue (see "Corrections" below).
 
 ### Tax
 - Tax can be enabled or disabled, with a configurable tax name and tax rate.
@@ -318,7 +346,29 @@ Invoice Edit does not edit the student/customer identity, membership amount, mem
 - The tax used is preserved on each issued invoice.
 
 ### Paid → Pending
-Once an invoice has been issued for a membership, the issued invoice is preserved and is never silently invalidated. V1 has no refund, void or credit-note handling, so the application prevents an unsafe Paid → Pending change after an invoice has been issued. The exact guard is an implementation matter.
+Once an invoice has been issued for a membership, the issued invoice is preserved and is never silently invalidated. V1 has no refund or credit-note handling, so the application prevents an unsafe Paid → Pending change after an invoice has been issued. The exact guard is an implementation matter.
+
+### Tax Invoice Preference
+*(V1 Tax Adjustment.)*
+- Tax invoice issuance is **enabled by default**.
+- The owner can set a default preference per student (§4 Student Information).
+- The Admin can override the preference for an individual payment. A payment-level override applies to that payment only and never silently changes the student's saved preference.
+- Preferences do not override legal tax obligations.
+
+### Payment Documents
+*(V1 Tax Adjustment.)*
+- Each payment has its own document decision and its own associated document.
+- When a tax invoice is issued, it uses the **existing tax invoice numbering sequence** (§5A "Invoice Number").
+- When the non-tax option is selected, a clearly identified **payment receipt** is issued, numbered from its **own, separate sequence**.
+- A tax invoice number is never consumed or reused for a payment receipt.
+- The legal treatment of invoices for installments, and the precise classification of the non-tax document, must be confirmed before implementation.
+
+### Corrections
+*(V1 Tax Adjustment.)*
+- Issued document numbers are permanent and are never reused.
+- A correction follows a **cancel-and-reissue** process: the original document is cancelled — not edited, overwritten or deleted — and a replacement is issued with a **new** document number.
+- The original document, its cancellation reason, the link to its replacement and the correction history are preserved.
+- Issued historical documents are never silently overwritten or deleted.
 
 ### Actions
 A stored invoice is intended to support:
@@ -331,10 +381,9 @@ A stored invoice is intended to support:
 WhatsApp remains a plain click-to-chat / share workflow, not a WhatsApp Business API integration. `wa.me` cannot attach a file; where the browser supports it, the Web Share API can share the generated PDF, and otherwise the PDF can be downloaded and a text message shared. The PDF technique is an implementation decision.
 
 ### Not Included
-- Partial payments, payment methods, a payment transaction table, multiple payments against one membership
 - Online payment gateway, automatic billing
-- Refunds, credit notes, void or correction workflows
-- Full accounting, revenue accounting, financial ledger, payment history system
+- Refunds, credit notes
+- Full accounting, revenue accounting, financial ledger
 - Multi-center or multi-organization billing
 
 ---
@@ -722,6 +771,7 @@ The Logo is uploaded from Center Profile (PNG, JPG or WebP, up to 2 MB) and appe
 - **Signatory name** and **signatory designation**
 - **Signature image**
 - **Document title** — configurable; the document is presented as either **Invoice** or **Receipt**. The intended default for the current client is Invoice. This changes only how one document is titled; it does not create separate Invoice and Receipt systems.
+- *(V1 Tax Adjustment.)* **Payment receipt numbering** — the non-tax payment receipt (§5A "Payment Documents") has its own numbering sequence, separate from the tax invoice sequence.
 
 Business identity (name, address, phone, email, logo) continues to come from Center Profile. Changing these settings affects invoices issued afterwards, never invoices already issued.
 
@@ -782,6 +832,8 @@ One active enrollment per batch keeps attendance eligibility unambiguous: a dupl
 - End date is calculated from plan and start date but remains editable.
 - End date cannot precede start date; a same-day start and end date is allowed.
 - Renewal's default start date is the previous membership's end date plus one day.
+- Payment status is Pending, Partially Paid or Paid, determined by the payments recorded against the membership; Paid means the recorded payments cover the full membership amount.
+- A membership can have multiple payments (installments), and one payment can combine several payment methods, each with its relevant details.
 - Payment status does not determine membership status.
 - Payment status does not affect attendance eligibility.
 - Attendance eligibility requires active membership on the session date.
@@ -804,7 +856,10 @@ Deriving status from dates, rather than storing it, prevents a membership from s
 - An issued invoice preserves its financial, customer, business, tax, terms and signatory information; later settings or profile changes never alter it.
 - Tax is tax-inclusive: the membership amount is the final amount and tax is back-calculated when tax is enabled.
 - Once an invoice is issued for a membership, the application prevents an unsafe Paid → Pending change and the issued invoice is preserved.
-- V1 has no refunds, credit notes, void workflow, partial payments or payment methods.
+- *(V1 Tax Adjustment.)* Each payment has its own document decision and document: a tax invoice from the existing tax invoice sequence, or a clearly identified payment receipt from its own separate sequence. A tax invoice number is never consumed or reused for a payment receipt.
+- *(V1 Tax Adjustment.)* Tax invoice issuance is enabled by default, the owner can set a default per student, and the Admin can override it for one payment without changing the student's saved preference. Preferences do not override legal tax obligations.
+- *(V1 Tax Adjustment.)* Issued document numbers are permanent and never reused. Corrections are cancel-and-reissue: the original is preserved with its cancellation reason, a link to its replacement and its history, and the replacement receives a new number. Issued documents are never silently overwritten or deleted.
+- V1 has no refunds or credit notes.
 
 ### Batch
 - A batch can have multiple recurring schedules.
@@ -930,13 +985,14 @@ Historical records must be protected when:
 - Center profile
 - Basic settings
 - Stored Invoice / Receipt with invoice settings (V1 Invoice / Receipt Enhancement, §5A)
+- Payments with installments and mixed payment methods; a tax invoice or payment receipt per payment; cancel-and-reissue corrections (V1 Tax Adjustment, §5, §5A)
 
 ### Not Included in V1
 - Student login
 - Online payment gateway
 - Automatic billing
 - Payment reminders
-- Partial payments, payment methods, refunds, credit notes, full accounting
+- Refunds, credit notes, full accounting
 - WhatsApp/SMS/email integrations (a plain WhatsApp click-to-chat / share workflow for the Invoice / Receipt is not an integration)
 - QR attendance
 - Face recognition

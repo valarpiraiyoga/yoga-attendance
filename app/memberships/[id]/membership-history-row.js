@@ -58,10 +58,11 @@ export default function MembershipHistoryRow({ entry, student }) {
             membershipId={entry.id}
             paymentStatus={entry.payment_status}
             invoiceExists={entry.invoice_exists}
+            hasPayments={entry.has_payments}
             onIssueInvoice={() => setIssueOpen(true)}
             onOpenChange={setMenuOpen}
           />
-          {entry.payment_status === "paid" && !entry.invoice_exists ? (
+          {entry.payment_status === "paid" && !entry.invoice_exists && !entry.has_payments ? (
             <MembershipIssueInvoiceDialog membership={entry} student={student} open={issueOpen} onOpenChange={setIssueOpen} />
           ) : null}
         </div>

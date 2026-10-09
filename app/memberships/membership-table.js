@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FilePlus, FileText, Receipt } from "lucide-react";
+import { FilePlus, FileText, Receipt, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -42,7 +42,7 @@ const HEAD = "h-10 px-2 text-small tracking-normal";
  * Acknowledgement; Paid with a receipt -> the receipt icon, View Receipt; Paid without one -> the
  * file-plus icon, Issue Receipt, which opens the existing Issue Receipt dialog (`membershipDocumentAction`).
  */
-const DOCUMENT_ICON = { "due-notice": FileText, "receipt": Receipt, "issue-receipt": FilePlus };
+const DOCUMENT_ICON = { "due-notice": FileText, "receipt": Receipt, "issue-receipt": FilePlus, "payments": Wallet };
 
 function MembershipRow({ membership, today }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -51,7 +51,7 @@ function MembershipRow({ membership, today }) {
   const student = membership.students;
   const status = MEMBERSHIP_STATUS[membership.status] ?? MEMBERSHIP_STATUS.expired;
   const payment = PAYMENT_STATUS[membership.payment_status] ?? PAYMENT_STATUS.pending;
-  const documentAction = membershipDocumentAction(membership.id, membership.payment_status, membership.invoice_exists);
+  const documentAction = membershipDocumentAction(membership.id, membership.payment_status, membership.invoice_exists, membership.has_payments);
   const DocumentIcon = DOCUMENT_ICON[documentAction.kind];
   const validity = getMembershipValidity(membership, today);
   const daysLeft = getValidityLabel(validity, { compact: true });
@@ -116,6 +116,7 @@ function MembershipRow({ membership, today }) {
             studentId={student?.id}
             paymentStatus={membership.payment_status}
             invoiceExists={membership.invoice_exists}
+            hasPayments={membership.has_payments}
             onIssueInvoice={() => setIssueOpen(true)}
             onOpenChange={setMenuOpen}
           />

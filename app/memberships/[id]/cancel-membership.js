@@ -28,7 +28,7 @@ import { IssueInvoiceDialog } from "@/app/memberships/[id]/issue-invoice";
  * server-side anyway (lib/memberships/actions.js), but there's no reason to
  * offer an action that can only fail.
  */
-export default function CancelMembership({ membershipId, studentId, paymentStatus, invoiceExists, invoiceToIssue, isCancelled, student, membership }) {
+export default function CancelMembership({ membershipId, studentId, paymentStatus, invoiceExists, hasPayments = false, invoiceToIssue, isCancelled, student, membership }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
   const [feedback, setFeedback] = useState(null);
@@ -55,6 +55,7 @@ export default function CancelMembership({ membershipId, studentId, paymentStatu
         studentId={studentId}
         paymentStatus={paymentStatus}
         invoiceExists={invoiceExists}
+        hasPayments={hasPayments}
         onIssueInvoice={() => setIssueOpen(true)}
         triggerVariant="outline"
         triggerSize="icon"

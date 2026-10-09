@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, FilePlus, FileText, Receipt, Banknote } from "lucide-react";
+import { CalendarDays, FilePlus, FileText, Receipt, Banknote, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -37,7 +37,7 @@ function validityTone(validity) {
  * Invoice; Paid without one -> the file-plus icon, Issue Receipt (the existing dialog). Composed from `EntityCard`; only the interactive
  * menu-open tint is local state.
  */
-const DOCUMENT_ICON = { "due-notice": FileText, "receipt": Receipt, "issue-receipt": FilePlus };
+const DOCUMENT_ICON = { "due-notice": FileText, "receipt": Receipt, "issue-receipt": FilePlus, "payments": Wallet };
 
 export default function MembershipCardItem({ membership, today }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -46,7 +46,7 @@ export default function MembershipCardItem({ membership, today }) {
   const student = membership.students;
   const status = MEMBERSHIP_STATUS[membership.status] ?? MEMBERSHIP_STATUS.expired;
   const payment = PAYMENT_STATUS[membership.payment_status] ?? PAYMENT_STATUS.pending;
-  const documentAction = membershipDocumentAction(membership.id, membership.payment_status, membership.invoice_exists);
+  const documentAction = membershipDocumentAction(membership.id, membership.payment_status, membership.invoice_exists, membership.has_payments);
   const DocumentIcon = DOCUMENT_ICON[documentAction.kind];
   const validity = getMembershipValidity(membership, today);
   const validityLabel = getValidityLabel(validity);
@@ -84,6 +84,7 @@ export default function MembershipCardItem({ membership, today }) {
             studentId={student?.id}
             paymentStatus={membership.payment_status}
             invoiceExists={membership.invoice_exists}
+            hasPayments={membership.has_payments}
             onIssueInvoice={() => setIssueOpen(true)}
             onOpenChange={setMenuOpen}
           />

@@ -41,7 +41,6 @@ export default async function RenewMembershipPage({ params }) {
     // otherwise (the centre changed currency since) it is left blank rather than
     // silently re-labelled.
     amount: previous.currency === currency ? previous.amount : "",
-    payment_status: "pending",
     notes: "",
   };
 

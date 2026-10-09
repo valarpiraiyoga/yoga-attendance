@@ -50,6 +50,8 @@ import CancelMembership from "@/app/memberships/[id]/cancel-membership";
 import CoveredEnrollmentRow from "@/app/memberships/[id]/covered-enrollment-row";
 import MembershipHistoryRow from "@/app/memberships/[id]/membership-history-row";
 import InvoicePanel from "@/app/memberships/[id]/invoice-panel";
+import PaymentsPanel from "@/app/memberships/[id]/payments-panel";
+import { getPaymentsForMembership } from "@/lib/memberships/payments-data";
 
 const SUCCESS_MESSAGES = {
   created: "Membership created successfully.",
@@ -106,10 +108,11 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const [history, coveredEnrollments, invoice] = await Promise.all([
+  const [history, coveredEnrollments, invoice, payments] = await Promise.all([
     listMembershipsForStudent(membership.student_id),
     listCoveredEnrollments(membership),
     getInvoiceForMembership(id),
+    getPaymentsForMembership(id),
   ]);
   const otherMemberships = history.filter((entry) => entry.id !== id);
 
@@ -117,7 +120,9 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
 
   const student = membership.students;
-  const invoiceState = getInvoiceSectionState({ membership, invoice });
+  // A membership with recorded payments is documented per payment (Payments panel), not at membership level.
+  const hasPayments = payments.length > 0;
+  const invoiceState = getInvoiceSectionState({ membership, invoice, hasPayments });
   const status = MEMBERSHIP_STATUS[membership.status] ?? { label: membership.status, variant: "neutral" };
   const payment = PAYMENT_STATUS[membership.payment_status] ?? PAYMENT_STATUS.pending;
   const planLabel = PLAN[membership.plan] ?? membership.plan;
@@ -212,6 +217,7 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
                 studentId={student?.id}
                 paymentStatus={membership.payment_status}
                 invoiceExists={Boolean(invoice)}
+                hasPayments={hasPayments}
                 invoiceToIssue={
                   invoiceState.canIssue
                     ? {
@@ -283,16 +289,36 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
       {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
       <FlashToast message={message} />
 
-      <InvoicePanel
+      <PaymentsPanel
         membership={membership}
-        invoice={invoice}
+        payments={payments}
+        hasMembershipInvoice={Boolean(invoice)}
+        today={await todayDateString()}
         student={
           student
-            ? { full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }
+            ? {
+                full_name: student.full_name,
+                student_code: student.student_code,
+                photo_url: student.photo_url,
+                tax_invoice_default: student.tax_invoice_default,
+              }
             : null
         }
         membershipSummary={{ code: membership.membership_code, planLabel, period }}
       />
+
+      {invoice || !hasPayments ? (
+        <InvoicePanel
+          membership={membership}
+          invoice={invoice}
+          student={
+            student
+              ? { full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }
+              : null
+          }
+          membershipSummary={{ code: membership.membership_code, planLabel, period }}
+        />
+      ) : null}
 
       <Panel>
         <PanelHeader
