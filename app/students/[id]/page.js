@@ -37,7 +37,9 @@ import {
 } from "@/lib/enrollments/data";
 import { DAY_LABELS, DAYS_OF_WEEK } from "@/lib/schedules/validation";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
-import { formatDate, formatDateShort, formatDateWithWeekday, formatTimeRange } from "@/lib/format";
+import { formatDate, formatDateWithWeekday, formatTimeRange } from "@/lib/format";
+import { NO_EXPIRY_LABEL, formatPeriod } from "@/lib/memberships/period";
+import { classCountText } from "@/lib/memberships/class-count";
 import { formatCurrency } from "@/lib/currencies";
 import { ENTITY_STATUS, MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import StudentStatusButton from "@/app/students/[id]/student-status-button";
@@ -90,13 +92,6 @@ function DetailRow({ label, children, valueClassName }) {
       </dd>
     </div>
   );
-}
-
-/** `Sep 1 – Sep 30, 2026` within a year; both years shown when the period crosses one. */
-function formatPeriod(startDate, endDate) {
-  return startDate.slice(0, 4) === endDate.slice(0, 4)
-    ? `${formatDateShort(startDate)} – ${formatDate(endDate)}`
-    : `${formatDate(startDate)} – ${formatDate(endDate)}`;
 }
 
 const ATTENDANCE_STATUS = {
@@ -245,7 +240,13 @@ export default async function StudentDetailsPage({ params, searchParams }) {
             icon={CreditCard}
             label="Membership"
             value={membershipStatus ? membershipStatus.label : "None"}
-            caption={currentMembership ? `Ends ${formatDate(currentMembership.end_date)}` : "No membership yet"}
+            caption={
+              currentMembership
+                ? currentMembership.end_date
+                  ? `Ends ${formatDate(currentMembership.end_date)}`
+                  : NO_EXPIRY_LABEL
+                : "No membership yet"
+            }
             tone="info"
           />
           <StatTile
@@ -498,6 +499,9 @@ export default async function StudentDetailsPage({ params, searchParams }) {
 
               <dl className="mt-3 flex flex-col divide-y divide-border border-t border-border pt-3">
                 <DetailRow label="Validity">{formatPeriod(currentMembership.start_date, currentMembership.end_date)}</DetailRow>
+                {currentMembership.class_count ? (
+                  <DetailRow label="Classes">{classCountText(currentMembership.class_count)}</DetailRow>
+                ) : null}
                 <DetailRow label="Amount">{formatCurrency(currentMembership.amount, currentMembership.currency)}</DetailRow>
                 <DetailRow label="Payment">
                   <Badge variant={(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).variant}>

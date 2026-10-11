@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
+import { formatEndDate } from "@/lib/memberships/period";
 import { formatCurrency } from "@/lib/currencies";
 import { MEMBERSHIP_STATUS, PLAN } from "@/lib/status";
 import { cn } from "@/lib/utils";
@@ -35,7 +36,7 @@ export default function MembershipHistoryRow({ entry, student }) {
       <TableCell className="font-semibold whitespace-nowrap text-text-primary">{entry.membership_code}</TableCell>
       <TableCell className="whitespace-nowrap text-text-secondary">{PLAN[entry.plan] ?? entry.plan}</TableCell>
       <TableCell className="whitespace-nowrap text-text-secondary">
-        {formatDate(entry.start_date)} – {formatDate(entry.end_date)}
+        {formatDate(entry.start_date)} – {formatEndDate(entry.end_date)}
       </TableCell>
       <TableCell className="whitespace-nowrap text-text-secondary">{formatCurrency(entry.amount, entry.currency)}</TableCell>
       <TableCell>

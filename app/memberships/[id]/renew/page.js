@@ -17,6 +17,10 @@ import PageHeader from "@/components/layout/PageHeader";
  * over as a starting point, and Payment Status resets to Pending (a new
  * record is a new, unpaid billing cycle) — all editable before saving.
  * The previous membership itself is never modified.
+ *
+ * A CLASS-COUNT membership is renewed as a class-count membership (its type is fixed): it has no end date to
+ * continue from, so the new one starts today at the centre, with the previous class total and amount carried over
+ * as a starting point and no end date (no expiry) unless one is entered - all editable before saving.
  */
 export default async function RenewMembershipPage({ params }) {
   // Authorization boundary — see app/memberships/layout.js for why this must
@@ -32,18 +36,34 @@ export default async function RenewMembershipPage({ params }) {
   }
 
   const currency = await getCenterCurrency();
-  const defaultStartDate = addOneDayUTC(previous.end_date);
-  const initialValues = {
-    plan: previous.plan,
-    start_date: defaultStartDate,
-    end_date: calculateMembershipEndDate(previous.plan, defaultStartDate) || defaultStartDate,
-    // A renewal is priced in the centre's CURRENT currency. The previous amount
-    // is only a sensible starting point when it was priced in that same currency;
-    // otherwise (the centre changed currency since) it is left blank rather than
-    // silently re-labelled.
-    amount: previous.currency === currency ? previous.amount : "",
-    notes: "",
-  };
+  // A renewal is priced in the centre's CURRENT currency. The previous amount
+  // is only a sensible starting point when it was priced in that same currency;
+  // otherwise (the centre changed currency since) it is left blank rather than
+  // silently re-labelled.
+  const startingAmount = previous.currency === currency ? previous.amount : "";
+
+  const initialValues =
+    previous.kind === "class_count"
+      ? {
+          kind: "class_count",
+          plan: "class_count",
+          // No end date to continue from: the new membership starts today at the centre.
+          start_date: await todayDateString(),
+          end_date: "",
+          total_classes: previous.total_classes,
+          amount: startingAmount,
+          notes: "",
+        }
+      : (() => {
+          const defaultStartDate = addOneDayUTC(previous.end_date);
+          return {
+            plan: previous.plan,
+            start_date: defaultStartDate,
+            end_date: calculateMembershipEndDate(previous.plan, defaultStartDate) || defaultStartDate,
+            amount: startingAmount,
+            notes: "",
+          };
+        })();
 
   const createRenewal = createMembership.bind(null, previous.student_id, "renewal");
 
@@ -64,6 +84,7 @@ export default async function RenewMembershipPage({ params }) {
             initialValues={initialValues}
             requireConfirmation
             allowInitialPayment
+            lockKind
             today={await todayDateString()}
             submitLabel="Save Renewal"
             pendingLabel="Saving…"

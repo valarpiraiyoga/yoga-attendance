@@ -14,6 +14,7 @@ import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getMembership, todayDateString } from "@/lib/memberships/data";
 import { getCenterProfile } from "@/lib/center-profile/data";
 import { formatDate } from "@/lib/format";
+import { formatEndDate } from "@/lib/memberships/period";
 import { formatCurrency } from "@/lib/currencies";
 import { centreDateOf } from "@/lib/class-sessions/validation";
 import { getCenterTimezone } from "@/lib/center-profile/settings";
@@ -94,7 +95,7 @@ export default async function MembershipReceiptPage({ params }) {
     `Student: ${student?.full_name ?? "—"}`,
     `Membership: ${planLabel} Membership`,
     `Start Date: ${formatDate(membership.start_date)}`,
-    `End Date: ${formatDate(membership.end_date)}`,
+    `End Date: ${formatEndDate(membership.end_date)}`,
     `Amount: ${amount}`,
     `Payment Status: ${payment.label}`,
   ].join("\n");
@@ -216,7 +217,7 @@ export default async function MembershipReceiptPage({ params }) {
                     {planLabel} Membership
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-text-secondary">{formatDate(membership.start_date)}</TableCell>
-                  <TableCell className="whitespace-nowrap text-text-secondary">{formatDate(membership.end_date)}</TableCell>
+                  <TableCell className="whitespace-nowrap text-text-secondary">{formatEndDate(membership.end_date)}</TableCell>
                   <TableCell className="text-right font-medium whitespace-nowrap text-text-primary tabular-nums">
                     {amount}
                   </TableCell>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
-import { Banknote, CalendarDays, CalendarX2, CircleCheck, Layers, Receipt, UserRound, Wallet } from "lucide-react";
+import { Banknote, CalendarDays, CalendarX2, CircleCheck, Hash, Layers, Receipt, UserRound, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,10 +31,17 @@ const PLAN_OPTIONS = [
   { value: "custom", label: "Custom duration" },
 ];
 
+// The two kinds of membership (migration 0042). Choosing one is only possible when a membership is created.
+const KIND_OPTIONS = [
+  { value: "duration", label: "Duration" },
+  { value: "class_count", label: "Class Count" },
+];
+
 const BLUR_VALIDATED_FIELDS = new Set(["plan", "start_date", "end_date", "amount", "notes"]);
 
+// A class-count membership's plan is `class_count`, which is also its kind's value.
 function planLabel(plan) {
-  return PLAN_OPTIONS.find((option) => option.value === plan)?.label ?? "—";
+  return PLAN_OPTIONS.find((option) => option.value === plan)?.label ?? KIND_OPTIONS.find((option) => option.value === plan)?.label ?? "—";
 }
 
 /**
@@ -62,6 +69,11 @@ function planLabel(plan) {
  * amount outstanding, and the payments recorded for it determine Pending / Partially Paid / Paid. The status is
  * read on Membership Details and the Memberships list, never on this form.
  *
+ * Two kinds of membership. A DURATION membership (the default) is chosen by Plan and runs for a period. A CLASS-COUNT
+ * membership has a number of classes and an optional End Date - left empty it has no expiry. The kind is chosen when a
+ * membership is created and is fixed afterwards (Edit and Renew show it, they do not offer it); the form then has the
+ * class-count fields in place of Plan, and End Date is optional and never calculated.
+ *
  * Create and Renew can also record the first payment together with the membership (`allowInitialPayment`): an
  * optional "Record Payment Now" section, off by default, that reuses the Record Payment fields. While it is off
  * nothing about the payment is submitted, and the form saves exactly as before. The payment is validated and
@@ -80,8 +92,16 @@ export default function MembershipForm({
   skipHref,
   allowInitialPayment = false,
   today,
+  lockKind = false,
+  classesUsed = 0,
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
+  const [kind, setKind] = useState(state?.values?.kind || membership?.kind || initialValues?.kind || "duration");
+  const isClassCount = kind === "class_count";
+  const kindLocked = Boolean(membership) || lockKind;
+  const [totalClasses, setTotalClasses] = useState(
+    String(state?.values?.total_classes ?? membership?.total_classes ?? initialValues?.total_classes ?? "")
+  );
   const [fieldErrors, setFieldErrors] = useState(state?.fieldErrors ?? {});
   const [plan, setPlan] = useState(state?.values?.plan ?? membership?.plan ?? initialValues?.plan ?? "");
   const [startDate, setStartDate] = useState(
@@ -122,6 +142,16 @@ export default function MembershipForm({
     if (on) payment.reset(amountPaise ? fromPaise(amountPaise) : "");
   }
 
+  function handleKindChange(value) {
+    if (value === kind) return;
+    setKind(value);
+    // Each kind starts clean: a class-count membership has the class_count plan and no end date until one is entered;
+    // a duration membership has no plan until one is chosen.
+    setPlan(value === "class_count" ? "class_count" : "");
+    setEndDate("");
+    setFieldErrors({});
+  }
+
   function recalculateEndDate(nextPlan, nextStartDate) {
     if (nextPlan === "custom") return;
     const calculated = calculateMembershipEndDate(nextPlan, nextStartDate);
@@ -145,9 +175,11 @@ export default function MembershipForm({
 
     const formData = new FormData(event.currentTarget);
     const result = validateMembershipInput({
+      kind: formData.get("kind"),
       plan: formData.get("plan"),
       start_date: formData.get("start_date"),
       end_date: formData.get("end_date"),
+      total_classes: formData.get("total_classes"),
       amount: formData.get("amount"),
       notes: formData.get("notes"),
     });
@@ -171,9 +203,11 @@ export default function MembershipForm({
 
     const formData = new FormData(formRef.current);
     const input = {
+      kind: formData.get("kind"),
       plan: formData.get("plan"),
       start_date: formData.get("start_date"),
       end_date: formData.get("end_date"),
+      total_classes: formData.get("total_classes"),
       amount: formData.get("amount"),
       notes: formData.get("notes"),
     };
@@ -190,8 +224,9 @@ export default function MembershipForm({
     const remainingPaise = (toPaise(String(input.amount).trim()) ?? 0) - (paymentResult?.data.totalPaise ?? 0);
     setReviewData({
       planLabel: planLabel(input.plan),
+      totalClasses: result.data.kind === "class_count" ? result.data.total_classes : null,
       startDate: input.start_date,
-      endDate: input.end_date,
+      endDate: input.end_date || "No expiry",
       amount: input.amount,
       payment: paymentResult
         ? {
@@ -235,32 +270,97 @@ export default function MembershipForm({
           membership={membership ? { code: membership.membership_code, plan: planLabel(membership.plan) } : undefined}
         />
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="plan">Plan</Label>
-          <Select
-            name="plan"
-            items={PLAN_OPTIONS}
-            value={plan}
-            onValueChange={handlePlanChange}
-            disabled={isPending}
-          >
-            <SelectTrigger id="plan" aria-invalid={Boolean(fieldErrors.plan)}>
-              <SelectValue placeholder="Select a plan…" />
-            </SelectTrigger>
-            <SelectContent>
-              {PLAN_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {fieldErrors.plan ? (
-            <p role="alert" className="text-small text-danger">
-              {fieldErrors.plan}
+        {/* The kind travels with the form; only a new membership can choose it (Edit and Renew keep the stored one). */}
+        <input name="kind" value={kind} readOnly hidden />
+
+        {kindLocked ? (
+          isClassCount ? (
+            <div className="flex flex-col gap-1">
+              <Label>Membership type</Label>
+              <p className="text-body text-text-primary">Class Count</p>
+            </div>
+          ) : null
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="kind-select">Membership type</Label>
+            <Select items={KIND_OPTIONS} value={kind} onValueChange={handleKindChange} disabled={isPending}>
+              <SelectTrigger id="kind-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {KIND_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-small text-text-secondary">
+              {isClassCount ? "A number of classes, with or without an expiry date." : "A period of time, chosen by Plan."}
             </p>
-          ) : null}
-        </div>
+          </div>
+        )}
+
+        {isClassCount ? (
+          <>
+            <input name="plan" value="class_count" readOnly hidden />
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="total_classes">Number of Classes</Label>
+              <Input
+                id="total_classes"
+                name="total_classes"
+                type="number"
+                inputMode="numeric"
+                min={Math.max(1, classesUsed)}
+                step="1"
+                required
+                disabled={isPending}
+                value={totalClasses}
+                onChange={(event) => setTotalClasses(event.target.value)}
+                placeholder="Enter the number of classes"
+                aria-invalid={Boolean(fieldErrors.total_classes)}
+                aria-describedby={fieldErrors.total_classes ? "total_classes-error" : undefined}
+              />
+              {classesUsed > 0 ? (
+                <p className="text-small text-text-secondary">
+                  {classesUsed} {classesUsed === 1 ? "class has" : "classes have"} been recorded, so the total cannot be lower.
+                </p>
+              ) : null}
+              {fieldErrors.total_classes ? (
+                <p id="total_classes-error" role="alert" className="text-small text-danger">
+                  {fieldErrors.total_classes}
+                </p>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="plan">Plan</Label>
+            <Select
+              name="plan"
+              items={PLAN_OPTIONS}
+              value={plan}
+              onValueChange={handlePlanChange}
+              disabled={isPending}
+            >
+              <SelectTrigger id="plan" aria-invalid={Boolean(fieldErrors.plan)}>
+                <SelectValue placeholder="Select a plan…" />
+              </SelectTrigger>
+              <SelectContent>
+                {PLAN_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {fieldErrors.plan ? (
+              <p role="alert" className="text-small text-danger">
+                {fieldErrors.plan}
+              </p>
+            ) : null}
+          </div>
+        )}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
@@ -284,21 +384,25 @@ export default function MembershipForm({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="end_date">End Date</Label>
+            <Label htmlFor="end_date">{isClassCount ? "End Date (optional)" : "End Date"}</Label>
             <Input
               id="end_date"
               name="end_date"
               type="date"
-              required
+              required={!isClassCount}
               disabled={isPending}
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
               aria-invalid={Boolean(fieldErrors.end_date)}
               aria-describedby={fieldErrors.end_date ? "end_date-error" : undefined}
             />
-            <p className="text-small text-text-secondary">
-              {plan === "custom" ? "Enter the membership's end date." : "Calculated from Plan and Start Date — editable."}
-            </p>
+            {isClassCount ? (
+              <p className="text-small text-text-secondary">Leave empty for no expiry.</p>
+            ) : (
+              <p className="text-small text-text-secondary">
+                {plan === "custom" ? "Enter the membership's end date." : "Calculated from Plan and Start Date — editable."}
+              </p>
+            )}
             {fieldErrors.end_date ? (
               <p id="end_date-error" role="alert" className="text-small text-danger">
                 {fieldErrors.end_date}
@@ -445,6 +549,11 @@ export default function MembershipForm({
               <ReviewRow icon={Layers} label="Plan">
                 {reviewData.planLabel}
               </ReviewRow>
+              {reviewData.totalClasses ? (
+                <ReviewRow icon={Hash} label="Classes">
+                  {reviewData.totalClasses}
+                </ReviewRow>
+              ) : null}
               <ReviewRow icon={CalendarDays} label="Start date">
                 {reviewData.startDate}
               </ReviewRow>

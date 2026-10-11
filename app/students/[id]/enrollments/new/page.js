@@ -11,8 +11,9 @@ import EnrollmentForm from "@/app/students/[id]/enrollments/enrollment-form";
 import StudentIdentityHeader from "@/components/ui/student-identity-header";
 import GuidedSteps from "@/app/students/guided-steps";
 import PageHeader from "@/components/layout/PageHeader";
+import { formatEndDate } from "@/lib/memberships/period";
 
-const PLAN_LABELS = { monthly: "Monthly", quarterly: "Quarterly", half_yearly: "Half Yearly", annual: "Annual", custom: "Custom duration" };
+const PLAN_LABELS = { monthly: "Monthly", quarterly: "Quarterly", half_yearly: "Half Yearly", annual: "Annual", custom: "Custom duration", class_count: "Class Count" };
 const MEMBERSHIP_STATUS_LABELS = { upcoming: "Upcoming", active: "Active", expired: "Expired", cancelled: "Cancelled" };
 const MEMBERSHIP_STATUS_VARIANTS = { upcoming: "default", active: "success", expired: "neutral", cancelled: "danger" };
 
@@ -110,7 +111,7 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
                   </Badge>
                 </div>
                 <span className="text-body text-text-secondary">
-                  {formatDate(currentMembership.start_date)} – {formatDate(currentMembership.end_date)}
+                  {formatDate(currentMembership.start_date)} – {formatEndDate(currentMembership.end_date)}
                 </span>
               </div>
             ) : isGuided ? (

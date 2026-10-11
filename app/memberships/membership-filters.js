@@ -26,6 +26,7 @@ const PLAN_OPTIONS = [
   { value: "half_yearly", label: "Half Yearly" },
   { value: "annual", label: "Annual" },
   { value: "custom", label: "Custom duration" },
+  { value: "class_count", label: "Class Count" },
 ];
 
 const PAYMENT_STATUS_OPTIONS = [

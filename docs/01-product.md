@@ -157,13 +157,49 @@ Manage the student's valid membership period and use it as part of attendance el
 - Annual
 - Custom duration
 
+*(V1 Fee Structure.)* These five are the plans of memberships created before the centre-configurable fee structure; they stay on those memberships exactly as they are. A new membership or renewal takes its Plan from the centre's own packages (see "Packages and Fee Structure" below).
+
+### Packages and Fee Structure
+*(V1 Fee Structure.)* The centre configures what it sells (Settings, §11); the application assumes no fixed price list.
+
+**Packages.** A package has a name, a frequency (how often the student attends, as the centre defines it) and a price. It is one of two types:
+- **Duration-based** — valid for a duration (for example 1, 3, 6 or 12 months). The centre defines the durations a package is offered for, and the price of each.
+- **Class-count** — valid for a number of classes, with either a fixed validity period or no expiry (see "Class-Count Packages").
+
+**Duration prices and savings.** Each duration's price is either entered manually or calculated by a percentage from the package's base-duration price. The **duration saving** is calculated automatically — what the duration would cost at the base-duration price, less its own price — and is never typed in.
+
+**Effective-dated fee structure.** Packages, frequencies, durations and prices are kept in versions, each with an effective-from date. Changing a price creates a new version; earlier versions are preserved and never overwritten. A membership — new or renewal — is priced with the version in effect on its intended start date; if the start date changes, the fee follows the new date.
+
+**Additional discount.** On top of the duration saving, an Admin can apply an additional discount to a membership, either as a **fixed amount** or as a **percentage** (of the fee, after the duration saving). It is recorded separately from the fee and the saving, always with a reason (required), and every discount and every later change to it is kept in an audit record (who, when, amount and reason). There is no approval workflow in V1. A discount belongs to the membership it was given on: a renewal does **not** inherit it automatically; a renewal has an additional discount only if the Admin applies one to it.
+
+**Amount.** The membership's Amount is the net amount payable: the fee less any additional discount. It is the customer's final amount, as in §5A.
+
+**Rounding.** Every price the application calculates — a percentage-based duration price, a percentage discount, the net Amount — is rounded half up to two decimal places. Tax is not affected: it is still back-calculated from the final amount exactly as in §5A.
+
+**Minimum fee.** The net Amount after the duration saving and all discounts must be greater than zero. A discount that would bring it to zero or below is not accepted. V1 has no other, configurable minimum.
+
+**Existing memberships.** A membership keeps the fee, duration saving and discounts it was agreed with. Later changes to the fee structure — a new version, a different package, a package no longer offered — never alter it.
+
+### Class-Count Packages
+*(V1 Fee Structure.)* A class-count membership gives the student a fixed number of classes.
+- **Remaining classes** are tracked on the membership: the package's classes less the classes consumed, where a class is consumed by a recorded attendance that has not been reversed. They are never negative.
+- **Consumption is by Class Count Attendance.** A class is consumed when a completed class is recorded for the student in the separate **Class Count Attendance** workflow (§8 "Class Count Attendance"): one class for each recorded attendance, never twice for the same one. Reversing a recorded attendance (§8) restores that one class. A class-count membership is not used in session attendance (§8 "Eligibility"), so a Present mark in a class session never consumes a class.
+- **Validity** is configured on the package, and sets what makes the membership usable:
+  - **Fixed validity** — a period from the membership's start date (the End date is the end of that period). The membership is usable only while it has remaining classes **and** has not expired; from the day after its End date it cannot be used, whatever classes remain.
+  - **No expiry** — no End date. The membership is usable while it has remaining classes, and needs nothing else.
+- **No classes remaining.** The membership is ineligible for further Class Count Attendance, and the workflow offers the renewal action (§8 "Class Count Attendance").
+- Unused classes are not automatically refunded and are not carried forward to a renewal or to any other membership.
+- **Both kinds together.** A student may hold a duration-based and a class-count membership at the same time. Each attendance is associated with the one membership that it uses and affects only that membership.
+
 ### Membership Information
 - Membership ID
 - Student
-- Plan
+- Plan — the package chosen (see "Packages and Fee Structure")
 - Start date
 - End date
-- Amount
+- Fee details — *(V1 Fee Structure.)* the fee, the built-in duration saving and any additional discounts (fixed or percentage) with their reasons and audit history, as agreed when the membership was created
+- Classes remaining — *(V1 Fee Structure.)* class-count packages only
+- Amount — the net amount payable
 - Payment status
 - Payment date — recorded when the membership is Paid (see "Payment Date" below; part of the V1 Invoice / Receipt Enhancement, §5A)
 - Payments — zero or more recorded payments (see "Payments" below; V1 Tax Adjustment)
@@ -186,7 +222,7 @@ No online payment gateway is required for V1. Payment Status defaults to Pending
 
 ### Payments
 *(V1 Tax Adjustment.)* A membership can be paid in full at once or in installments.
-- One membership can have multiple payments.
+- One membership can have multiple payments. *(V1 Fee Structure.)* A payment, and its document, can be recorded whether the membership is Upcoming, Active or Expired (a Cancelled membership is not covered by this rule), for duration-based and class-count memberships alike. Payments never affect attendance eligibility.
 - One payment can combine several payment methods — for example part cash and part UPI. Supported methods include cash, card, UPI and bank transfer.
 - Each payment method entry can capture the details relevant to it, such as a transaction / reference ID (for example for card or UPI) and notes.
 - Each payment has its own document decision and its own document (§5A "Payment Documents").
@@ -231,8 +267,10 @@ editable:
 
 End date cannot precede start date. A same-day start and end date is allowed.
 
+*(V1 Fee Structure.)* For a duration-based package the End date is the start date plus the package's duration minus one day, by the same calendar rule, and remains editable. A class-count package's End date is the end of its fixed validity, or none when it has no expiry.
+
 ### Renewal
-Every renewal creates a new membership record. Previous membership records remain available for historical purposes. The new membership's start date defaults to the previous membership's end date plus one day, editable if needed.
+Every renewal creates a new membership record. Previous membership records remain available for historical purposes. The new membership's start date defaults to the previous membership's end date plus one day, editable if needed. *(V1 Fee Structure.)* A renewal is priced like a new membership, with the fee in effect on its start date — not by copying the previous membership's amount — and does not automatically inherit the previous membership's additional discounts.
 
 ### Cancellation
 Cancelling a membership retains the record; it is not deleted. An already-cancelled membership cannot be cancelled again. Cancellation does not affect batch enrollment.
@@ -241,6 +279,8 @@ Cancelling a membership retains the record; it is not deleted. An already-cancel
 Membership is one of the conditions a student must meet to appear in attendance: their membership must be active on the class session date. The full set of conditions — active student, active batch enrollment, a schedule assignment for the session's schedule series, and an active membership — is defined in §8 "Eligibility".
 
 Membership and batch enrollment are independent. One membership can cover multiple batch enrollments, and one membership covers every schedule the student is assigned to.
+
+*(V1 Fee Structure.)* This is the eligibility of a **duration-based** membership. A class-count membership has its own eligibility, used only by Class Count Attendance (§5 "Class-Count Packages", §8 "Class Count Attendance").
 
 ### Expiry
 When membership expires, the student remains in the system and historical records remain available, but the student is not normally eligible for attendance until a valid membership is active again.
@@ -319,6 +359,7 @@ An optional prefix can be shown in front of the invoice number, for example `INV
 An issued invoice stores:
 - its number and date, and the invoice number prefix (if any) that was in force when it was issued;
 - its financial values (amount and, when tax is enabled, the tax values);
+- *(V1 Fee Structure.)* the fee breakdown for a membership priced under the fee structure: the **fee**, the **built-in duration saving**, the **additional discount** and the **final amount**. The discount's reason is not part of the document; it stays in the membership's audit history. Documents issued before the fee structure have no breakdown and are not changed;
 - the customer and business information used on the document;
 - the tax information used;
 - the terms, signatory and document title used, where applicable.
@@ -330,6 +371,8 @@ A Paid membership has exactly one invoice (receipt), and that invoice **follows 
 - the plan and the membership description;
 - the membership period (start and end date);
 - the total amount, and — when the invoice has tax — the taxable amount and the tax amount, recalculated from the new amount with the tax-inclusive rule and the **tax rate the invoice was issued with**.
+
+*(V1 Fee Structure.)* **Fee corrections.** Changing a membership's fee, duration saving or additional discount after it was created is a fee correction. It always requires a reason and is kept in the audit history (who, when, old and new values, reason); the final amount must still be greater than zero (§5 "Minimum fee"), and calculated values are rounded as in §5. A fee correction never rewrites a payment document silently: where a payment document exists, it is corrected only by the cancel-and-reissue rules in "Corrections" below, and payments follow the existing payment-editing rules.
 
 Editing the membership never issues another invoice and never allocates another number. The invoice number, prefix, invoice date, payment date, currency and tax terms stay as issued, as does everything copied from elsewhere when it was issued (business, customer, bank details, terms, signatory, signature, logo). If the update of the invoice fails, the membership edit fails with it. Membership Details (batch, schedule, duration) will follow the membership in the same way when it is added.
 
@@ -359,7 +402,7 @@ Once an invoice has been issued for a membership, the issued invoice is preserve
 
 ### Payment Documents
 *(V1 Tax Adjustment.)*
-- Each payment has its own document decision and its own associated document.
+- Each payment has its own document decision and its own associated document. *(V1 Fee Structure.)* This holds whether the membership is Upcoming, Active or Expired, and for class-count memberships as for duration-based ones.
 - When a tax invoice is issued, it uses the **existing tax invoice numbering sequence** (§5A "Invoice Number").
 - When the non-tax option is selected, a clearly identified **payment receipt** is issued, numbered from its **own, separate sequence**.
 - A tax invoice number is never consumed or reused for a payment receipt.
@@ -624,7 +667,7 @@ Only students meeting all four conditions are shown:
 1. The student is active.
 2. Active enrollment in the relevant batch, covering the class session's own date — the enrollment's status is active, its effective start date is on or before the session date, and its effective end date (if any) is on or after the session date.
 3. A schedule assignment on that enrollment covering the session date, for the same schedule series the class session belongs to (§4 "Schedule Assignment", §7 "Schedule Series"). Being enrolled in the batch is not sufficient: a student assigned only to the 6:00 AM class is not eligible for the same batch's 7:00 PM class.
-4. Active membership covering the class session date — the membership's start and end dates cover the session date, and the membership was not yet cancelled as of that date (see Membership below).
+4. Active membership covering the class session date — the membership's start and end dates cover the session date, and the membership was not yet cancelled as of that date (see Membership below). *(V1 Fee Structure.)* Only a duration-based membership satisfies this condition. A class-count membership does not make a student eligible for a class session: it is used only by Class Count Attendance (below). A student holding both kinds is shown in session attendance by the duration-based membership alone, and the attendance workflow for duration-based memberships is unchanged.
 
 Eligibility is always evaluated against the class session's own date, never against today — a past session's eligible list reflects who qualified on that date, not who qualifies now. The batch used is the class session's own batch (its snapshot once materialized, §7A), not the recurring schedule's current batch; the schedule series used is the one the session's own schedule belongs to, so a session generated before a schedule edit and one generated after it both resolve to the same series and the same assigned students.
 
@@ -675,6 +718,17 @@ Show:
 - Attendance percentage
 
 Attendance percentage is Present ÷ Eligible × 100, not Present ÷ Marked — a session with unmarked students shows a correspondingly lower percentage rather than looking complete. A session with zero eligible students shows 0%, never an error.
+
+### Class Count Attendance
+*(V1 Fee Structure.)* A separate workflow records attendance against class-count memberships. It is the third tab of Attendance, beside Today's Sessions and All Sessions, and is **Admin only**. It is not tied to a class session or its time, and it does not change session attendance (above), which stays as it is for duration-based memberships.
+- **Who is shown.** The students with a class-count membership that is usable today: active student, not Cancelled, started, with remaining classes, and — for fixed validity — not expired (§5 "Class-Count Packages"). Each shows their remaining classes.
+- **Record a class.** Each student has an action that records one completed class. The Admin **confirms** it before it is recorded, and chooses the **attendance date** — the day the class was actually held, offered as today in the centre timezone and never replaced by it silently. The date must be on or after the membership's start date, on or before its end date when it has one, and not in the future in the centre timezone. The membership must be eligible now (usable today, as above) and the student active; a Cancelled membership never receives a new record. Recording deducts exactly one class and creates one attendance record linked to that membership, that student and the attendance date, keeping who recorded it and when. Several classes on the same date are separate records.
+- **No duplicate deductions.** One recorded attendance deducts one class once. Repeating the same action — a double click, a retry, a second device — never deducts again. Each record is made by its own request: recording a class again, including one that was reversed, is a new record with a new request.
+- **Never below zero.** Remaining classes cannot go below zero; nothing is recorded when none remain.
+- **Reversing a record.** An Admin can reverse an attendance record made by mistake. A record is never edited or deleted: the reversal is a separate record that keeps **who** reversed it, **when**, and **why**, and the original record stays exactly as it was, shown as Reversed. A reason is required — trimmed, 3 to 500 characters. Reversing restores exactly one class to the remaining count (usage counts only records that have not been reversed). A record can be reversed once: reversing it again, or repeating the same reversal (a double click, a retry, a second device), does not reverse anything twice. Reversing is Admin only.
+- **No classes remaining.** The student is ineligible for further Class Count Attendance. Instead of the record action, an appropriate **renewal action** is shown (Flow 09); the renewal is a new membership as in §5 "Renewal".
+- **Right membership.** A student with both a duration-based and a class-count membership is attended in each workflow against that workflow's own membership. A class-count record never consumes or alters a duration-based membership, and session attendance never consumes a class.
+- **History.** Records already made — with their reversals, the people who made them, their times and their reasons — and memberships of either kind that expired or ran out, are preserved and are never changed by later fee, package or membership changes. Membership Details shows a class-count membership's records (§5 "Membership Information"; 02-ux.md "Class Count Attendance"). Its class total cannot be set below the classes recorded and not reversed.
 
 ### Online / Offline
 Not mandatory in V1. Both online and offline participation count simply as Present. Attendance mode may be considered later if the center needs it.
@@ -778,6 +832,15 @@ The Logo is uploaded from Center Profile (PNG, JPG or WebP, up to 2 MB) and appe
 
 Business identity (name, address, phone, email, logo) continues to come from Center Profile. Changing these settings affects invoices issued afterwards, never invoices already issued.
 
+### Packages and Fees
+*(V1 Fee Structure.)* Admin configures (§5 "Packages and Fee Structure"):
+- **Packages** — name, frequency, and type (duration-based or class-count).
+- **Duration-based packages** — the durations offered and a price for each, entered manually or calculated by a percentage from the base-duration price.
+- **Class-count packages** — the number of classes, the price, and either a fixed validity (its length) or no expiry.
+- **Effective-from date** of each fee version.
+
+A package that is no longer offered is deactivated, not deleted. Changing the fee structure affects memberships created afterwards, never existing ones.
+
 ### Instructors
 Admin can:
 - Add instructor
@@ -830,7 +893,7 @@ One active enrollment per batch keeps attendance eligibility unambiguous: a dupl
 - One membership can cover multiple batch enrollments.
 - Covered batch enrollments are derived from enrollment effective dates that overlap the membership period, not stored directly.
 - Membership status (Upcoming/Active/Expired) is derived from the current date, not stored; cancellation overrides any date-derived status.
-- A student cannot have overlapping non-cancelled membership periods.
+- A student cannot have overlapping non-cancelled duration-based membership periods. *(V1 Fee Structure.)* A student may hold a duration-based and a class-count membership at the same time.
 - Cancelled memberships are excluded from the overlap rule.
 - End date is calculated from plan and start date but remains editable.
 - End date cannot precede start date; a same-day start and end date is allowed.
@@ -841,6 +904,9 @@ One active enrollment per batch keeps attendance eligibility unambiguous: a dupl
 - Payment status does not affect attendance eligibility.
 - Attendance eligibility requires active membership on the session date.
 - Renewals create new membership records.
+- *(V1 Fee Structure.)* A membership is priced with the fee in effect on its start date. Its fee, duration saving and discounts are kept with it, and later fee-structure changes never alter them. An additional discount (fixed amount or percentage) always has a reason and an audit record; a renewal does not inherit it automatically. The final amount after discounts is greater than zero, and calculated prices are rounded half up to two decimal places.
+- *(V1 Fee Structure.)* A class-count membership consumes one class for each recorded Class Count Attendance that has not been reversed (§8), never twice for the same one, and never below zero. The attendance date is chosen at recording: on or after the membership start, on or before its end date when it has one, never in the future (centre timezone); the membership must be eligible now, the student active, and a Cancelled membership takes no new record. An Admin can reverse a record with a required reason (3–500 characters): the original record and the reversal (who, when, why) are both kept, one class is restored, and a record is reversed once. With fixed validity it is usable only with remaining classes and unexpired; with no expiry, only with remaining classes. With none remaining it is ineligible and a renewal action is shown. Unused classes are neither refunded nor carried forward automatically. Class-count attendance is separate from session attendance, which is unchanged.
+- *(V1 Fee Structure.)* A membership can have multiple payments, each with its own document, whether it is Upcoming, Active or Expired.
 - Expired memberships remain in history.
 - Cancelled memberships remain in history; cancellation does not delete the record.
 - A Paid membership has a payment date; it defaults to the current date in the centre timezone when the membership becomes Paid. Historical payment dates are never invented for memberships that were Paid before the Invoice / Receipt Enhancement.
@@ -945,6 +1011,7 @@ Materializing only on first touch is what keeps a schedule and its sessions from
 - Attendance can only be taken for a session dated today or earlier, in the centre timezone.
 - Saving attendance is allowed with some or all students unmarked, and still completes the session.
 - Online/offline does not change attendance status.
+- *(V1 Fee Structure.)* Session attendance uses duration-based memberships only. Class-count attendance is a separate workflow (§8), linked to the class-count membership it uses.
 - Attendance remains historically available.
 - Attendance records are never deleted; a correction updates the record in place.
 - Admin can edit all attendance.
@@ -989,6 +1056,7 @@ Historical records must be protected when:
 - Basic settings
 - Stored Invoice / Receipt with invoice settings (V1 Invoice / Receipt Enhancement, §5A)
 - Payments with installments and mixed payment methods; a tax invoice or payment receipt per payment; cancel-and-reissue corrections (V1 Tax Adjustment, §5, §5A)
+- Centre-configured packages with an effective-dated fee structure, duration savings, additional discounts with an audit record, and class-count packages with their separate, Admin-only Class Count Attendance workflow (a third Attendance tab): a chosen attendance date, confirmation before recording, and audited reversals (V1 Fee Structure, §5, §8, §11)
 
 ### Not Included in V1
 - Student login
@@ -996,6 +1064,7 @@ Historical records must be protected when:
 - Automatic billing
 - Payment reminders
 - Refunds, credit notes, full accounting
+- Discount approval workflow
 - WhatsApp/SMS/email integrations (a plain WhatsApp click-to-chat / share workflow for the Invoice / Receipt is not an integration)
 - QR attendance
 - Face recognition

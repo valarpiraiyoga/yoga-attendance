@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/format";
 import { formatCurrency } from "@/lib/currencies";
 import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
 import { membershipDocumentAction } from "@/lib/memberships/document-action";
+import { formatEndDate } from "@/lib/memberships/period";
 import MembershipIssueInvoiceDialog from "@/app/memberships/membership-issue-invoice";
 import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/validity";
 import { cn } from "@/lib/utils";
@@ -80,9 +81,12 @@ function MembershipRow({ membership, today }) {
       </TableCell>
       <TableCell className={cn("px-2 py-3 text-text-secondary", WIDE_ONLY)}>
         {PLAN[membership.plan] ?? membership.plan}
+        {membership.class_count
+          ? ` · ${membership.class_count.remaining} of ${membership.class_count.total} left`
+          : null}
       </TableCell>
       <TableCell className={cn("px-2 py-3 whitespace-nowrap text-text-secondary", WIDE_ONLY)}>
-        {formatDate(membership.start_date)} {"\u2013"} {formatDate(membership.end_date)}
+        {formatDate(membership.start_date)} {"\u2013"} {formatEndDate(membership.end_date)}
       </TableCell>
       <TableCell className={cn("px-2 py-3 whitespace-nowrap text-text-secondary", PAYMENT_ONLY)}>
         {formatCurrency(membership.amount, membership.currency)}

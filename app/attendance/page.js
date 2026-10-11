@@ -187,7 +187,7 @@ export default async function AttendancePage({ searchParams }) {
         />
 
         <Container>
-          <AttendanceViewToggle active="today" />
+          <AttendanceViewToggle active="today" showClassCount={isAdmin} />
 
           {/* Whole-day totals, independent of the search/filters below - the
               sum of each session's own attendance summary. Present / Absent
@@ -339,7 +339,7 @@ export default async function AttendancePage({ searchParams }) {
       />
 
       <Container>
-        <AttendanceViewToggle active="all" />
+        <AttendanceViewToggle active="all" showClassCount={isAdmin} />
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]">
           <DateNavigator

@@ -9,6 +9,8 @@ import Avatar from "@/components/ui/avatar";
 import EntityCard from "@/components/ui/entity-card";
 import Progress from "@/components/ui/progress";
 import { formatDate } from "@/lib/format";
+import { formatEndDate } from "@/lib/memberships/period";
+import { classCountText } from "@/lib/memberships/class-count";
 import { membershipDocumentAction } from "@/lib/memberships/document-action";
 import MembershipIssueInvoiceDialog from "@/app/memberships/membership-issue-invoice";
 import { formatCurrency } from "@/lib/currencies";
@@ -52,8 +54,11 @@ export default function MembershipCardItem({ membership, today }) {
   const validityLabel = getValidityLabel(validity);
   const isExpired = validity.status === "expired";
   const isActive = validity.status === "active";
-  const showBar = validity.status !== "cancelled";
-  const period = `${formatDate(membership.start_date)} – ${formatDate(membership.end_date)}`;
+  // A class-count membership shows its classes used and left; a membership with no end date has no days to count down.
+  const classCount = membership.class_count;
+  const classPercent = classCount && classCount.total > 0 ? Math.round((classCount.used / classCount.total) * 100) : 0;
+  const showBar = validity.status !== "cancelled" && (classCount ? classCount.total > 0 : !validity.noExpiry);
+  const period = `${formatDate(membership.start_date)} – ${formatEndDate(membership.end_date)}`;
 
   return (
     <EntityCard
@@ -121,13 +126,21 @@ export default function MembershipCardItem({ membership, today }) {
           >
             {validityLabel.text}
           </p>
-          {isActive ? (
+          {classCount ? (
+            <p className="text-small font-normal text-text-secondary tabular-nums">{classCountText(classCount)}</p>
+          ) : isActive && !validity.noExpiry ? (
             <p className="text-small font-normal text-text-secondary tabular-nums">
               {validity.daysLeft} / {validity.totalDays} days
             </p>
           ) : null}
         </div>
-        {showBar ? <Progress value={validity.percentUsed} tone={validityTone(validity)} label="Membership validity used" /> : null}
+        {showBar ? (
+          <Progress
+            value={classCount ? classPercent : validity.percentUsed}
+            tone={validityTone(validity)}
+            label={classCount ? "Classes used" : "Membership validity used"}
+          />
+        ) : null}
       </div>
     </EntityCard>
   );

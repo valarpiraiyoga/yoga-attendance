@@ -43,7 +43,8 @@ import { getInvoiceForMembership } from "@/lib/invoices/data";
 import { getInvoiceSectionState } from "@/lib/invoices/membership-invoice";
 import { getMembershipValidity } from "@/lib/memberships/validity";
 import { formatDate } from "@/lib/format";
-import { formatPeriod } from "@/lib/memberships/period";
+import { NO_EXPIRY_LABEL, formatPeriod } from "@/lib/memberships/period";
+import { classCountText } from "@/lib/memberships/class-count";
 import { formatCurrency } from "@/lib/currencies";
 import { centreDateOf } from "@/lib/class-sessions/validation";
 import { getCenterTimezone } from "@/lib/center-profile/settings";
@@ -53,6 +54,8 @@ import CoveredEnrollmentRow from "@/app/memberships/[id]/covered-enrollment-row"
 import MembershipHistoryRow from "@/app/memberships/[id]/membership-history-row";
 import InvoicePanel from "@/app/memberships/[id]/invoice-panel";
 import PaymentsPanel from "@/app/memberships/[id]/payments-panel";
+import ClassAttendancePanel from "@/app/memberships/[id]/class-attendance-panel";
+import { listClassCountHistory } from "@/lib/class-count-attendance/data";
 import { getPaymentsForMembership } from "@/lib/memberships/payments-data";
 
 const SUCCESS_MESSAGES = {
@@ -110,11 +113,12 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const [history, coveredEnrollments, invoice, payments] = await Promise.all([
+  const [history, coveredEnrollments, invoice, payments, classRecords] = await Promise.all([
     listMembershipsForStudent(membership.student_id),
     listCoveredEnrollments(membership),
     getInvoiceForMembership(id),
     getPaymentsForMembership(id),
+    membership.kind === "class_count" ? listClassCountHistory(id) : Promise.resolve([]),
   ]);
   const otherMemberships = history.filter((entry) => entry.id !== id);
 
@@ -140,12 +144,28 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
   // Progress tile text — the same reading the former Days Progress card gave: the share used once the
   // membership has begun, "not started" while Upcoming, nothing once Cancelled. Calculations are unchanged.
   const isUpcoming = validity.status === "upcoming";
-  const progressValue = !showProgress ? "—" : isUpcoming ? "Not started" : `${validity.percentUsed}% used`;
+  // A class-count membership shows its classes used and left. No end date: no days to count and no bar to fill.
+  const classCount = membership.class_count;
+  const classPercent = classCount && classCount.total > 0 ? Math.round((classCount.used / classCount.total) * 100) : 0;
+  const isOpenEnded = showProgress && validity.noExpiry && !classCount;
+  const progressValue = !showProgress
+    ? "—"
+    : isUpcoming
+      ? "Not started"
+      : classCount
+        ? `${classCount.remaining} left`
+        : isOpenEnded
+          ? NO_EXPIRY_LABEL
+          : `${validity.percentUsed}% used`;
   const progressCaption = !showProgress
     ? "Membership cancelled"
     : isUpcoming
       ? `Starts ${formatDate(membership.start_date)}`
-      : `${used} of ${validity.totalDays} days`;
+      : classCount
+        ? classCountText(classCount)
+        : isOpenEnded
+          ? "No end date"
+          : `${used} of ${validity.totalDays} days`;
 
   // Status tile caption — the date that closed or will close the membership, from its own record.
   const statusCaption =
@@ -155,7 +175,9 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         : "Cancelled"
       : membership.status === "expired"
         ? `Ended ${formatDate(membership.end_date)}`
-        : `Ends ${formatDate(membership.end_date)}`;
+        : membership.end_date
+          ? `Ends ${formatDate(membership.end_date)}`
+          : NO_EXPIRY_LABEL;
 
   return (
     <>
@@ -276,12 +298,12 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
             caption={progressCaption}
             tone={showProgress ? validityTone(membership, validity) : "neutral"}
           >
-            {showProgress ? (
+            {showProgress && !isOpenEnded ? (
               <Progress
                 className="mt-2 h-1.5"
-                value={validity.percentUsed}
+                value={classCount ? classPercent : validity.percentUsed}
                 tone={validityTone(membership, validity)}
-                label="Membership validity used"
+                label={classCount ? "Classes used" : "Membership validity used"}
               />
             ) : null}
           </StatTile>
@@ -317,7 +339,9 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         membershipSummary={{ code: membership.membership_code, planLabel, period }}
       />
 
-      {invoice || !hasPayments ? (
+      {/* The legacy membership-level invoice: shown for an invoice that exists, and for the one case that can still issue one
+          (Paid, no recorded payments, no invoice). Every other membership is documented per payment, in the Payments panel. */}
+      {invoice || invoiceState.canIssue ? (
         <InvoicePanel
           membership={membership}
           invoice={invoice}
@@ -327,6 +351,20 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
               : null
           }
           membershipSummary={{ code: membership.membership_code, planLabel, period }}
+        />
+      ) : null}
+
+      {membership.class_count ? (
+        <ClassAttendancePanel
+          classCount={membership.class_count}
+          records={classRecords}
+          timeZone={await getCenterTimezone()}
+          student={
+            student
+              ? { full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }
+              : null
+          }
+          membership={{ code: membership.membership_code, planLabel, period }}
         />
       ) : null}
 

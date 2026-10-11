@@ -41,6 +41,7 @@ export default async function EditMembershipPage({ params }) {
             currency={membership.currency}
             student={membership.students}
             membership={membership}
+            classesUsed={membership.class_count?.used ?? 0}
             requireConfirmation={false}
             submitLabel="Save Changes"
             pendingLabel="Saving…"
