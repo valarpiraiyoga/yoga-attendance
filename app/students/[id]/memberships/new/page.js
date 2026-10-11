@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { createMembership } from "@/lib/memberships/actions";
+import { todayDateString } from "@/lib/memberships/data";
 import MembershipForm from "@/app/memberships/membership-form";
 import { getCenterCurrency } from "@/lib/center-profile/settings";
 import GuidedSteps from "@/app/students/guided-steps";
@@ -56,6 +57,8 @@ export default async function NewStudentMembershipPage({ params, searchParams })
             currency={await getCenterCurrency()}
             student={student}
             requireConfirmation={!isGuided}
+            allowInitialPayment
+            today={await todayDateString()}
             submitLabel="Save Membership"
             pendingLabel="Saving…"
             cancelHref={`/students/${id}`}

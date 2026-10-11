@@ -177,7 +177,7 @@ Manage the student's valid membership period and use it as part of attendance el
 
 No online payment gateway is required for V1. Payment Status defaults to Pending.
 
-*(V1 Tax Adjustment.)* Payment Status is never chosen by hand: a new membership (including a renewal) is created Pending, with nothing paid and the full membership amount outstanding, and the payments recorded against it determine Pending, Partially Paid or Paid. The Membership form has no Payment Status field; when editing, the current status is shown read-only. Editing a membership never changes its Payment Status. A membership marked Paid before payment records existed keeps that status, with no payment records, and is not changed automatically.
+*(V1 Tax Adjustment.)* Payment Status is never chosen by hand: a new membership (including a renewal) is created Pending, with nothing paid and the full membership amount outstanding, and the payments recorded against it determine Pending, Partially Paid or Paid. The Membership form shows no Payment Status, whether creating or editing; the status is read on Membership Details and the Memberships list, and follows the payments. Editing a membership never changes its Payment Status. A membership marked Paid before payment records existed keeps that status, with no payment records, and is not changed automatically.
 
 *(V1 Tax Adjustment.)* Payment Status reflects the payments recorded against the membership:
 - **Pending** — no payment has been recorded.
@@ -190,6 +190,8 @@ No online payment gateway is required for V1. Payment Status defaults to Pending
 - One payment can combine several payment methods — for example part cash and part UPI. Supported methods include cash, card, UPI and bank transfer.
 - Each payment method entry can capture the details relevant to it, such as a transaction / reference ID (for example for card or UPI) and notes.
 - Each payment has its own document decision and its own document (§5A "Payment Documents").
+- **Editing a payment.** Until a document is issued for a payment, the Admin can edit it: its date, and its methods — the type, amount, reference / transaction ID and notes of each, with methods added or removed. The payment's total is the sum of its methods, so it still cannot exceed the membership amount less the other payments, and the membership's payment status (and payment date, while Paid) is recalculated from the payments. The change is saved all at once or not at all, and each edit is recorded (who, when, the previous and new date, amount and methods). Once any document exists for the payment it can no longer be edited: it is corrected by cancel-and-reissue (§5A "Corrections"), so an issued document can never disagree with its payment.
+- **Record Payment Now.** When a membership is created or renewed, the Admin may also record its first payment in the same form. It is optional and off by default; when it is off, the membership is saved Pending exactly as before. When it is on, it is the same payment as any other — payment date, one or more methods with their amounts, references and notes, and the tax invoice choice for this payment — with the same rules: it cannot exceed the membership amount, its methods add up to it, and the payment status and payment-level documents follow from it as usual. The payment is checked before the membership is saved and recorded once, after it. If the membership is saved but its payment cannot be recorded, the membership stays Pending, the Admin is told, and records the payment from Membership Details.
 
 V1 still has no refunds and no online payment gateway.
 
@@ -767,6 +769,7 @@ The Logo is uploaded from Center Profile (PNG, JPG or WebP, up to 2 MB) and appe
 - **Starting Invoice Number** — the first number the new feature uses (for example 1224 when the last existing invoice is 1223). Later invoices continue sequentially, and the setting must never cause a duplicate number.
 - **Invoice Number Prefix** — optional (§5A Invoice Number Prefix). Blank means no prefix. It can be changed at any time, even after invoices exist, and affects only invoices issued afterwards; it is not locked like the Starting Invoice Number.
 - **Tax** — enabled or disabled; tax name; tax rate (§5A Tax)
+- **GSTIN** — the centre's 15-character GST identification number, optional (blank means none). It is checked for the GSTIN format and its check character, kept in the Tax area (it does not depend on the tax switch), and initially set to the centre's own GSTIN. It is printed in the business details of newly issued **tax invoices** only: a payment receipt (§5A "Payment Documents") is not a tax document and never shows it. It is copied into each tax invoice when it is issued, like every other business detail: changing or clearing it later never alters a document already issued, and a document issued without one shows none.
 - **Terms & Conditions**
 - **Signatory name** and **signatory designation**
 - **Signature image**

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getMembership } from "@/lib/memberships/data";
 import { createMembership } from "@/lib/memberships/actions";
+import { todayDateString } from "@/lib/memberships/data";
 import { calculateMembershipEndDate, addOneDayUTC } from "@/lib/memberships/validation";
 import MembershipForm from "@/app/memberships/membership-form";
 import { getCenterCurrency } from "@/lib/center-profile/settings";
@@ -62,6 +63,8 @@ export default async function RenewMembershipPage({ params }) {
             student={previous.students}
             initialValues={initialValues}
             requireConfirmation
+            allowInitialPayment
+            today={await todayDateString()}
             submitLabel="Save Renewal"
             pendingLabel="Saving…"
             cancelHref={`/memberships/${id}`}

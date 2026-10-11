@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
-import { Banknote, CalendarDays, CalendarX2, Layers, UserRound } from "lucide-react";
+import { Banknote, CalendarDays, CalendarX2, CircleCheck, Layers, Receipt, UserRound, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,9 +17,11 @@ import {
 import StudentContext from "@/components/ui/student-context";
 import ReviewDialog, { ReviewRow } from "@/components/ui/review-dialog";
 import { formatCurrency } from "@/lib/currencies";
-import { PAYMENT_STATUS } from "@/lib/status";
 import StudentIdentityHeader from "@/components/ui/student-identity-header";
 import { validateMembershipInput, calculateMembershipEndDate } from "@/lib/memberships/validation";
+import { INITIAL_PAYMENT_FIELD, validateInitialPayment } from "@/lib/memberships/initial-payment";
+import { fromPaise, PAYMENT_METHOD_LABEL, toPaise } from "@/lib/memberships/payments-core";
+import PaymentFields, { usePaymentDraft } from "@/app/memberships/[id]/payment-fields";
 
 const PLAN_OPTIONS = [
   { value: "monthly", label: "Monthly" },
@@ -56,10 +58,14 @@ function planLabel(plan) {
  * No Status/cancellation field here: cancellation is its own action
  * (app/memberships/[id]/cancel-membership.js), never a field on this form.
  *
- * No Payment Status field either (V1 Tax Adjustment): a new membership is Pending with its whole amount
- * outstanding, and payments recorded on Membership Details determine Pending / Partially Paid / Paid. The
- * status is shown read-only in both modes - Pending when creating, the saved status when editing - and is
- * never submitted.
+ * No Payment Status either, shown or submitted (V1 Tax Adjustment): a new membership is Pending with its whole
+ * amount outstanding, and the payments recorded for it determine Pending / Partially Paid / Paid. The status is
+ * read on Membership Details and the Memberships list, never on this form.
+ *
+ * Create and Renew can also record the first payment together with the membership (`allowInitialPayment`): an
+ * optional "Record Payment Now" section, off by default, that reuses the Record Payment fields. While it is off
+ * nothing about the payment is submitted, and the form saves exactly as before. The payment is validated and
+ * recorded by the server action (lib/memberships/initial-payment.js); the status still follows the payments.
  */
 export default function MembershipForm({
   action,
@@ -72,6 +78,8 @@ export default function MembershipForm({
   pendingLabel,
   cancelHref,
   skipHref,
+  allowInitialPayment = false,
+  today,
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const [fieldErrors, setFieldErrors] = useState(state?.fieldErrors ?? {});
@@ -91,10 +99,27 @@ export default function MembershipForm({
   const [reviewData, setReviewData] = useState(null);
   const formRef = useRef(null);
 
+  // Record Payment Now: off by default. The balance is the membership amount as typed so far (a new membership is
+  // wholly outstanding); the tax invoice choice starts from the student saved preference.
+  const taxInvoiceDefault = student?.tax_invoice_default ?? true;
+  const amountPaise = toPaise(String(amount).trim());
+  const [paymentEnabled, setPaymentEnabled] = useState(false);
+  const [paymentErrors, setPaymentErrors] = useState(state?.paymentErrors ?? {});
+  const payment = usePaymentDraft({ today, balancePaise: amountPaise ?? 0, taxInvoiceDefault });
+
   const [prevState, setPrevState] = useState(state);
   if (state !== prevState) {
     setPrevState(state);
     setFieldErrors(state?.fieldErrors ?? {});
+    setPaymentErrors(state?.paymentErrors ?? {});
+  }
+
+  function handlePaymentToggle(event) {
+    const on = event.target.checked;
+    setPaymentEnabled(on);
+    setPaymentErrors({});
+    // Starts clean each time it is turned on, with the membership amount as the first method suggested amount.
+    if (on) payment.reset(amountPaise ? fromPaise(amountPaise) : "");
   }
 
   function recalculateEndDate(nextPlan, nextStartDate) {
@@ -154,16 +179,29 @@ export default function MembershipForm({
     };
 
     const result = validateMembershipInput(input);
-    if (!result.success) {
-      setFieldErrors(result.errors);
+    const paymentResult = paymentEnabled ? validateInitialPayment(payment.input, { amount: input.amount, today }) : null;
+    if (!result.success || (paymentResult && !paymentResult.success)) {
+      setFieldErrors(result.success ? {} : result.errors);
+      setPaymentErrors(paymentResult && !paymentResult.success ? paymentResult.errors : {});
       return;
     }
+    setPaymentErrors({});
 
+    const remainingPaise = (toPaise(String(input.amount).trim()) ?? 0) - (paymentResult?.data.totalPaise ?? 0);
     setReviewData({
       planLabel: planLabel(input.plan),
       startDate: input.start_date,
       endDate: input.end_date,
       amount: input.amount,
+      payment: paymentResult
+        ? {
+            date: paymentResult.data.paymentDate,
+            totalPaise: paymentResult.data.totalPaise,
+            methods: paymentResult.data.methods,
+            taxInvoice: payment.issueTaxInvoice,
+            remainingPaise,
+          }
+        : null,
     });
     setConfirmOpen(true);
   }
@@ -293,12 +331,6 @@ export default function MembershipForm({
               </p>
             ) : null}
           </div>
-
-          <div className="flex flex-col gap-2">
-            <p className="text-body font-medium text-text-primary">Payment Status</p>
-            <p className="text-body text-text-primary">{PAYMENT_STATUS[membership?.payment_status ?? "pending"]?.label ?? "—"}</p>
-            <p className="text-small text-text-secondary">Managed from Payments on Membership Details.</p>
-          </div>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -318,6 +350,48 @@ export default function MembershipForm({
             </p>
           ) : null}
         </div>
+
+        {allowInitialPayment ? (
+          <div className="flex flex-col gap-4 rounded-card border border-border p-4">
+            <div className="flex items-start gap-3">
+              <input
+                id="record-payment-now"
+                type="checkbox"
+                className="mt-1 size-4 shrink-0 accent-brand"
+                checked={paymentEnabled}
+                disabled={isPending}
+                onChange={handlePaymentToggle}
+                aria-describedby="record-payment-now-help"
+              />
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="record-payment-now">Record Payment Now</Label>
+                <p id="record-payment-now-help" className="text-small text-text-secondary">
+                  Optional. Record the first payment together with this membership. Leave it off to save the membership as Pending.
+                </p>
+              </div>
+            </div>
+
+            {paymentEnabled ? (
+              <>
+                {amountPaise === null ? (
+                  <p className="text-small text-text-secondary">Enter the membership amount to see the balance.</p>
+                ) : null}
+                <PaymentFields
+                  draft={payment}
+                  currency={currency}
+                  today={today}
+                  disabled={isPending}
+                  fieldErrors={paymentErrors}
+                  rowErrors={paymentErrors.rows ?? {}}
+                  taxInvoiceDefault={taxInvoiceDefault}
+                  idPrefix="initial-payment"
+                  fieldName={INITIAL_PAYMENT_FIELD}
+                  onRowRemoved={() => setPaymentErrors((current) => ({ ...current, rows: {} }))}
+                />
+              </>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-2 flex flex-wrap justify-end gap-3 border-t border-border pt-5">
           {skipHref ? (
@@ -380,6 +454,26 @@ export default function MembershipForm({
               <ReviewRow icon={Banknote} label="Amount">
                 {formatCurrency(reviewData.amount, currency)}
               </ReviewRow>
+              {reviewData.payment ? (
+                <>
+                  <ReviewRow icon={Wallet} label="Payment">
+                    {formatCurrency(fromPaise(reviewData.payment.totalPaise), currency)} on {reviewData.payment.date}
+                    <span className="block text-small font-normal text-text-secondary">
+                      {reviewData.payment.methods
+                        .map((method) => `${PAYMENT_METHOD_LABEL[method.method] ?? method.method} ${formatCurrency(method.amount, currency)}`)
+                        .join(" · ")}
+                    </span>
+                  </ReviewRow>
+                  <ReviewRow icon={Receipt} label="Tax invoice">
+                    {reviewData.payment.taxInvoice ? "Yes" : "No"}
+                  </ReviewRow>
+                  <ReviewRow icon={CircleCheck} label="Result">
+                    {reviewData.payment.remainingPaise <= 0
+                      ? "Paid in full"
+                      : `Partly paid · balance ${formatCurrency(fromPaise(reviewData.payment.remainingPaise), currency)}`}
+                  </ReviewRow>
+                </>
+              ) : null}
             </dl>
           ) : null}
         </ReviewDialog>

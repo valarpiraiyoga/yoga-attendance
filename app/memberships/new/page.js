@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent, listStudentOptions } from "@/lib/students/data";
 import { createMembership } from "@/lib/memberships/actions";
+import { todayDateString } from "@/lib/memberships/data";
 import MembershipForm from "@/app/memberships/membership-form";
 import { getCenterCurrency } from "@/lib/center-profile/settings";
 import SelectStudentStep from "@/app/memberships/new/select-student-step";
@@ -66,6 +67,8 @@ export default async function NewMembershipPage({ searchParams }) {
             currency={await getCenterCurrency()}
             student={student}
             requireConfirmation
+            allowInitialPayment
+            today={await todayDateString()}
             submitLabel="Save Membership"
             pendingLabel="Saving…"
             cancelHref="/memberships"

@@ -10,7 +10,7 @@ import { canIssuePaymentDocument, DOCUMENT_TITLE_LABEL, PAYMENT_DOCUMENT_BLOCKED
 import { formatInvoiceNumberOf } from "@/lib/invoices/invoice-number";
 import RecordPayment from "@/app/memberships/[id]/record-payment";
 import IssuePaymentDocument from "@/app/memberships/[id]/issue-payment-document";
-import EditPaymentAmount from "@/app/memberships/[id]/edit-payment-amount";
+import EditPayment from "@/app/memberships/[id]/edit-payment";
 
 /**
  * Payments (V1 Tax Adjustment, Step 2) on Membership Details: what has been paid, what is still due,
@@ -97,7 +97,10 @@ export default function PaymentsPanel({ membership, payments, today, student, me
                     {formatCurrency(payment.amount, currency)}
                     {payment.edits.length > 0 ? (
                       <span className="text-small block font-normal text-text-secondary">
-                        Edited · was {formatCurrency(payment.edits[0].previous_amount, currency)}
+                        Edited
+                        {Number(payment.edits[0].previous_amount) !== Number(payment.amount)
+                          ? ` · was ${formatCurrency(payment.edits[0].previous_amount, currency)}`
+                          : ""}
                       </span>
                     ) : null}
                   </TableCell>
@@ -126,18 +129,12 @@ export default function PaymentsPanel({ membership, payments, today, student, me
                           <span className="text-small text-text-secondary">Not available</span>
                         )}
                         {payment.editable ? (
-                          <EditPaymentAmount
+                          <EditPayment
                             membershipId={membership.id}
-                            paymentId={payment.id}
-                            methods={payment.methods.map((method) => ({
-                              id: method.id,
-                              label: PAYMENT_METHOD_LABEL[method.method] ?? method.method,
-                              reference: method.reference_id,
-                              amount: String(method.amount),
-                            }))}
-                            paymentAmount={String(payment.amount)}
+                            payment={payment}
                             balancePaise={balancePaise}
                             currency={currency}
+                            today={today}
                             paymentLabel={`the payment on ${formatDate(payment.payment_date)}`}
                             student={student}
                             membership={membershipSummary}

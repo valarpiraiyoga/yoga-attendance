@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import EmptyState from "@/components/ui/empty-state";
 import FlashToast from "@/components/ui/flash-toast";
+import Alert from "@/components/ui/alert";
+import { PAYMENT_NOT_RECORDED_NOTICE } from "@/lib/memberships/initial-payment";
 import MembershipTag from "@/components/ui/membership-tag";
 import Progress from "@/components/ui/progress";
 import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
@@ -288,6 +290,14 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
 
       {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
       <FlashToast message={message} />
+
+      {/* A membership saved with "Record Payment Now" whose payment did not go through (lib/memberships/initial-payment.js).
+          It stays until a payment exists, so it cannot be missed - and tells the Admin to check before recording again. */}
+      {rawParams?.notice === PAYMENT_NOT_RECORDED_NOTICE && payments.length === 0 ? (
+        <Alert variant="warning" role="alert" title="The membership was saved, but its payment may not have been recorded">
+          Check Payments below before recording it again. Until a payment is recorded, this membership stays Pending.
+        </Alert>
+      ) : null}
 
       <PaymentsPanel
         membership={membership}

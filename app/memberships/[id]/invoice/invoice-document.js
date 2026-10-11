@@ -82,6 +82,7 @@ export default function InvoiceDocument({ invoiceDocument: doc, logoUrl, signatu
             {business.address ? (
               <p className="text-small mt-1 break-words whitespace-pre-line text-text-secondary">{business.address}</p>
             ) : null}
+            {business.gstin ? <p className="text-small mt-1 break-words text-text-secondary">GSTIN: {business.gstin}</p> : null}
             {business.phone || business.email ? (
               <div className="mt-1 flex flex-col gap-0.5">
                 {business.phone ? <ContactLine icon={Phone}>{business.phone}</ContactLine> : null}

@@ -42,6 +42,7 @@ const BLUR_VALIDATED_FIELDS = new Set([
   "payment_receipt_prefix",
   "tax_name",
   "tax_rate",
+  "gstin",
   "terms",
   "signatory_name",
   "signatory_designation",
@@ -58,6 +59,7 @@ function readInput(formData) {
     tax_enabled: formData.get("tax_enabled"),
     tax_name: formData.get("tax_name"),
     tax_rate: formData.get("tax_rate"),
+    gstin: formData.get("gstin") ?? undefined,
     terms: formData.get("terms"),
     signatory_name: formData.get("signatory_name"),
     signatory_designation: formData.get("signatory_designation"),
@@ -430,6 +432,25 @@ export default function InvoiceReceiptForm({ action, settings, startingLocked, r
                 </FormField>
               </div>
 
+              {/* The business's GST registration: independent of the tax switch, copied into each document when it is issued. */}
+              <FormField
+                id="gstin"
+                label="GSTIN"
+                error={fieldErrors.gstin}
+                help="Shown in the business details of new tax invoices, not on payment receipts. Leave blank to show none."
+              >
+                {(field) => (
+                  <Input
+                    {...field}
+                    name="gstin"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    disabled={isPending}
+                    defaultValue={state?.values?.gstin ?? settings?.gstin ?? ""}
+                  />
+                )}
+              </FormField>
             </Panel>
 
             <Panel className="flex flex-col gap-5">
