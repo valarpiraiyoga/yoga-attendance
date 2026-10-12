@@ -7,6 +7,8 @@
 --   * One transaction, ending in ROLLBACK. Run the whole file in one go (`rollback;` first if a transaction is open).
 --   * Disposable ZZVERIFY fixtures only: one student, one membership of 1000, two payments, their edits and their
 --     documents. No existing payment, edit or document is touched; existing ones are fingerprinted and checked.
+--   * E4h and E4i go through pg_temp.edit_msg, which returns the SQLSTATE AND the refusal's message, so a refusal is
+--     only accepted when it is the intended one (an unknown payment, a negative amount) and not some other 22023.
 --   * If a numbering sequence is not configured yet, the script configures it for this run only (rolled back).
 --   * It holds the invoice_settings row lock until it ends: run it when no one is issuing documents.
 --   * Sequences leave a small gap in the YC- / MEM- numbering; no row remains.
@@ -160,6 +162,24 @@ begin
   return pg_temp.query_as(p_user, format('select public.edit_payment_amount(%L::uuid, %L::jsonb)::text', p_payment, p_allocations::text));
 end $f$;
 
+-- Edits a payment as p_user; returns 'OK', or '<sqlstate> <message>' (the refusal in words).
+create function pg_temp.edit_msg(p_user uuid, p_payment uuid, p_allocations jsonb)
+returns text language plpgsql as $f$
+declare
+  v_out text := 'OK';
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
+  perform set_config('request.jwt.claim.sub', p_user::text, true);
+  execute 'set local role authenticated';
+  begin
+    perform public.edit_payment_amount(p_payment, p_allocations);
+  exception when others then
+    v_out := sqlstate || ' ' || sqlerrm;
+  end;
+  execute 'reset role';
+  return v_out;
+end $f$;
+
 -- A fingerprint of everything an edit may change for one membership: its row, its payments, their methods and edits.
 create function pg_temp.state(p_membership uuid)
 returns text language sql as $f$
@@ -190,6 +210,8 @@ declare
   v_methods0   jsonb;
   v_edit       public.membership_payment_edits%rowtype;
   v_snap       text;
+  v_snap2      text;
+  v_unknown    uuid;
   v_doc        public.invoices%rowtype;
   v_pay_hash0  text;
   v_pay_hash1  text;
@@ -296,6 +318,32 @@ begin
                                                              jsonb_build_object('id', v_upi1, 'amount', '200')));
       perform pg_temp.rec('E5 an edit that changes nothing succeeds and writes no audit row',
         v_out = v_p1::text and pg_temp.state(v_m) = v_snap, coalesce(v_out, 'NULL'));
+
+      -- E4h-E4i. Two more refusals, asserted by SQLSTATE AND message, each leaving everything as it was ------------------------
+      v_snap2 := pg_temp.state(v_m);
+
+      -- E4h. An unknown payment: a well-formed id that exists nowhere, with the very allocation E5 just applied successfully
+      -- to P1 (so the payload is valid and the unknown id is the only thing wrong with the call).
+      v_unknown := gen_random_uuid();
+      v_out := pg_temp.edit_msg(v_admin, v_unknown, jsonb_build_array(jsonb_build_object('id', v_cash1, 'amount', '300'),
+                                                                      jsonb_build_object('id', v_upi1, 'amount', '200')));
+      perform pg_temp.rec('E4h an unknown payment id is refused (P0002, "Payment not found.") and nothing changed',
+        v_out = 'P0002 Payment not found.'
+        and not exists (select 1 from public.membership_payments where id = v_unknown)
+        and pg_temp.state(v_m) = v_snap2, v_out);
+
+      -- E4i. A negative amount on an existing payment: the cash method becomes -100, the other stays 200, so the total
+      -- (100) is within the balance and the negative amount is the only defect.
+      v_out := pg_temp.edit_msg(v_admin, v_p1, jsonb_build_array(jsonb_build_object('id', v_cash1, 'amount', '-100'),
+                                                                 jsonb_build_object('id', v_upi1, 'amount', '200')));
+      perform pg_temp.rec('E4i a negative amount is refused (22023, "greater than zero") and the payment, its methods, the membership and the audit trail are unchanged',
+        v_out = '22023 Each payment method needs an amount greater than zero, with at most two decimals.'
+        and (select amount from public.membership_payments where id = v_p1) = 500
+        and (select amount from public.membership_payment_methods where id = v_cash1) = 300
+        and (select amount from public.membership_payment_methods where id = v_upi1) = 200
+        and (select payment_status = 'paid' and payment_date = v_today - 1 from public.memberships where id = v_m)
+        and (select count(*) from public.membership_payment_edits where payment_id = v_p1) = 2
+        and pg_temp.state(v_m) = v_snap2, v_out);
 
       -- E7-E8. Authorization and the audit trail's protection ---------------------------------------------------------------------
       if v_instructor is null then
