@@ -7,7 +7,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "YogaSync",
+  title: "YogaSync-Management",
   description: "Attendance management for yoga center students, batches, and classes.",
 };
 
