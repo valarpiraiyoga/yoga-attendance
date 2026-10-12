@@ -11,6 +11,8 @@
 --   * FORCED FAILURE (C7) uses no DDL: as the owning role, it moves ONE FIXTURE payment's date to after its
 --     document's date, so the reissue inside the correction fails on its own date check. It then checks that the
 --     whole correction rolled back, and puts the date back.
+--   * DUPLICATE REPLACEMENT (C12) inserts two cancelled copies of a fixture document directly, as the owning role, to
+--     reach the unique index on replaces_id; they belong to a fixture payment and are rolled back with everything else.
 --   * If a numbering sequence is not configured yet, the script configures it for this run only (rolled back).
 --   * It holds the invoice_settings row lock until it ends: another session issuing a document at the same moment
 --     simply waits. Run it when no one is issuing documents.
@@ -190,6 +192,11 @@ declare
   v_hash0      text;
   v_hash1      text;
   v_snap       text;
+  v_cur        uuid;
+  v_dup_n      bigint;
+  v_dup_code   text;
+  v_dup_cons   text;
+  v_dup_msg    text;
 begin
   select id into v_admin from public.profiles where role = 'admin' order by created_at limit 1;
   select id into v_instructor from public.profiles where role = 'instructor' order by created_at limit 1;
@@ -296,6 +303,8 @@ begin
       perform pg_temp.rec('C4b a reason over 500 characters is refused (22023)', v_out = 'ERR:22023', v_out);
       perform pg_temp.rec('C4c ... and the refusals changed nothing',
         (select md5(string_agg(to_jsonb(i)::text, '|' order by i.id)) from public.invoices i where i.membership_id = v_m) = v_snap, '');
+      v_out := pg_temp.correct(v_admin, gen_random_uuid(), 'ZZVERIFY unknown document');
+      perform pg_temp.rec('C4e an unknown document id is refused (P0002)', v_out = 'ERR:P0002', v_out);
 
       -- A fixture membership made Paid with no payments gets a membership-level document (auto-issue, as before 0034).
       v_code := pg_temp.run_owner(format('update public.memberships set payment_status = ''paid'', payment_date = %L where id = %L',
@@ -315,14 +324,14 @@ begin
       v_code := pg_temp.run_owner(format('update public.invoices set status = ''issued'', cancelled_at = null, cancelled_by = null, cancellation_reason = null where id = %L', v_orig_rcpt.id));
       perform pg_temp.rec('C5b a cancelled document cannot be un-cancelled, even by the owner (55006)', v_code = '55006', v_code);
       v_code := pg_temp.run_owner(format('delete from public.invoices where id = %L', v_orig_rcpt.id));
-      perform pg_temp.rec('C5c a cancelled document cannot be deleted', v_code <> 'OK', v_code);
+      perform pg_temp.rec('C5c a cancelled document cannot be deleted, even by the owner (55006, invoices_prevent_delete)', v_code = '55006', v_code);
       v_code := pg_temp.run_owner(format(
         'update public.invoices set status = ''cancelled'', cancelled_at = now(), cancellation_reason = ''ZZVERIFY direct'' where id = %L', v_new.id));
       perform pg_temp.rec('C6a an issued document cannot be cancelled outside the correction, even by the owner (55006)', v_code = '55006', v_code);
       v_code := pg_temp.run_as(v_admin, format(
         'update public.invoices set status = ''cancelled'', cancelled_at = now(), cancellation_reason = ''ZZVERIFY direct'' where id = %L', v_new.id));
-      perform pg_temp.rec('C6b nor by an Admin directly (refused)',
-        v_code <> 'OK' and (select status from public.invoices where id = v_new.id) = 'issued', v_code);
+      perform pg_temp.rec('C6b nor by an Admin directly: clients have no UPDATE privilege on invoices (42501), and the document stays issued',
+        v_code = '42501' and (select status from public.invoices where id = v_new.id) = 'issued', v_code);
 
       -- C8. Authorization -------------------------------------------------------------------------------------------------
       if v_instructor is null then
@@ -358,6 +367,54 @@ begin
         and (select status from public.invoices where id = v_new.id) = 'cancelled'
         and (select count(*) from public.invoices where payment_id = v_orig_rcpt.payment_id) = 3
         and (select count(*) from public.invoices where payment_id = v_orig_rcpt.payment_id and status = 'issued') = 1, coalesce(v_out, 'NULL'));
+
+      -- C11. The reason boundary: exactly 500 characters is accepted ------------------------------------------------------------
+      select id into v_cur from public.invoices where payment_id = v_orig_rcpt.payment_id and status = 'issued';
+      v_out := pg_temp.correct(v_admin, v_cur, repeat('y', 500));
+      perform pg_temp.rec('C11 a cancellation reason of exactly 500 characters is accepted and stored whole',
+        pg_temp.as_uuid(v_out) is not null
+        and (select status = 'cancelled' and length(cancellation_reason) = 500 from public.invoices where id = v_cur),
+        coalesce(v_out, 'NULL'));
+
+      -- C12. A document can be replaced only once: the unique index on replaces_id ---------------------------------------------
+      -- v_new2 (the replacement of v_orig_tax, C9) is copied as a CANCELLED row, so that the only unique index it can
+      -- touch is invoices_replaces_id_unique (one ISSUED document per payment is not in play), with a fresh number
+      -- above every used or reserved one. First the same copy WITHOUT a replaces_id must be accepted - that proves the
+      -- copy is valid in every other respect - then the copy that claims to replace v_orig_tax a second time.
+      select greatest(coalesce((select max(invoice_number) from public.invoices where document_series = 'invoice'), 0),
+                      coalesce((select max(invoice_number) from public.invoice_number_reservations), 0)) + 100
+        into v_dup_n;
+      begin
+        insert into public.invoices
+        select * from jsonb_populate_record(null::public.invoices,
+          to_jsonb(v_new2) || jsonb_build_object('id', gen_random_uuid(), 'invoice_number', v_dup_n,
+            'status', 'cancelled', 'cancelled_at', now(), 'cancellation_reason', 'ZZVERIFY control copy',
+            'replaces_id', null));
+        v_dup_code := 'OK';
+      exception when others then
+        get stacked diagnostics v_dup_cons = constraint_name, v_dup_msg = message_text;
+        v_dup_code := sqlstate;
+      end;
+      perform pg_temp.rec('C12a control: a cancelled copy of a fixture document with no replaces_id is accepted (so the copy is otherwise valid)',
+        v_dup_code = 'OK', v_dup_code || ' ' || coalesce(v_dup_cons, '') || ' ' || coalesce(v_dup_msg, ''));
+
+      begin
+        insert into public.invoices
+        select * from jsonb_populate_record(null::public.invoices,
+          to_jsonb(v_new2) || jsonb_build_object('id', gen_random_uuid(), 'invoice_number', v_dup_n + 1,
+            'status', 'cancelled', 'cancelled_at', now(), 'cancellation_reason', 'ZZVERIFY duplicate replacement',
+            'replaces_id', v_orig_tax.id));
+        v_dup_code := 'OK';
+        v_dup_cons := null;
+        v_dup_msg := null;
+      exception when others then
+        get stacked diagnostics v_dup_cons = constraint_name, v_dup_msg = message_text;
+        v_dup_code := sqlstate;
+      end;
+      perform pg_temp.rec('C12b a second replacement of an already replaced document is refused by the unique index on replaces_id (23505, invoices_replaces_id_unique)',
+        v_dup_code = '23505' and v_dup_cons = 'invoices_replaces_id_unique'
+        and not exists (select 1 from public.invoices where invoice_number = v_dup_n + 1 and document_series = 'invoice'),
+        v_dup_code || ' ' || coalesce(v_dup_cons, 'NULL') || ' ' || coalesce(v_dup_msg, ''));
     end if;
   end if;
 
