@@ -196,6 +196,18 @@ begin
       (select s.tax_invoice_default from public.memberships m join public.students s on s.id = m.student_id where m.id = v_on)
       and not (select s.tax_invoice_default from public.memberships m join public.students s on s.id = m.student_id where m.id = v_off), '');
 
+    -- A caller that omits the fourth argument altogether (as a client does when the value is undefined) takes the
+    -- default NULL. The student whose default is OFF is the discriminating case: a result of FALSE can only come
+    -- from the student's saved preference, because the system default would give TRUE.
+    v_out := pg_temp.query_as(v_admin, format(
+      'select public.record_membership_payment(%L::uuid, %L::date, %L::jsonb)::text',
+      v_off, v_today, '[{"method":"cash","amount":"50"}]'));
+    perform pg_temp.rec('T7 a call with exactly three arguments stores the student''s saved preference: default OFF gives a payment receipt, not the system default',
+      v_out not like 'ERR:%'
+      and not (select issue_tax_invoice from public.membership_payments where id = pg_temp.as_uuid(v_out))
+      and not (select s.tax_invoice_default from public.memberships m join public.students s on s.id = m.student_id where m.id = v_off),
+      coalesce(v_out, 'NULL'));
+
     if v_instructor is null then
       perform pg_temp.skip('T6 instructor', 'no instructor profile found');
     else
