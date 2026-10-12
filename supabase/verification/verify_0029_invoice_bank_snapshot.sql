@@ -30,16 +30,34 @@ checks as (
         and data_type = 'text' and is_nullable = 'YES' and column_default is null
     ) as ok, '' as detail
   union all
-  select 2, 'invoices now has 39 columns: the 34 before plus exactly those five',
-    (select count(*) = 39 from information_schema.columns where table_schema = 'public' and table_name = 'invoices'), ''
+  select 2, 'invoices has every intended column, the five bank snapshot columns among them (later migrations added more)',
+    not exists (
+      select 1
+      from unnest(array[
+        -- 0026 (33), 0027 prefix
+        'id', 'membership_id', 'invoice_number', 'invoice_date', 'payment_date', 'document_title', 'description', 'plan',
+        'period_start', 'period_end', 'currency', 'total_amount', 'tax_enabled', 'tax_name', 'tax_rate', 'taxable_amount',
+        'tax_amount', 'customer_name', 'customer_code', 'customer_phone', 'customer_phone_country_code', 'customer_email',
+        'business_name', 'business_address', 'business_phone', 'business_email', 'business_logo_path', 'terms',
+        'signatory_name', 'signatory_designation', 'signature_path', 'created_at', 'updated_at', 'invoice_prefix',
+        -- 0029: the bank snapshot (also checked for type, nullability and default by check 1)
+        'bank_name', 'bank_account_name', 'bank_account_number', 'bank_ifsc_code', 'bank_branch',
+        -- 0033 service details; 0036 payment documents; 0037 cancellation and replacement; 0041 GSTIN
+        'service_details', 'service_details_tracked', 'payment_id', 'document_series', 'status', 'cancelled_at',
+        'cancelled_by', 'cancellation_reason', 'replaces_id', 'business_gstin'
+      ]) as e(col)
+      where not exists (
+        select 1 from information_schema.columns k
+        where k.table_schema = 'public' and k.table_name = 'invoices' and k.column_name = e.col)
+    ),
+    (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'invoices') || ' columns found; 49 expected'
   union all
   select 3, 'there is NO bank_account_id and NO foreign key to bank_accounts: the snapshot is not a live link',
     not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'invoices' and column_name like '%bank_account_id%')
     and not exists (
       select 1 from pg_constraint
       where conrelid = 'public.invoices'::regclass and contype = 'f' and confrelid = 'public.bank_accounts'::regclass
-    )
-    and (select count(*) = 1 from pg_constraint where conrelid = 'public.invoices'::regclass and contype = 'f'), ''
+    ), ''
   union all
   select 4, 'invoices_bank_snapshot_valid: no bank detail at all, or the four required details together, with the bank_accounts limits',
     exists (
@@ -99,10 +117,14 @@ checks as (
       from fn where proname = 'issue_invoice_core'
     ), ''
   union all
-  select 10, 'the counter logic is intact: counter row, skip used numbers, advance in the same transaction',
+  select 10, 'the counter logic is intact: counter row, skip reserved and held invoice-series numbers, advance in the same transaction',
     (
+      -- Current definition (0030 reservations, 0036 series): the loop skips a number that is RESERVED (ever assigned) or held
+      -- by an invoice-series document; payment receipts are a separate series with their own counter and are not skipped here.
       select def like '%coalesce(v_settings.next_invoice_number, v_settings.starting_invoice_number)%'
-         and def like '%while exists (select 1 from public.invoices where invoice_number = v_candidate) loop%'
+         and def like '%while exists (select 1 from public.invoice_number_reservations where invoice_number = v_candidate)%'
+         and def like '%or exists (select 1 from public.invoices where invoice_number = v_candidate and document_series = ''invoice'') loop%'
+         and def like '%v_candidate := v_candidate + 1;%'
          and def like '%next_invoice_number = v_candidate + 1%'
          and def not ilike '%max(%' and def not ilike '%nextval%'
       from fn where proname = 'issue_invoice_core'
@@ -136,9 +158,18 @@ checks as (
     ), ''
   -- ---- the freeze and the edit ---------------------------------------------------
   union all
-  select 14, 'the freeze compares the whole row and exempts only number, date, updated_at — so the bank snapshot is protected, unchanged',
+  select 14, 'the freeze compares the whole row less an exemption list that starts with number, date and updated_at and never includes a bank column',
     (
-      select def like '%to_jsonb(new) - ''invoice_number'' - ''invoice_date'' - ''updated_at''%'
+      -- Current definition (0037, built on 0026/0030/0033): the list starts as number, date and updated_at; it grows only
+      -- while the synchronization (yoga.invoice_sync) or the cancellation (yoga.invoice_cancel) marker names THIS invoice;
+      -- a cancelled document is final; every other change is refused with 55006. No bank column is in any list.
+      select def like '%v_exempt text[] := array[''invoice_number'', ''invoice_date'', ''updated_at''];%'
+         and def like '%(to_jsonb(new) - v_exempt) is distinct from (to_jsonb(old) - v_exempt)%'
+         and def like '%current_setting(''yoga.invoice_sync'', true) = old.id::text%'
+         and def like '%''plan'', ''description'', ''period_start'', ''period_end'',%'
+         and def like '%current_setting(''yoga.invoice_cancel'', true) = old.id::text%'
+         and def like '%''status'', ''cancelled_at'', ''cancelled_by'', ''cancellation_reason''%'
+         and def like '%A cancelled document cannot be changed.%'
          and def not ilike '%bank%' and def like '%55006%'
       from fn where proname = 'invoices_freeze_snapshot'
     )

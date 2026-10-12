@@ -133,8 +133,10 @@ begin
   perform pg_temp.rec('E1 the freeze trigger exempts exactly eight columns while synchronizing',
     v_freeze like '%''plan'', ''description'', ''period_start'', ''period_end''%'
     and v_freeze like '%''total_amount'', ''taxable_amount'', ''tax_amount'', ''service_details''%'
+    -- Since 0037 the function has two exemption arrays (the cancellation one first), so the count looks at the array that
+    -- follows the yoga.invoice_sync marker: the eight synchronized columns.
     and (select count(*) = 8 from regexp_matches(
-           substring(v_freeze from 'v_exempt \|\| array\[(.*?)\]'), '''[a-z_]+''', 'g')), '');
+           substring(substring(v_freeze from 'yoga\.invoice_sync.*') from 'v_exempt \|\| array\[(.*?)\]'), '''[a-z_]+''', 'g')), '');
 
   perform pg_temp.rec('E1b the marker is not among the columns the synchronization may change (it is set at issue, never updated)',
     v_freeze not like '%service_details_tracked%' and v_sync not like '%service_details_tracked =%', '');

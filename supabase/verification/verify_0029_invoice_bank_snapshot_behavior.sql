@@ -12,11 +12,16 @@
 --   * It genuinely writes: it creates two test bank accounts, activates and edits them,
 --     changes the prefix setting, and marks existing Pending memberships Paid (which issues
 --     invoices). None of it is committed.
---   * NOTHING THAT CONSUMES A SEQUENCE IS EVER INSERTED. It never inserts a student, a
---     membership or an invoice directly (their codes come from sequences nextval() does not
---     give back on rollback); invoices use no sequence at all — numbering is a locked
---     counter row — and bank_accounts keys on gen_random_uuid(). It reuses existing
---     memberships.
+--   * It reuses existing Pending memberships and normally inserts no student, membership or
+--     invoice. ONE EXCEPTION (scenario D): when the database has fewer than four Pending
+--     memberships without an invoice, it inserts ONE disposable ZZVERIFY student and ONE
+--     Pending membership so that "issue after the active account is deactivated" can still
+--     be tested. The rows are rolled back, but their YC- / MEM- codes come from sequences
+--     that nextval() does not give back on rollback, so that fallback leaves a small GAP in
+--     the student and membership numbering (one code each). If the fixture cannot be
+--     created, D1-D4 are reported NOT TESTED. Invoices are never inserted directly and use
+--     no sequence at all — numbering is a locked counter row — and bank_accounts keys on
+--     gen_random_uuid().
 --   * The invoices that already exist are never touched: the script fingerprints them
 --     first and checks at the end that they are byte-for-byte the same.
 --   * If bank accounts already exist the script works alongside them: its own are tagged
@@ -147,6 +152,8 @@ declare
   v_inv          public.invoices%rowtype;
   v_h_name text; v_h_acc text; v_h_num text; v_h_ifsc text; v_h_branch text;
   v_s_name text; v_s_acc text; v_s_num text; v_s_ifsc text; v_s_branch text;
+  v_fix_student  uuid;
+  v_fix_err      text;
 begin
   select (now() at time zone public.centre_timezone())::date into v_today;
   select id into v_admin from public.profiles where role = 'admin' order by created_at limit 1;
@@ -277,7 +284,24 @@ begin
         and (select invoice_prefix is null from public.invoices where id = v_i2), v_n2 || ' then ' || v_n3);
 
       if v_m4 is null then
-        perform pg_temp.skip('D1-D2 deactivate then issue', 'needs a fourth Pending membership without an invoice');
+        -- No fourth real Pending membership: build ONE disposable student and Pending membership (rolled back with
+        -- everything else; see the header for the sequence gap it leaves). A failure here is reported, not raised.
+        begin
+          insert into public.students (full_name, phone, phone_country_code, join_date, status)
+          values ('ZZVERIFY 0029 D', '9000290001', '+91', v_today - 60, 'active')
+          returning id into v_fix_student;
+          insert into public.memberships (student_id, plan, start_date, end_date, amount, payment_status, currency)
+          values (v_fix_student, 'monthly', v_today - 30, v_today - 1, 1000.00, 'pending', 'INR')
+          returning id into v_m4;
+        exception when others then
+          v_m4 := null;
+          v_fix_err := sqlstate || ' ' || sqlerrm;
+        end;
+      end if;
+
+      if v_m4 is null then
+        perform pg_temp.skip('D1-D2 deactivate then issue',
+          'no fourth Pending membership, and the disposable fixture could not be created: ' || coalesce(v_fix_err, 'unknown'));
       else
         -- ===================================================================
         -- Deactivate S: old invoices unchanged; the next invoice has no snapshot

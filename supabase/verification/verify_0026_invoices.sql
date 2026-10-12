@@ -22,7 +22,7 @@ fn as (
 ),
 checks as (
   -- ---- table shape --------------------------------------------------------
-  select 1 as seq, 'invoices exists with exactly the approved columns' as check_name,
+  select 1 as seq, 'invoices exists with the approved columns of 0026 and every column later migrations added' as check_name,
     (
       select count(*) = 33 from information_schema.columns
       where table_schema = 'public' and table_name = 'invoices'
@@ -37,14 +37,32 @@ checks as (
           'created_at', 'updated_at'
         )
     )
-    and (select count(*) in (33, 34, 39) from information_schema.columns where table_schema = 'public' and table_name = 'invoices') as ok,
-    '' as detail
+    and not exists (
+      select 1
+      from unnest(array[
+        -- 0026 (33), 0027 prefix
+        'id', 'membership_id', 'invoice_number', 'invoice_date', 'payment_date', 'document_title', 'description', 'plan',
+        'period_start', 'period_end', 'currency', 'total_amount', 'tax_enabled', 'tax_name', 'tax_rate', 'taxable_amount',
+        'tax_amount', 'customer_name', 'customer_code', 'customer_phone', 'customer_phone_country_code', 'customer_email',
+        'business_name', 'business_address', 'business_phone', 'business_email', 'business_logo_path', 'terms',
+        'signatory_name', 'signatory_designation', 'signature_path', 'created_at', 'updated_at', 'invoice_prefix',
+        -- 0029 bank snapshot
+        'bank_name', 'bank_account_name', 'bank_account_number', 'bank_ifsc_code', 'bank_branch',
+        -- 0033 service details; 0036 payment documents; 0037 cancellation and replacement; 0041 GSTIN
+        'service_details', 'service_details_tracked', 'payment_id', 'document_series', 'status', 'cancelled_at',
+        'cancelled_by', 'cancellation_reason', 'replaces_id', 'business_gstin'
+      ]) as e(col)
+      where not exists (
+        select 1 from information_schema.columns k
+        where k.table_schema = 'public' and k.table_name = 'invoices' and k.column_name = e.col)
+    ) as ok,
+    (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'invoices') || ' columns found; 49 expected' as detail
   union all
-  select 2, 'invoices has no status / void / issued_by / payment / refund / credit-note column',
+  select 2, 'invoices has no void / issued_by / payment_method / refund / credit-note column (status, cancellation and payment_id are intended since 0036 and 0037)',
     not exists (
       select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'invoices'
-        and (column_name in ('status', 'voided_at', 'issued_by', 'cancelled_at', 'payment_method', 'payment_id')
+        and (column_name in ('voided_at', 'issued_by', 'payment_method')
              or column_name like '%refund%' or column_name like '%credit%' or column_name like '%partial%')
     ), ''
   union all
@@ -79,8 +97,13 @@ checks as (
         and confrelid = 'public.memberships'::regclass and confdeltype = 'r'
     ), ''
   union all
-  select 7, 'the only foreign key is to memberships (no live link to students, center_profile or invoice_settings)',
-    (select count(*) = 1 from pg_constraint where conrelid = 'public.invoices'::regclass and contype = 'f'), ''
+  select 7, 'every foreign key points at memberships, membership_payments, invoices (a replacement) or auth.users - no live link to students, center_profile or invoice_settings',
+    not exists (
+      select 1 from pg_constraint
+      where conrelid = 'public.invoices'::regclass and contype = 'f'
+        and confrelid not in ('public.memberships'::regclass, 'public.membership_payments'::regclass,
+                              'public.invoices'::regclass, 'auth.users'::regclass)
+    ), ''
   union all
   select 8, 'UNIQUE on membership_id (Membership 1 : 0..1 Invoice)',
     exists (
@@ -182,10 +205,14 @@ checks as (
     ), ''
   -- ---- numbering ------------------------------------------------------------------
   union all
-  select 21, 'numbering locks the settings row FOR UPDATE and skips used numbers',
+  select 21, 'numbering locks the settings row FOR UPDATE and skips reserved and held invoice-series numbers',
     (
+      -- Current definition (0030 reservations, 0036 series): the loop skips a number that is RESERVED (ever assigned) or held
+      -- by an invoice-series document; payment receipts are a separate series with their own counter.
       select def like '%from public.invoice_settings%where singleton%for update%'
-         and def like '%while exists (select 1 from public.invoices where invoice_number = v_candidate)%'
+         and def like '%while exists (select 1 from public.invoice_number_reservations where invoice_number = v_candidate)%'
+         and def like '%or exists (select 1 from public.invoices where invoice_number = v_candidate and document_series = ''invoice'') loop%'
+         and def like '%v_candidate := v_candidate + 1;%'
          and def like '%next_invoice_number = v_candidate + 1%'
       from fn where proname = 'issue_invoice_core'
     ), ''
@@ -210,18 +237,29 @@ checks as (
     ), ''
   -- ---- triggers ---------------------------------------------------------------------
   union all
-  select 25, 'invoices triggers: validate dates (BEFORE I/U), freeze snapshot (BEFORE U), prevent delete (BEFORE D)',
+  select 25, 'invoices triggers: validate dates (BEFORE I/U), freeze snapshot (BEFORE U), prevent delete (BEFORE D), reserve number (BEFORE I / U of invoice_number)',
     (
-      select count(*) = 3
+      select count(*) = 4
+        and count(*) filter (where tgname = 'invoices_reserve_number_trigger' and (tgtype & 2) = 2 and (tgtype & 4) = 4 and (tgtype & 16) = 16) = 1
         and count(*) filter (where tgname = 'invoices_validate_dates_trigger' and (tgtype & 2) = 2 and (tgtype & 4) = 4 and (tgtype & 16) = 16) = 1
         and count(*) filter (where tgname = 'invoices_freeze_snapshot_trigger' and (tgtype & 2) = 2 and (tgtype & 16) = 16) = 1
         and count(*) filter (where tgname = 'invoices_prevent_delete_trigger' and (tgtype & 2) = 2 and (tgtype & 8) = 8) = 1
       from pg_trigger where tgrelid = 'public.invoices'::regclass and not tgisinternal
     ), ''
   union all
-  select 26, 'snapshot protection allows only invoice_number, invoice_date, updated_at to change',
+  select 26, 'snapshot protection compares the whole row less an exemption list that starts with number, date and updated_at',
     (
-      select def like '%- ''invoice_number'' - ''invoice_date'' - ''updated_at''%' and def like '%55006%'
+      -- Current definition (0037, built on 0026/0030/0033): the list starts as number, date and updated_at; it grows only
+      -- while the synchronization (yoga.invoice_sync) or the cancellation (yoga.invoice_cancel) marker names THIS invoice;
+      -- a cancelled document is final; every other change is refused with 55006.
+      select def like '%v_exempt text[] := array[''invoice_number'', ''invoice_date'', ''updated_at''];%'
+         and def like '%(to_jsonb(new) - v_exempt) is distinct from (to_jsonb(old) - v_exempt)%'
+         and def like '%current_setting(''yoga.invoice_sync'', true) = old.id::text%'
+         and def like '%''plan'', ''description'', ''period_start'', ''period_end'',%'
+         and def like '%current_setting(''yoga.invoice_cancel'', true) = old.id::text%'
+         and def like '%''status'', ''cancelled_at'', ''cancelled_by'', ''cancellation_reason''%'
+         and def like '%A cancelled document cannot be changed.%'
+         and def like '%55006%'
       from fn where proname = 'invoices_freeze_snapshot'
     ), ''
   union all
@@ -241,17 +279,26 @@ checks as (
   select 29, 'the invoice guard fires before the payment rules trigger (sorts first)',
     'memberships_invoice_guard_trigger' < 'memberships_payment_rules_trigger', ''
   union all
-  select 30, 'auto-issue only when the membership BECOMES Paid, no invoice exists and numbering is configured',
+  select 30, 'auto-issue only when the membership BECOMES Paid, has no membership-level invoice and no recorded payment, and numbering is configured',
     (
+      -- 0036: a membership with recorded payments issues nothing here; each payment gets its own document.
       select def like '%old.payment_status is distinct from ''paid''%'
-         and def like '%not exists (select 1 from public.invoices where membership_id = new.id)%'
+         and def like '%not exists (select 1 from public.invoices where membership_id = new.id and payment_id is null)%'
+         and def like '%not exists (select 1 from public.membership_payments where membership_id = new.id)%'
          and def like '%v_start is not null%'
       from fn where proname = 'memberships_auto_issue_invoice'
     ), ''
   union all
-  select 31, 'starting-number lock: invoice_settings_guard trigger rejects a change once an invoice exists',
+  select 31, 'starting-number lock: invoice_settings_guard trigger rejects a change once a document of that series exists (invoice series, and payment receipt series)',
     exists (select 1 from pg_trigger where tgrelid = 'public.invoice_settings'::regclass and tgname = 'invoice_settings_guard_trigger' and (tgtype & 2) = 2 and (tgtype & 16) = 16)
-    and (select def like '%exists (select 1 from public.invoices)%' and def like '%55006%' from fn where proname = 'invoice_settings_guard'), ''
+    and (
+      -- 0036 / 0041: each series' starting number is locked once a document of ITS OWN series exists.
+      select def like '%if new.starting_invoice_number is distinct from old.starting_invoice_number then%'
+         and def like '%exists (select 1 from public.invoices where document_series = ''invoice'')%'
+         and def like '%if new.payment_receipt_starting_number is distinct from old.payment_receipt_starting_number then%'
+         and def like '%exists (select 1 from public.invoices where document_series = ''payment_receipt'')%'
+         and def like '%55006%'
+      from fn where proname = 'invoice_settings_guard'), ''
   union all
   select 32, 'manual edit rules: positive, unique, not below the starting number, dates validated',
     (
@@ -303,20 +350,22 @@ checks as (
     ), ''
   -- ---- existing-data compatibility ---------------------------------------------------------------
   union all
-  select 38, 'every invoice agrees with its membership: same payment_date, Paid status',
+  select 38, 'every membership-level invoice agrees with its membership: same payment_date, Paid status (a payment document carries its own payment''s date)',
     not exists (
       select 1 from public.invoices i join public.memberships m on m.id = i.membership_id
-      where m.payment_status <> 'paid' or m.payment_date is distinct from i.payment_date
+      where i.payment_id is null
+        and (m.payment_status <> 'paid' or m.payment_date is distinct from i.payment_date)
     ), ''
   union all
-  select 39, 'no invoice number is below the configured starting number',
+  select 39, 'no invoice-series number is below the configured starting number (payment receipts have their own series and starting number)',
     not exists (
       select 1 from public.invoices i, public.invoice_settings s
-      where s.starting_invoice_number is not null and i.invoice_number < s.starting_invoice_number
+      where i.document_series = 'invoice'
+        and s.starting_invoice_number is not null and i.invoice_number < s.starting_invoice_number
     ), ''
   union all
-  select 40, 'no membership has more than one invoice',
-    not exists (select 1 from public.invoices group by membership_id having count(*) > 1), ''
+  select 40, 'no membership has more than one membership-level invoice (payment documents and corrections are per payment)',
+    not exists (select 1 from public.invoices where payment_id is null group by membership_id having count(*) > 1), ''
   union all
   select 41, 'invoice_number values are unique',
     not exists (select 1 from public.invoices group by invoice_number having count(*) > 1), ''

@@ -12,11 +12,16 @@
 --   * It genuinely writes: it marks existing Pending memberships Paid (which
 --     issues invoices), changes the prefix / tax settings, and edits an invoice
 --     number. None of it is committed.
---   * NOTHING THAT CONSUMES A SEQUENCE IS EVER INSERTED. It never inserts a
---     student or a membership (their YC- / MEM- codes come from sequences that
---     nextval() does not give back on rollback), and invoices use no sequence —
---     numbering is a locked counter row — so rolling back the invoices also rolls
---     back the counter. It reuses existing memberships.
+--   * It reuses existing Pending memberships and normally inserts no student or
+--     membership. ONE EXCEPTION (scenario S4): when the database has fewer than
+--     four Pending memberships without an invoice, it inserts ONE disposable
+--     ZZVERIFY student and ONE Pending membership so that "prefix OFF again" can
+--     still be tested. The rows are rolled back, but their YC- / MEM- codes come
+--     from sequences that nextval() does not give back on rollback, so that
+--     fallback leaves a small GAP in the student and membership numbering (one
+--     code each). If the fixture cannot be created, S4 is reported NOT TESTED.
+--     Invoices use no sequence — numbering is a locked counter row — so rolling
+--     back the invoices also rolls back the counter.
 --   * The invoices that already exist (the demo invoices 786 and 787, or whatever
 --     is there) are never touched: the script fingerprints them first and checks at
 --     the end that they are byte-for-byte the same, and that they were not given a
@@ -126,6 +131,8 @@ declare
   v_mem          public.memberships%rowtype;
   v_tax          numeric(10, 2);
   v_bad          text;
+  v_fix_student  uuid;
+  v_fix_err      text;
 begin
   select (now() at time zone public.centre_timezone())::date into v_today;
   select id into v_admin from public.profiles where role = 'admin' order by created_at limit 1;
@@ -168,8 +175,14 @@ begin
   else
     perform pg_temp.skip('A1 invoices 786 / 787', 'no invoices numbered 786 or 787 in this database');
   end if;
-  perform pg_temp.rec('A2 every invoice that existed before this script has a NULL prefix',
-    not exists (select 1 from public.invoices i where i.id = any(v_ids0) and i.invoice_prefix is not null), '');
+  -- Invoices issued after 0027 legitimately carry the prefix that was configured then (and since 0036 a payment receipt
+  -- carries its own series' prefix), so only the demo invoices of A1 are expected to be NULL. Every pre-existing prefix must
+  -- still obey the rule the table enforces: 1-20 characters, no leading or trailing whitespace, not ending in a digit.
+  perform pg_temp.rec('A2 every invoice that existed before this script has either no prefix or a valid one',
+    not exists (select 1 from public.invoices i
+                where i.id = any(v_ids0) and i.invoice_prefix is not null
+                  and not (length(i.invoice_prefix) between 1 and 20
+                           and i.invoice_prefix !~ '^\s|\s$' and i.invoice_prefix !~ '[0-9]$')), '');
 
   if v_admin is null then
     perform pg_temp.skip('every scenario', 'no admin profile found');
@@ -244,7 +257,24 @@ begin
         perform pg_temp.rec('S3 the numeric sequence continues', v_n3 > v_n2, v_n2 || ' then ' || v_n3);
 
         if v_m4 is null then
-          perform pg_temp.skip('S4 prefix OFF again', 'needs a fourth Pending membership without an invoice');
+          -- No fourth real Pending membership: build ONE disposable student and Pending membership (rolled back with
+          -- everything else; see the header for the sequence gap it leaves). A failure here is reported, not raised.
+          begin
+            insert into public.students (full_name, phone, phone_country_code, join_date, status)
+            values ('ZZVERIFY 0027 S4', '9000270001', '+91', v_today - 60, 'active')
+            returning id into v_fix_student;
+            insert into public.memberships (student_id, plan, start_date, end_date, amount, payment_status, currency)
+            values (v_fix_student, 'monthly', v_today - 30, v_today - 1, 1000.00, 'pending', 'INR')
+            returning id into v_m4;
+          exception when others then
+            v_m4 := null;
+            v_fix_err := sqlstate || ' ' || sqlerrm;
+          end;
+        end if;
+
+        if v_m4 is null then
+          perform pg_temp.skip('S4 prefix OFF again',
+            'no fourth Pending membership, and the disposable fixture could not be created: ' || coalesce(v_fix_err, 'unknown'));
         else
           -- =================================================================
           -- S4. Turn the prefix OFF (NULL) -> numeric-only again

@@ -98,10 +98,14 @@ checks as (
       from fn where proname = 'issue_invoice_core'
     ), ''
   union all
-  select 12, 'the counter logic is intact: counter row, skip used numbers, advance in the same transaction',
+  select 12, 'the counter logic is intact: counter row, skip reserved and held invoice-series numbers, advance in the same transaction',
     (
+      -- Current definition (0030 reservations, 0036 series): the loop skips a number that is RESERVED (ever assigned) or held
+      -- by an invoice-series document; payment receipts are a separate series with their own counter and are not skipped here.
       select def like '%coalesce(v_settings.next_invoice_number, v_settings.starting_invoice_number)%'
-         and def like '%while exists (select 1 from public.invoices where invoice_number = v_candidate) loop%'
+         and def like '%while exists (select 1 from public.invoice_number_reservations where invoice_number = v_candidate)%'
+         and def like '%or exists (select 1 from public.invoices where invoice_number = v_candidate and document_series = ''invoice'') loop%'
+         and def like '%v_candidate := v_candidate + 1;%'
          and def like '%next_invoice_number = v_candidate + 1%'
          and def not ilike '%max(%' and def not ilike '%nextval%'
       from fn where proname = 'issue_invoice_core'
@@ -147,21 +151,36 @@ checks as (
     ), ''
   -- ---- snapshot protection -------------------------------------------------
   union all
-  select 18, 'the freeze trigger compares the whole row, excluding only number, date and updated_at — so the prefix is protected',
+  select 18, 'the freeze trigger compares the whole row less an exemption list that starts with number, date and updated_at and never includes the prefix',
     (
-      select def like '%to_jsonb(new) - ''invoice_number'' - ''invoice_date'' - ''updated_at''%'
+      -- Current definition (0037, built on 0026/0030/0033): the list starts as number, date and updated_at; it grows only
+      -- while the synchronization (yoga.invoice_sync) or the cancellation (yoga.invoice_cancel) marker names THIS invoice;
+      -- a cancelled document is final; every other change is refused with 55006. The prefix is in no list.
+      select def like '%v_exempt text[] := array[''invoice_number'', ''invoice_date'', ''updated_at''];%'
+         and def like '%(to_jsonb(new) - v_exempt) is distinct from (to_jsonb(old) - v_exempt)%'
+         and def like '%current_setting(''yoga.invoice_sync'', true) = old.id::text%'
+         and def like '%''plan'', ''description'', ''period_start'', ''period_end'',%'
+         and def like '%current_setting(''yoga.invoice_cancel'', true) = old.id::text%'
+         and def like '%''status'', ''cancelled_at'', ''cancelled_by'', ''cancellation_reason''%'
+         and def like '%A cancelled document cannot be changed.%'
          and def not like '%invoice_prefix%'
          and def like '%55006%'
       from fn where proname = 'invoices_freeze_snapshot'
     )
     and exists (select 1 from pg_trigger where tgrelid = 'public.invoices'::regclass and tgname = 'invoices_freeze_snapshot_trigger' and (tgtype & 2) = 2 and (tgtype & 16) = 16), ''
   union all
-  select 19, 'the settings guard notices a prefix change but does not lock it; the starting-number lock is intact',
+  select 19, 'the settings guard notices a prefix change but does not lock it; each series'' starting-number lock is intact',
     (
+      -- Current definition (0041, built on 0027/0036): the prefix is in the compared tuple (updated_at moves) and nowhere
+      -- raised on, so it stays editable. The starting number is locked once a document of ITS OWN series exists.
       select def like '%new.invoice_prefix%' and def like '%old.invoice_prefix%'
-         and def like '%exists (select 1 from public.invoices)%'
+         and def like '%if new.starting_invoice_number is distinct from old.starting_invoice_number then%'
+         and def like '%exists (select 1 from public.invoices where document_series = ''invoice'')%'
          and def like '%The starting invoice number cannot be changed once an invoice has been issued.%'
-         and def not like '%invoice_prefix cannot%'
+         and def like '%if new.payment_receipt_starting_number is distinct from old.payment_receipt_starting_number then%'
+         and def like '%exists (select 1 from public.invoices where document_series = ''payment_receipt'')%'
+         and def like '%The starting payment receipt number cannot be changed once a payment receipt has been issued.%'
+         and def not ilike '%prefix cannot%'
       from fn where proname = 'invoice_settings_guard'
     ), ''
   -- ---- what did not change -------------------------------------------------
@@ -171,16 +190,49 @@ checks as (
     and exists (select 1 from pg_indexes where schemaname = 'public' and tablename = 'invoices' and indexname = 'invoices_invoice_number_unique')
     and not exists (select 1 from pg_indexes where schemaname = 'public' and tablename = 'invoices' and indexdef ilike '%invoice_prefix%'), ''
   union all
-  select 21, 'invoices has the 33 existing columns plus invoice_prefix, and still no status / void / payment columns',
-    (select count(*) in (34, 39) from information_schema.columns where table_schema = 'public' and table_name = 'invoices')
+  select 21, 'invoices has every intended column (the 33 of 0026, invoice_prefix, bank snapshot, service details, payment documents, cancellation, GSTIN) and no void / issuer / payment-method column',
+    not exists (
+      select 1
+      from unnest(array[
+        -- 0026
+        'id', 'membership_id', 'invoice_number', 'invoice_date', 'payment_date', 'document_title', 'description', 'plan',
+        'period_start', 'period_end', 'currency', 'total_amount', 'tax_enabled', 'tax_name', 'tax_rate', 'taxable_amount',
+        'tax_amount', 'customer_name', 'customer_code', 'customer_phone', 'customer_phone_country_code', 'customer_email',
+        'business_name', 'business_address', 'business_phone', 'business_email', 'business_logo_path', 'terms',
+        'signatory_name', 'signatory_designation', 'signature_path', 'created_at', 'updated_at',
+        -- 0027 prefix; 0029 bank account snapshot; 0033 service details
+        'invoice_prefix', 'bank_name', 'bank_account_name', 'bank_account_number', 'bank_ifsc_code', 'bank_branch',
+        'service_details', 'service_details_tracked',
+        -- 0036 payment documents; 0037 cancellation and replacement; 0041 GSTIN
+        'payment_id', 'document_series', 'status', 'cancelled_at', 'cancelled_by', 'cancellation_reason', 'replaces_id',
+        'business_gstin'
+      ]) as e(col)
+      where not exists (
+        select 1 from information_schema.columns k
+        where k.table_schema = 'public' and k.table_name = 'invoices' and k.column_name = e.col)
+    )
     and not exists (
       select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'invoices'
-        and column_name in ('status', 'voided_at', 'issued_by', 'payment_method', 'payment_id')
-    ), ''
+        and column_name in ('voided_at', 'issued_by', 'payment_method')
+    ),
+    (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'invoices') || ' columns found; 49 expected'
   union all
-  select 22, 'invoice_settings has the 12 existing columns plus invoice_prefix',
-    (select count(*) = 13 from information_schema.columns where table_schema = 'public' and table_name = 'invoice_settings'), ''
+  select 22, 'invoice_settings has every intended column (the 12 of 0026, invoice_prefix, the payment-receipt numbering fields, GSTIN)',
+    not exists (
+      select 1
+      from unnest(array[
+        -- 0025/0026
+        'singleton', 'starting_invoice_number', 'next_invoice_number', 'document_title', 'tax_enabled', 'tax_name', 'tax_rate',
+        'terms', 'signatory_name', 'signatory_designation', 'signature_path', 'updated_at',
+        -- 0027 prefix; 0036 payment receipt series; 0041 GSTIN
+        'invoice_prefix', 'payment_receipt_starting_number', 'payment_receipt_next_number', 'payment_receipt_prefix', 'gstin'
+      ]) as e(col)
+      where not exists (
+        select 1 from information_schema.columns k
+        where k.table_schema = 'public' and k.table_name = 'invoice_settings' and k.column_name = e.col)
+    ),
+    (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'invoice_settings') || ' columns found; 17 expected'
   union all
   select 23, 'memberships gained no prefix column',
     not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'memberships' and column_name like '%prefix%'), ''

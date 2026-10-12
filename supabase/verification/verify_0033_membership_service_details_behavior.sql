@@ -490,8 +490,14 @@ begin
   select md5(coalesce(string_agg(to_jsonb(i)::text, '|' order by i.id), ''))
     into v_hash1
   from public.invoices i where i.id = any(v_ids0);
-  perform pg_temp.rec('Z1 every pre-existing receipt is byte-for-byte unchanged (and still has NULL service details)',
-    v_hash0 = v_hash1 and not exists (select 1 from public.invoices i where i.id = any(v_ids0) and i.service_details is not null),
+  perform pg_temp.rec('Z1 every pre-existing receipt is byte-for-byte unchanged (and pre-0033 untracked receipts still have NULL service details)',
+    v_hash0 = v_hash1 and not exists (
+      select 1
+      from public.invoices i
+      where i.id = any(v_ids0)
+        and not i.service_details_tracked
+        and i.service_details is not null
+    ),
     v_count0 || ' receipt(s) fingerprinted');
 end $$;
 

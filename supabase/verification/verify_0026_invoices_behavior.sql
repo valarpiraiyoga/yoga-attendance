@@ -13,11 +13,16 @@
 --   * It genuinely writes: it marks existing Pending memberships Paid (which
 --     issues invoices), edits invoice numbers, and changes settings. None of it
 --     is committed.
---   * NOTHING THAT CONSUMES A SEQUENCE IS EVER INSERTED. It never inserts a
---     student or a membership (their YC- / MEM- codes come from sequences that
---     nextval() does not give back on rollback). It reuses existing memberships.
---     Invoices use no sequence at all — numbering is a locked counter row — so
---     rolling back the invoices also rolls back the counter.
+--   * It reuses existing Pending memberships and normally inserts no student or
+--     membership. ONE EXCEPTION (scenario M1): when the database has fewer than
+--     four Pending memberships without an invoice, it inserts ONE disposable
+--     ZZVERIFY student and ONE Pending membership so that "a Pending membership
+--     cannot be invoiced" can still be tested. The rows are rolled back, but their
+--     YC- / MEM- codes come from sequences that nextval() does not give back on
+--     rollback, so that fallback leaves a small GAP in the student and membership
+--     numbering (one code each). If the fixture cannot be created, M1 is reported
+--     NOT TESTED. Invoices use no sequence at all — numbering is a locked counter
+--     row — so rolling back the invoices also rolls back the counter.
 --   * The temp table and the temp helper functions disappear with the
 --     transaction.
 --   * Setup failures record NOT TESTED and carry on rather than raising.
@@ -141,6 +146,8 @@ declare
   v_student_name text;
   v_center_name  text;
   v_tax          numeric(10, 2);
+  v_fix_student  uuid;
+  v_fix_err      text;
 begin
   -- =========================================================================
   -- SETUP — as the owning role (no RLS)
@@ -413,8 +420,13 @@ begin
       and v_inv.business_email is distinct from 'changed@example.com', '');
     perform pg_temp.rec('L3 later student changes do not alter an issued invoice',
       v_inv.customer_name = v_student_name, '');
-    perform pg_temp.rec('L4 later membership changes do not alter an issued invoice',
-      v_inv.total_amount = (select amount from public.memberships where id = v_m1) - 100, '');
+    -- Since 0030 a membership-level receipt FOLLOWS its membership's amount (sync_invoice_from_membership); what a
+    -- membership edit must never change is the receipt's number and dates.
+    perform pg_temp.rec('L4 a later membership amount change follows into the receipt (0030) without changing its number or dates',
+      v_inv.total_amount = (select amount from public.memberships where id = v_m1)
+      and v_inv.invoice_number = v_n1
+      and v_inv.invoice_date = v_today and v_inv.payment_date = v_today,
+      coalesce(v_inv.total_amount::text, 'NULL'));
     select * into v_inv from public.invoices where id = v_i3;
     perform pg_temp.rec('L5 the tax snapshot of an issued invoice survives a tax-settings change',
       v_inv.tax_enabled and v_inv.tax_name = 'GST' and v_inv.tax_rate = 18.00, '');
@@ -423,7 +435,24 @@ begin
     -- M. Pending membership cannot be invoiced; unconfigured numbering is refused
     -- =======================================================================
     if v_m4 is null then
-      perform pg_temp.skip('M1 a Pending membership cannot be invoiced', 'no fourth Pending membership');
+      -- No fourth real Pending membership: build ONE disposable student and Pending membership (rolled back with
+      -- everything else; see the header for the sequence gap it leaves). A failure here is reported, not raised.
+      begin
+        insert into public.students (full_name, phone, phone_country_code, join_date, status)
+        values ('ZZVERIFY 0026 M1', '9000260001', '+91', v_today - 60, 'active')
+        returning id into v_fix_student;
+        insert into public.memberships (student_id, plan, start_date, end_date, amount, payment_status, currency)
+        values (v_fix_student, 'monthly', v_today - 30, v_today - 1, 1000.00, 'pending', 'INR')
+        returning id into v_m4;
+      exception when others then
+        v_m4 := null;
+        v_fix_err := sqlstate || ' ' || sqlerrm;
+      end;
+    end if;
+
+    if v_m4 is null then
+      perform pg_temp.skip('M1 a Pending membership cannot be invoiced',
+        'no fourth Pending membership, and the disposable fixture could not be created: ' || coalesce(v_fix_err, 'unknown'));
     else
       v_code := pg_temp.run_as(v_admin, format('select public.issue_invoice(%L, (now() at time zone public.centre_timezone())::date, (now() at time zone public.centre_timezone())::date)', v_m4));
       perform pg_temp.rec('M1 a Pending membership cannot be invoiced (55000)', v_code = '55000', 'sqlstate ' || v_code);

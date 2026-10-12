@@ -43,9 +43,9 @@ checks as (
   select 3, 'both constraints are validated (they apply to every existing row)',
     not exists (select 1 from pg_constraint where conname in ('memberships_plan_valid', 'invoices_plan_valid') and not convalidated), ''
   union all
-  select 4, 'every existing membership and receipt plan is one of the five',
-    not exists (select 1 from public.memberships where plan not in ('monthly', 'quarterly', 'half_yearly', 'annual', 'custom'))
-    and not exists (select 1 from public.invoices where plan not in ('monthly', 'quarterly', 'half_yearly', 'annual', 'custom')), ''
+  select 4, 'every existing membership and receipt plan is one of the six supported plans (the five of 0031 and class_count of 0042)',
+    not exists (select 1 from public.memberships where plan not in ('monthly', 'quarterly', 'half_yearly', 'annual', 'custom', 'class_count'))
+    and not exists (select 1 from public.invoices where plan not in ('monthly', 'quarterly', 'half_yearly', 'annual', 'custom', 'class_count')), ''
   union all
   select 5, 'issue_invoice_core words the new plans (Half Yearly, Annual) and is otherwise intact',
     (
@@ -79,9 +79,28 @@ checks as (
     and exists (select 1 from pg_trigger where tgname = 'memberships_sync_invoice_trigger' and not tgisinternal)
     and (select def like '%current_setting(''yoga.invoice_sync'', true) = old.id::text%' from fn where proname = 'invoices_freeze_snapshot'), ''
   union all
-  select 8, 'invoices still has 39 columns and no new table appeared',
-    (select count(*) = 39 from information_schema.columns where table_schema = 'public' and table_name = 'invoices')
-    and exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'invoice_number_reservations'), ''
+  select 8, 'invoices keeps every intended column (later migrations added more) and the invoice_number_reservations table exists',
+    not exists (
+      select 1
+      from unnest(array[
+        -- 0026 (33), 0027 prefix
+        'id', 'membership_id', 'invoice_number', 'invoice_date', 'payment_date', 'document_title', 'description', 'plan',
+        'period_start', 'period_end', 'currency', 'total_amount', 'tax_enabled', 'tax_name', 'tax_rate', 'taxable_amount',
+        'tax_amount', 'customer_name', 'customer_code', 'customer_phone', 'customer_phone_country_code', 'customer_email',
+        'business_name', 'business_address', 'business_phone', 'business_email', 'business_logo_path', 'terms',
+        'signatory_name', 'signatory_designation', 'signature_path', 'created_at', 'updated_at', 'invoice_prefix',
+        -- 0029 bank snapshot
+        'bank_name', 'bank_account_name', 'bank_account_number', 'bank_ifsc_code', 'bank_branch',
+        -- 0033 service details; 0036 payment documents; 0037 cancellation and replacement; 0041 GSTIN
+        'service_details', 'service_details_tracked', 'payment_id', 'document_series', 'status', 'cancelled_at',
+        'cancelled_by', 'cancellation_reason', 'replaces_id', 'business_gstin'
+      ]) as e(col)
+      where not exists (
+        select 1 from information_schema.columns k
+        where k.table_schema = 'public' and k.table_name = 'invoices' and k.column_name = e.col)
+    )
+    and exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'invoice_number_reservations'),
+    (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'invoices') || ' columns found; 49 expected'
   union all
   select 9, 'INFO: memberships / receipts by plan',
     true,

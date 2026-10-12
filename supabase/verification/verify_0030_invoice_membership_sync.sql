@@ -48,10 +48,12 @@ checks as (
     and not has_table_privilege('authenticated', 'public.invoice_number_reservations', 'DELETE')
     and not has_table_privilege('anon', 'public.invoice_number_reservations', 'SELECT'), ''
   union all
-  select 5, 'every existing receipt number is reserved (the backfill)',
+  select 5, 'every existing invoice-series receipt number is reserved, by its own receipt (the backfill; payment receipts have their own reservations since 0036)',
     not exists (
       select 1 from public.invoices i
-      where not exists (select 1 from public.invoice_number_reservations r where r.invoice_number = i.invoice_number)
+      where i.document_series = 'invoice'
+        and not exists (select 1 from public.invoice_number_reservations r
+                        where r.invoice_number = i.invoice_number and r.invoice_id = i.id)
     ), ''
   union all
   select 6, 'every existing receipt number is reserved BY that receipt',
@@ -83,10 +85,11 @@ checks as (
     ), ''
   -- ---- the counter ----------------------------------------------------------------
   union all
-  select 9, 'issue_invoice_core skips reserved numbers as well as held ones; the counter row, tax formula and lock order are intact',
+  select 9, 'issue_invoice_core skips reserved numbers as well as numbers held by an invoice-series document; the counter row, tax formula and lock order are intact',
     (
+      -- 0036: only a document of the invoice series blocks a candidate; payment receipts have their own series and counter.
       select def like '%while exists (select 1 from public.invoice_number_reservations where invoice_number = v_candidate)%'
-         and def like '%or exists (select 1 from public.invoices where invoice_number = v_candidate) loop%'
+         and def like '%or exists (select 1 from public.invoices where invoice_number = v_candidate and document_series = ''invoice'') loop%'
          and def like '%coalesce(v_settings.next_invoice_number, v_settings.starting_invoice_number)%'
          and def like '%next_invoice_number = v_candidate + 1%'
          and def like '%round(v_mem.amount * v_settings.tax_rate / (100 + v_settings.tax_rate), 2)%'
@@ -196,12 +199,30 @@ checks as (
     and (select def like '%The payment status cannot be changed after an invoice has been issued.%' and def like '%The payment date cannot be changed after an invoice has been issued.%'
          from fn where proname = 'memberships_invoice_guard'), ''
   union all
-  select 20, 'the other invoice triggers are intact (validate dates, prevent delete) and invoices has no new column',
+  select 20, 'the other invoice triggers are intact (validate dates BEFORE INSERT/UPDATE, prevent delete BEFORE DELETE) and invoices still has every column it had at 0030',
     (
-      select count(*) = 2 from pg_trigger
-      where not tgisinternal and tgname in ('invoices_validate_dates_trigger', 'invoices_prevent_delete_trigger')
+      select count(*) filter (where tgname = 'invoices_validate_dates_trigger' and (tgtype & 2) = 2 and (tgtype & 4) = 4 and (tgtype & 16) = 16) = 1
+         and count(*) filter (where tgname = 'invoices_prevent_delete_trigger' and (tgtype & 2) = 2 and (tgtype & 8) = 8) = 1
+      from pg_trigger where tgrelid = 'public.invoices'::regclass and not tgisinternal
     )
-    and (select count(*) = 39 from information_schema.columns where table_schema = 'public' and table_name = 'invoices'), ''
+    and not exists (
+      -- The 39 columns of 0030 (the 33 of 0026, the prefix of 0027 and the five bank columns of 0029). 0030 added none;
+      -- later migrations (0033, 0036, 0037, 0041) added more, so the total is not asserted.
+      select 1
+      from unnest(array[
+        'id', 'membership_id', 'invoice_number', 'invoice_date', 'payment_date', 'document_title', 'description', 'plan',
+        'period_start', 'period_end', 'currency', 'total_amount', 'tax_enabled', 'tax_name', 'tax_rate', 'taxable_amount',
+        'tax_amount', 'customer_name', 'customer_code', 'customer_phone', 'customer_phone_country_code', 'customer_email',
+        'business_name', 'business_address', 'business_phone', 'business_email', 'business_logo_path', 'terms',
+        'signatory_name', 'signatory_designation', 'signature_path', 'created_at', 'updated_at', 'invoice_prefix',
+        'bank_name', 'bank_account_name', 'bank_account_number', 'bank_ifsc_code', 'bank_branch'
+      ]) as e(col)
+      where not exists (
+        select 1 from information_schema.columns k
+        where k.table_schema = 'public' and k.table_name = 'invoices' and k.column_name = e.col)
+    ),
+    (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'invoices')
+      || ' columns now (the 39 of 0030 plus those of later migrations)'
   union all
   select 21, 'invoices stays SELECT-only for clients; update_invoice_details and issue_invoice are unchanged in access',
     has_table_privilege('authenticated', 'public.invoices', 'SELECT')

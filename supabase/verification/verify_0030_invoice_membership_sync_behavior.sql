@@ -212,12 +212,26 @@ begin
            (select count(*) from public.invoice_number_reservations)));
 
   -- R0. What existed before: every existing number is reserved ---------------------------
+  -- Since 0036 each document series has its own reservations (invoices_reserve_number): an 'invoice' document is
+  -- reserved in invoice_number_reservations, a 'payment_receipt' document in payment_receipt_number_reservations.
+  -- Each document is checked against the table of ITS OWN series only, by number AND by its own id, so a reservation
+  -- in the other series' table never satisfies it. A document of any other series has no table and fails.
   perform pg_temp.rec('R0 every pre-existing receipt number is already reserved, by its own receipt',
     not exists (
       select 1 from public.invoices i
       where i.id = any(v_ids0)
-        and not exists (select 1 from public.invoice_number_reservations r where r.invoice_number = i.invoice_number and r.invoice_id = i.id)
-    ), '');
+        and not case i.document_series
+          when 'invoice' then exists (
+            select 1 from public.invoice_number_reservations r
+            where r.invoice_number = i.invoice_number and r.invoice_id = i.id)
+          when 'payment_receipt' then exists (
+            select 1 from public.payment_receipt_number_reservations p
+            where p.receipt_number = i.invoice_number and p.invoice_id = i.id)
+          else false
+        end
+    ), (select count(*) from public.invoices i where i.id = any(v_ids0) and i.document_series = 'invoice') || ' invoice and '
+       || (select count(*) from public.invoices i where i.id = any(v_ids0) and i.document_series = 'payment_receipt')
+       || ' payment_receipt document(s) checked, each against its own series');
 
   if v_admin is null then
     perform pg_temp.skip('every scenario', 'no admin profile found');

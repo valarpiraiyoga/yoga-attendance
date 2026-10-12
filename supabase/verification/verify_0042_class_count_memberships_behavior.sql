@@ -220,10 +220,14 @@ begin
     select pg_get_constraintdef(oid) into v_def from pg_constraint where conname = 'invoices_plan_valid' and conrelid = 'public.invoices'::regclass;
     perform pg_temp.rec('C4 invoices.plan accepts the five existing plans and class_count',
       v_def like '%monthly%' and v_def like '%quarterly%' and v_def like '%half_yearly%' and v_def like '%annual%' and v_def like '%custom%' and v_def like '%class_count%', coalesce(v_def, 'missing'));
-    perform pg_temp.rec('C5 no existing membership is anything but a duration membership with an end date and no class count',
+    -- A duration membership is one on a duration plan (any plan but class_count). Class-count memberships now legitimately
+    -- exist, so they are not judged here; every duration membership must still be kind 'duration' with an end date and no
+    -- class count.
+    perform pg_temp.rec('C5 every existing duration membership (a plan other than class_count) has kind duration, an end date and no class count',
       (select count(*) = 0 from public.memberships m
         where m.student_id not in (select id from public.students where full_name like 'ZZVERIFY%')
-          and (m.kind <> 'duration' or m.total_classes is not null or m.end_date is null or m.plan = 'class_count')), '');
+          and m.plan <> 'class_count'
+          and (m.kind <> 'duration' or m.total_classes is not null or m.end_date is null)), '');
     select pg_get_constraintdef(oid) into v_def from pg_constraint where conname = 'memberships_no_overlap_per_student' and conrelid = 'public.memberships'::regclass;
     perform pg_temp.rec('C6 the overlap constraint keeps its name, its range and its cancelled exclusion, and now covers duration memberships only',
       v_def like '%EXCLUDE USING gist%' and v_def like '%daterange(start_date, end_date%' and v_def like '%cancelled_at IS NULL%' and v_def like '%kind%duration%', coalesce(v_def, 'missing'));
