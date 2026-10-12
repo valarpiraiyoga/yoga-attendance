@@ -11,7 +11,8 @@
 --   * If a numbering sequence is not configured yet, the script configures it for this run only (rolled back).
 --   * It writes to invoice_settings (counters, and a test prefix), so it holds that row's lock until it ends: another
 --     session issuing a document at the same moment simply waits. Run it when no one is issuing documents.
---   * Sequences leave a small gap in the YC- / MEM- numbering; no row remains.
+--   * Sequences leave a small gap in the YC- / MEM- numbering (two student codes and two membership codes per run: the
+--     second fixture serves the document-date and reserved-number scenarios D and R); no row remains.
 --   * Run after migrations 0034-0038 are applied.
 --
 -- OUTPUT: seq / test / status / detail, plus a SUMMARY row.
@@ -175,6 +176,17 @@ declare
   v_hash0      text;
   v_hash1      text;
   v_docs_hash  text;
+  v_m2         uuid;
+  v_err2       text;
+  v_pb text; v_pc text; v_pd text;
+  v_db         public.invoices%rowtype;
+  v_dc         public.invoices%rowtype;
+  v_dd         public.invoices%rowtype;
+  v_nb         bigint;
+  v_move       bigint;
+  v_exp        bigint;
+  v_rn         bigint;
+  v_in         bigint;
 begin
   select id into v_admin from public.profiles where role = 'admin' order by created_at limit 1;
   select id into v_instructor from public.profiles where role = 'instructor' order by created_at limit 1;
@@ -252,6 +264,87 @@ begin
     v_out := pg_temp.query_as(v_admin, format('select public.issue_invoice(%L::uuid)::text', v_m));
     perform pg_temp.rec('O2 a membership-level document is refused for a membership with payments (55000 or 23505)',
       v_out in ('ERR:55000', 'ERR:23505') and not exists (select 1 from public.invoices where membership_id = v_m and payment_id is null), v_out);
+
+    -- D / R. Document dates and reserved-number skipping, on a second disposable membership -------------------------
+    --   payment D (dated T-5): a document dated before it or in the future is refused (22023); the payment's own date is accepted.
+    --   payments B and C:      B's receipt is moved ahead of the counter, so its old number stays RESERVED with no document
+    --                          holding it; the counter is wound back to that number and C's receipt must skip it.
+    begin
+      v_m2 := pg_temp.fixture('0036 B', '9000360002', 1000);
+    exception when others then
+      v_m2 := null;
+      v_err2 := sqlstate || ' ' || sqlerrm;
+    end;
+
+    if v_m2 is null then
+      perform pg_temp.skip('D1-D3 / R0-R2 document dates and reserved-number skipping',
+        'could not create the second disposable fixture: ' || coalesce(v_err2, 'unknown'));
+    else
+      v_pb := pg_temp.pay(v_admin, v_m2, v_today - 4, '[{"method":"cash","amount":"300"}]', 'false');
+      v_pc := pg_temp.pay(v_admin, v_m2, v_today - 3, '[{"method":"cash","amount":"300"}]', 'false');
+      v_pd := pg_temp.pay(v_admin, v_m2, v_today - 5, '[{"method":"cash","amount":"300"}]', 'false');
+
+      -- D. The document date
+      select payment_receipt_next_number into v_rn from public.invoice_settings where singleton;
+      v_out := pg_temp.query_as(v_admin, format('select public.issue_payment_document(%L::uuid, %L::date)::text',
+                                                pg_temp.as_uuid(v_pd), v_today - 6));
+      perform pg_temp.rec('D1 a document date before the payment date is refused (22023) and nothing is written',
+        v_out = 'ERR:22023'
+        and not exists (select 1 from public.invoices where payment_id = pg_temp.as_uuid(v_pd))
+        and (select payment_receipt_next_number from public.invoice_settings where singleton) is not distinct from v_rn,
+        coalesce(v_out, 'NULL'));
+      v_out := pg_temp.query_as(v_admin, format('select public.issue_payment_document(%L::uuid, %L::date)::text',
+                                                pg_temp.as_uuid(v_pd), v_today + 1));
+      perform pg_temp.rec('D2 a document date in the future is refused (22023) and nothing is written',
+        v_out = 'ERR:22023'
+        and not exists (select 1 from public.invoices where payment_id = pg_temp.as_uuid(v_pd))
+        and (select payment_receipt_next_number from public.invoice_settings where singleton) is not distinct from v_rn,
+        coalesce(v_out, 'NULL'));
+      v_out := pg_temp.query_as(v_admin, format('select public.issue_payment_document(%L::uuid, %L::date)::text',
+                                                pg_temp.as_uuid(v_pd), v_today - 5));
+      select * into v_dd from public.invoices where id = pg_temp.as_uuid(v_out);
+      perform pg_temp.rec('D3 the boundary is accepted: a document dated exactly the payment date is issued (so D1 and D2 are date-specific)',
+        v_dd.id is not null and v_dd.invoice_date = v_today - 5 and v_dd.payment_id = pg_temp.as_uuid(v_pd)
+        and v_dd.document_series = 'payment_receipt', coalesce(v_out, 'NULL'));
+
+      -- R. A reserved number is skipped by the payment receipt counter
+      v_out := pg_temp.issue(v_admin, pg_temp.as_uuid(v_pb));
+      select * into v_db from public.invoices where id = pg_temp.as_uuid(v_out);
+      v_nb := v_db.invoice_number;
+      select coalesce(max(invoice_number), 0) + 50 into v_move from public.invoices where document_series = 'payment_receipt';
+      v_code := pg_temp.run_as(v_admin, format('select public.update_invoice_details(%L::uuid, %s, %L::date)',
+                                               v_db.id, v_move, v_db.invoice_date));
+      perform pg_temp.rec('R0 setup: the first receipt was moved ahead of the counter; its old number stays reserved for it and no document holds it',
+        v_code = 'OK'
+        and (select invoice_number = v_move from public.invoices where id = v_db.id)
+        and exists (select 1 from public.payment_receipt_number_reservations where receipt_number = v_nb and invoice_id = v_db.id)
+        and not exists (select 1 from public.invoices where document_series = 'payment_receipt' and invoice_number = v_nb),
+        'sqlstate ' || v_code || ', ' || coalesce(v_nb::text, 'NULL') || ' -> ' || coalesce(v_move::text, 'NULL'));
+
+      -- Wind the counter back to the reserved number; the next free number above it is what must be issued.
+      v_code := pg_temp.run_owner(format('update public.invoice_settings set payment_receipt_next_number = %s where singleton', v_nb));
+      v_exp := v_nb + 1;
+      while exists (select 1 from public.payment_receipt_number_reservations where receipt_number = v_exp)
+         or exists (select 1 from public.invoices where invoice_number = v_exp and document_series = 'payment_receipt') loop
+        v_exp := v_exp + 1;
+      end loop;
+      select next_invoice_number into v_in from public.invoice_settings where singleton;
+
+      v_out := pg_temp.issue(v_admin, pg_temp.as_uuid(v_pc));
+      select * into v_dc from public.invoices where id = pg_temp.as_uuid(v_out);
+      perform pg_temp.rec('R1 with the counter wound back to a reserved number, the next payment receipt skips it and takes the next free number',
+        v_dc.id is not null and v_dc.document_series = 'payment_receipt'
+        and v_dc.invoice_number <> v_nb and v_dc.invoice_number = v_exp and v_dc.invoice_prefix = 'ZZPR-',
+        'asked for ' || coalesce(v_nb::text, 'NULL') || ', expected ' || coalesce(v_exp::text, 'NULL')
+          || ', got ' || coalesce(v_dc.invoice_number::text, 'NULL') || ', wind-back sqlstate ' || v_code);
+      perform pg_temp.rec('R2 the receipt counter follows the new receipt (+1); the invoice counter is untouched; the reserved number was not reissued',
+        v_dc.id is not null
+        and (select payment_receipt_next_number from public.invoice_settings where singleton) = v_dc.invoice_number + 1
+        and (select next_invoice_number from public.invoice_settings where singleton) is not distinct from v_in
+        and not exists (select 1 from public.invoices where document_series = 'payment_receipt' and invoice_number = v_nb)
+        and exists (select 1 from public.payment_receipt_number_reservations where receipt_number = v_dc.invoice_number and invoice_id = v_dc.id),
+        '');
+    end if;
 
     -- L. Starting-number locks, per series ----------------------------------------------------------------------------------
     v_code := pg_temp.run_as(v_admin, 'update public.invoice_settings set payment_receipt_starting_number = payment_receipt_starting_number + 1 where singleton');
