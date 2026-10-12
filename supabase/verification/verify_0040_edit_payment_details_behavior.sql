@@ -8,6 +8,8 @@
 --       every other check is skipped (NOT TESTED) after one clear failure.
 --   E   A payment's date, method type, amount, reference and notes can be edited; methods can be added and removed;
 --       the methods always add up to the payment; an unchanged edit changes nothing and writes no audit row.
+--       E7: a reference ID or note made only of spaces is stored as NULL, and the audit row records the normalized
+--       (NULL) values next to the values they replaced.
 --   S   The membership's payment status (Pending / Partially Paid / Paid) and its payment date are recalculated.
 --   A   The audit history records who, the previous and new date, amount and methods.
 --   I   Invalid edits (zero amount, future date, over-balance amount, empty methods, unknown method, three decimals,
@@ -37,6 +39,9 @@
 --
 -- LIMITATIONS
 --   * Concurrency (an edit racing an issue or another edit) cannot be tested in one transaction and is NOT tested.
+--   * E7 uses values made only of SPACES. The function normalizes with btrim(), which trims spaces and nothing else
+--     (the same as record_membership_payment), so a reference or note made only of tabs or line breaks would be stored
+--     as it is: that behaviour is neither asserted nor changed here.
 --   * Scenario D5 (a payment whose only document is cancelled) cannot arise through the application, because Cancel and
 --     Reissue always issues a replacement. The script builds it as the owner, exactly as correct_payment_document
 --     cancels - under the yoga.invoice_cancel marker, changing only the cancellation columns - and reports NOT TESTED
@@ -388,6 +393,9 @@ begin
       perform pg_temp.rec('A1a the edit is audited: who, the previous and new amount, and the previous and new payment date',
         v_edit.id is not null and v_edit.edited_by = v_admin
         and v_edit.previous_payment_date = v_today - 5 and v_edit.new_payment_date = v_today - 4, '');
+      -- The audit allocations of THIS migration are {method, amount, reference_id, notes} - no method id, because the
+      -- method rows are replaced and their ids mean nothing afterwards. 0038's edit_payment_amount rows carry
+      -- {id, method, amount} instead; both shapes live in membership_payment_edits.
       perform pg_temp.rec('A1b ... with the previous methods (cash 300; UPI 200 with its reference and note) and the new method (card 350 with its trimmed reference)',
         jsonb_array_length(v_edit.previous_allocations) = 2
         and v_edit.previous_allocations -> 0 ->> 'method' = 'cash' and (v_edit.previous_allocations -> 0 ->> 'amount')::numeric = 300
@@ -442,6 +450,40 @@ begin
       v_snap := pg_temp.state(v_m);
       v_out := pg_temp.edit(v_admin, v_p1, (v_today - 1)::text, '[{"method":"cash","amount":"700"}]');
       perform pg_temp.rec('E5 an edit that changes nothing succeeds, changes no row and writes no audit row', v_out = v_p1::text and pg_temp.state(v_m) = v_snap, coalesce(v_out, 'NULL'));
+
+      -- ===== E7. A reference ID and notes made only of spaces are stored as NULL ============================================
+      -- Payment 1 (no document, cash 700 on T-1, no reference or note) first gets a reference and a note, so that the next
+      -- edit has something to remove: submitting spaces-only values must then CLEAR them (NULL), not keep or store spaces.
+      v_out := pg_temp.edit(v_admin, v_p1, (v_today - 1)::text,
+        '[{"method":"cash","amount":"700","reference_id":"ZZ-REF-7","notes":"ZZ note 7"}]');
+      perform pg_temp.rec('E7a setup: the same payment now carries a reference ID and a note (date, amount and status unchanged)',
+        v_out = v_p1::text
+        and exists (select 1 from public.membership_payment_methods where payment_id = v_p1 and position = 1 and method = 'cash'
+                      and amount = 700 and reference_id = 'ZZ-REF-7' and notes = 'ZZ note 7')
+        and (select payment_date = v_today - 1 and amount = 700 from public.membership_payments where id = v_p1), coalesce(v_out, 'NULL'));
+
+      v_out := pg_temp.edit(v_admin, v_p1, (v_today - 1)::text,
+        '[{"method":"cash","amount":"700","reference_id":"   ","notes":"      "}]');
+      select * into v_mem from public.memberships where id = v_m;
+      perform pg_temp.rec('E7b spaces-only reference ID and notes: the edit succeeds and both are stored as NULL; one cash row of 700, the date and the membership (Paid, dated yesterday) are unchanged',
+        v_out = v_p1::text
+        and (select count(*) from public.membership_payment_methods where payment_id = v_p1) = 1
+        and exists (select 1 from public.membership_payment_methods where payment_id = v_p1 and position = 1 and method = 'cash'
+                      and amount = 700 and reference_id is null and notes is null)
+        and (select payment_date = v_today - 1 and amount = 700 from public.membership_payments where id = v_p1)
+        and v_mem.payment_status = 'paid' and v_mem.payment_date = v_today - 1 and pg_temp.balanced(v_p1), coalesce(v_out, 'NULL'));
+
+      -- The audit row of the second edit (the one whose previous method still had the reference ID).
+      select * into v_edit from public.membership_payment_edits
+        where payment_id = v_p1 and previous_allocations -> 0 ->> 'reference_id' = 'ZZ-REF-7';
+      perform pg_temp.rec('E7c that edit is audited with the NORMALIZED values: previous reference ID and note, new ones NULL (not spaces), amounts and dates equal, and no method id',
+        v_edit.id is not null and v_edit.edited_by = v_admin
+        and v_edit.previous_amount = 700 and v_edit.new_amount = 700
+        and v_edit.previous_payment_date = v_today - 1 and v_edit.new_payment_date = v_today - 1
+        and v_edit.previous_allocations -> 0 ->> 'notes' = 'ZZ note 7'
+        and jsonb_typeof(v_edit.new_allocations -> 0 -> 'reference_id') = 'null'
+        and jsonb_typeof(v_edit.new_allocations -> 0 -> 'notes') = 'null'
+        and not ((v_edit.new_allocations -> 0) ? 'id') and not ((v_edit.previous_allocations -> 0) ? 'id'), '');
 
       -- ===== I. Invalid edits are rejected and change nothing ================================================================
       -- Payment 1 may now total up to 700 (1000 less payment 2's 300).
