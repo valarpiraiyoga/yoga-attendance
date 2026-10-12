@@ -11,6 +11,9 @@
 --   C  Cancel and Reissue still works: on a normal payment document, and on a payment document whose membership
 --      ALSO has a membership-level document (the MEM-000049 shape): the replacement is issued, linked and numbered,
 --      and the membership-level document is untouched.
+--   C3 The ORDER of the refusals: a payment that already has an issued document, on a membership that also has a
+--      membership-level document, is refused as "already issued" (23505), not by the new guard (55000) - the duplicate-
+--      document check comes first - and the refusal writes nothing and consumes no number.
 --
 -- PREREQUISITES
 --   * Migrations 0034-0039 applied. If 0039 is NOT applied, P0 fails and every scenario is skipped (NOT TESTED),
@@ -423,6 +426,19 @@ begin
           and (select document_series = 'payment_receipt' and replaces_id = v_new.id from public.invoices where id = pg_temp.as_uuid(v_out)), coalesce(v_out, 'NULL'));
         perform pg_temp.rec('C2d the membership-level document is byte-for-byte unchanged by both corrections',
           (select to_jsonb(i) from public.invoices i where i.id = v_cdoc) = v_cdoc_json, '');
+
+        -- C3. Refusal order. Fixture C's tax payment now has an ISSUED document (C2a's replacement) and its membership
+        -- also has a membership-level document, so BOTH refusals apply to a new issue request; the function checks
+        -- "already issued" first (23505, 0039 line order), the guard second (55000). The 23505 is raised by the
+        -- function itself, so its message - not a constraint name - identifies it; the unique index on payment_id
+        -- (issued) would give a different message, so the exact text rules it out as the source.
+        v_nums := pg_temp.numbers();
+        v_msg := pg_temp.issue_msg(v_admin, pg_temp.as_uuid(v_c_tax));
+        perform pg_temp.rec('C3 a payment that already has an issued document is refused as already issued (23505), not by the membership-level guard (55000), and nothing is written or numbered',
+          v_msg = '23505 A document has already been issued for this payment.'
+          and exists (select 1 from public.invoices where payment_id = pg_temp.as_uuid(v_c_tax) and status = 'issued')
+          and exists (select 1 from public.invoices where membership_id = v_c and payment_id is null)
+          and pg_temp.numbers() = v_nums, v_msg || ' | ' || v_nums || ' -> ' || pg_temp.numbers());
       end if;
     end if;
   end if;
