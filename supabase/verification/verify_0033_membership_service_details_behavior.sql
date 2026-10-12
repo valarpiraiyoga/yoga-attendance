@@ -6,10 +6,12 @@
 -- Run in the Supabase SQL editor of the project the application actually uses, AFTER applying 0033.
 -- It calls the real functions and triggers against DISPOSABLE fixtures (every name starts with
 -- ZZVERIFY: six students, three batches, schedule series and versions, enrollments, assignments and
--- six memberships), and the whole script runs in one transaction that is ROLLED BACK. It writes
--- nothing permanently. It never inserts a receipt directly: a receipt is issued by marking a fixture
--- membership Paid, exactly as the application does. (Sequences - student and membership codes - do
--- move on, as they do for any rolled-back insert; the receipt counter does not.)
+-- six memberships - plus, for the edge cases of section Q, one more batch, three schedule series and
+-- three students with one membership each), and the whole script runs in one transaction that is
+-- ROLLED BACK. It writes nothing permanently. It never inserts a receipt directly: a receipt is issued
+-- by marking a fixture membership Paid, exactly as the application does. (Sequences - student and
+-- membership codes - do move on, as they do for any rolled-back insert: nine student codes and nine
+-- membership codes per run; the receipt counter does not.)
 --
 -- Admin behaviour runs as an authenticated ADMIN by setting request.jwt.claims and switching to the
 -- `authenticated` role, as PostgREST does. No service-role key is used.
@@ -199,6 +201,17 @@ declare
   v_freeze_trg   text;
   v_o1           jsonb;
   v_e4           uuid;
+  v_g3           text;
+  v_g4           text;
+  v_qbatch       uuid;
+  v_qold         uuid;
+  v_qtue         uuid;
+  v_qwed         uuid;
+  v_qs1 uuid; v_qs2 uuid; v_qs3 uuid;
+  v_qm1 uuid; v_qm2 uuid; v_qm3 uuid;
+  v_qe2          uuid;
+  v_qd           jsonb;
+  v_qerr         text;
   v_synced       text[] := array['plan', 'description', 'period_start', 'period_end', 'total_amount', 'taxable_amount', 'tax_amount', 'service_details', 'updated_at'];
 begin
   select (now() at time zone public.centre_timezone())::date into v_today;
@@ -469,10 +482,12 @@ begin
     perform pg_temp.rec('G1 service_details cannot be changed directly, even by the owner (the freeze trigger, 55006)', v_code = '55006', 'sqlstate ' || v_code);
     v_code := pg_temp.run_as(v_admin, format('update public.invoices set service_details = null where membership_id = %L', v_m1));
     perform pg_temp.rec('G2 nor by an Admin through the API (refused)', v_code <> 'OK', 'sqlstate ' || v_code);
-    v_code := pg_temp.run_owner(format('update public.invoices set description = ''x'' where membership_id = %L', v_m1));
-    v_code := pg_temp.run_owner(format('update public.invoices set service_details_tracked = false where membership_id = %L', v_m1));
-    perform pg_temp.rec('G4 the marker cannot be changed afterwards, even by the owner (the freeze trigger, 55006)', v_code = '55006', 'sqlstate ' || v_code);
-    perform pg_temp.rec('G3 the general freeze is intact: another column outside the synchronization is still refused (55006)', v_code = '55006', 'sqlstate ' || v_code);
+    -- Each assertion checks its OWN result: G3 the description (a synchronized column, exempt only while the sync marker
+    -- names the receipt), G4 the tracking marker (never exempt).
+    v_g3 := pg_temp.run_owner(format('update public.invoices set description = ''x'' where membership_id = %L', v_m1));
+    v_g4 := pg_temp.run_owner(format('update public.invoices set service_details_tracked = false where membership_id = %L', v_m1));
+    perform pg_temp.rec('G4 the marker cannot be changed afterwards, even by the owner (the freeze trigger, 55006)', v_g4 = '55006', 'sqlstate ' || v_g4);
+    perform pg_temp.rec('G3 the general freeze is intact: changing the description of an issued receipt outside the synchronization is refused (55006)', v_g3 = '55006', 'sqlstate ' || v_g3);
 
     -- H. The helper is internal ----------------------------------------------------------------------------------------
     v_code := pg_temp.run_as(v_admin, format('select public.membership_service_details(%L)', v_m1));
@@ -485,6 +500,69 @@ begin
     end if;
     v_code := pg_temp.run_anon(format('select public.membership_service_details(%L)', v_m1));
     perform pg_temp.rec('H3 an anonymous caller cannot call the helper (42501)', v_code = '42501', 'sqlstate ' || v_code);
+
+    -- Q. Edge cases of the applicability rules (the helper is called directly, as P2 does) ----------------------------
+    -- One extra batch (ZZVERIFY Edge) and three students, each with a membership starting at T-100:
+    --   Q1  active enrollment, assigned to a series whose only version ENDED before T-100  -> batch kept, slots []
+    --   Q2  INACTIVE enrollment whose dates cover T-100, assigned to a series covering it   -> nothing applies (NULL)
+    --   Q3  active enrollment, one assignment that ENDED before T-100 and one that covers it -> only the covering one
+    begin
+      insert into public.batches (name, code) values ('ZZVERIFY Edge', 'ZZVE') returning id into v_qbatch;
+      v_qold := pg_temp.mk_series(v_qbatch, v_instr, 'monday', '09:00', '10:00', v_today - 900, v_today - 400);
+      v_qtue := pg_temp.mk_series(v_qbatch, v_instr, 'tuesday', '09:00', '10:00', v_today - 900, null);
+      v_qwed := pg_temp.mk_series(v_qbatch, v_instr, 'wednesday', '09:00', '10:00', v_today - 900, null);
+
+      v_qs1 := pg_temp.mk_student('ZZVERIFY Q1', '9000000021', v_today - 950);
+      v_qs2 := pg_temp.mk_student('ZZVERIFY Q2', '9000000022', v_today - 950);
+      v_qs3 := pg_temp.mk_student('ZZVERIFY Q3', '9000000023', v_today - 950);
+
+      v_e := pg_temp.enroll(v_qs1, v_qbatch, v_today - 900, null);
+      perform pg_temp.assign(v_e, v_qold, v_today - 900, null);
+
+      v_qe2 := pg_temp.enroll(v_qs2, v_qbatch, v_today - 900, null);
+      perform pg_temp.assign(v_qe2, v_qtue, v_today - 900, null);
+      update public.batch_enrollments set status = 'inactive' where id = v_qe2;
+
+      v_e := pg_temp.enroll(v_qs3, v_qbatch, v_today - 900, null);
+      perform pg_temp.assign(v_e, v_qtue, v_today - 900, v_today - 200);
+      perform pg_temp.assign(v_e, v_qwed, v_today - 900, null);
+
+      v_qm1 := pg_temp.mk_membership(v_qs1, v_today - 100);
+      v_qm2 := pg_temp.mk_membership(v_qs2, v_today - 100);
+      v_qm3 := pg_temp.mk_membership(v_qs3, v_today - 100);
+    exception when others then
+      v_qm1 := null;
+      v_qerr := sqlstate || ' ' || sqlerrm;
+    end;
+
+    if v_qm1 is null then
+      perform pg_temp.skip('Q1-Q3 edge cases', 'could not create the edge-case fixtures: ' || coalesce(v_qerr, 'unknown'));
+    else
+      v_qd := public.membership_service_details(v_qm1);
+      perform pg_temp.rec('Q1 an enrolled batch with no schedule covering the start date is KEPT, with an empty slots array',
+        v_qd is not null and jsonb_array_length(v_qd -> 'batches') = 1
+        and v_qd -> 'batches' -> 0 ->> 'name' = 'ZZVERIFY Edge'
+        and v_qd -> 'batches' -> 0 -> 'slots' = '[]'::jsonb, coalesce(v_qd::text, 'NULL'));
+
+      v_qd := public.membership_service_details(v_qm2);
+      perform pg_temp.rec('Q2 an INACTIVE enrollment is excluded even though its dates and its assignment cover the start date (nothing applies: NULL)',
+        v_qd is null, coalesce(v_qd::text, 'NULL'));
+      -- Control: the same enrollment made active again is used, so the status was the only reason for the exclusion.
+      update public.batch_enrollments set status = 'active' where id = v_qe2;
+      v_qd := public.membership_service_details(v_qm2);
+      perform pg_temp.rec('Q2b ... and once it is active again the same enrollment applies (the status was the only difference)',
+        v_qd is not null and jsonb_array_length(v_qd -> 'batches') = 1
+        and v_qd -> 'batches' -> 0 -> 'slots' = jsonb_build_array(
+          jsonb_build_object('day_of_week', 'tuesday', 'start_time', '09:00', 'end_time', '10:00')),
+        coalesce(v_qd::text, 'NULL'));
+
+      v_qd := public.membership_service_details(v_qm3);
+      perform pg_temp.rec('Q3 an assignment that ended before the start date is excluded: only the assignment covering it is shown (Wednesday, not Tuesday)',
+        v_qd is not null and jsonb_array_length(v_qd -> 'batches') = 1
+        and v_qd -> 'batches' -> 0 -> 'slots' = jsonb_build_array(
+          jsonb_build_object('day_of_week', 'wednesday', 'start_time', '09:00', 'end_time', '10:00')),
+        coalesce(v_qd::text, 'NULL'));
+    end if;
   end if;
 
   select md5(coalesce(string_agg(to_jsonb(i)::text, '|' order by i.id), ''))
