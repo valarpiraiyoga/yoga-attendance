@@ -392,8 +392,11 @@ begin
     perform pg_temp.rec('G3 the class total cannot go below the 3 classes recorded (23514), and the row is unchanged',
       v_msg like '23514 The class total cannot be less than the classes already recorded.%' and pg_temp.row_hash(v_mf) = v_hash, v_msg);
     v_msg := pg_temp.run_owner(format('update public.memberships set total_classes = null where id = %L', v_mf));
-    perform pg_temp.rec('G4 the class total cannot be removed (23514), and the row is unchanged',
-      v_msg like '23514 %' and pg_temp.row_hash(v_mf) = v_hash, v_msg);
+    -- The table's own CHECK (memberships_total_classes_by_kind) also raises 23514 for a NULL total on a class-count membership,
+    -- so the SQLSTATE alone would pass without the guard. The guard is a BEFORE trigger and fires first: only its message
+    -- proves it did.
+    perform pg_temp.rec('G4 the class total cannot be removed (23514), refused by the history guard before the table CHECK, and the row is unchanged',
+      v_msg like '23514 The class total cannot be less than the classes already recorded.%' and pg_temp.row_hash(v_mf) = v_hash, v_msg);
     v_msg := pg_temp.run_owner(format('update public.memberships set total_classes = 3 where id = %L', v_mf));
     select * into v_mem from public.memberships where id = v_mf;
     perform pg_temp.rec('G5 the class total can be set to exactly the classes recorded (3): nothing remains',
