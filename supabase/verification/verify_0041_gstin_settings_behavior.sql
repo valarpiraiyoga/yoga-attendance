@@ -15,7 +15,9 @@
 --       invoice, and the replacement made by Cancel and Reissue; a PAYMENT RECEIPT (not a tax document) never carries a
 --       GSTIN, nor does its replacement; changing the setting later alters NO document already issued (the cancelled
 --       original keeps its own value); the snapshot cannot be edited. Changing the setting moves no counter,
---       reservation or document.
+--       reservation or document. A tax invoice's replacement takes the setting IN FORCE when it is issued, not the
+--       value its original carried (D8c). The CHECK on invoices.business_gstin is exercised by inserting a cancelled
+--       copy of a fixture invoice: a well-formed value is accepted, a malformed one is refused (D10a, D10b).
 --   Z   The settings row is back to what it was, and every pre-existing invoice and receipt is byte-for-byte unchanged.
 --
 -- PREREQUISITES
@@ -29,7 +31,9 @@
 --     back to the value it found - and rolls all of it back. The real GSTIN is read once, shown in the DATA row of the
 --     results, and restored (Z1) before the rollback.
 --   * Disposable ZZVERIFY fixtures only (two students, one membership each). No existing membership, payment or invoice
---     is written; existing invoices are fingerprinted and compared at the end.
+--     is written; existing invoices are fingerprinted and compared at the end. D10a inserts one cancelled copy of a
+--     fixture invoice directly, as the owning role (D10b's malformed copy is refused and leaves nothing); it is rolled
+--     back with everything else.
 --   * It writes to invoice_settings (the GSTIN, and counters when it issues), so it holds that row's lock until it
 --     ends: another session issuing a document at the same moment simply waits. Run it when no one is issuing documents.
 --   * If a numbering sequence is not configured yet, it is configured for this run only (rolled back).
@@ -38,8 +42,15 @@
 -- LIMITATIONS
 --   * The check CHARACTER of a GSTIN is validated by the application, not by the database, so the database accepts any
 --     well-formed value (the fixtures are well formed and also have correct check characters).
---   * The CHECK on invoices.business_gstin cannot be provoked from here: an issued document is frozen, so an attempted
---     bad value is refused by the freeze trigger first. Its definition is checked in S3; the settings CHECK is exercised.
+--   * The freeze trigger applies to UPDATE, not INSERT, so the CHECK on invoices.business_gstin IS exercised here, by
+--     inserting a cancelled copy of a fixture invoice (D10a, D10b), as verify_0037 does for replaces_id. Its definition
+--     is also checked in S3. Editing an issued document's snapshot is a different protection, covered by D5 and D6.
+--   * The INITIAL value (29BPGPP6168E1ZH) is written once, by the migration, only when the column does not exist yet;
+--     running the migration again must neither restore it nor overwrite a value an Admin set or cleared. One transaction
+--     cannot show either: the column already exists here, and the migration cannot be re-run inside this script. The
+--     DATA row shows the value found, and the after-rollback query at the end shows it is unchanged; whether the initial
+--     value was applied once and preserved afterwards needs two separate executions of the migration, which this
+--     script does not perform and does NOT test.
 --   * Whether the GSTIN APPEARS on the page and the PDF is application code, covered by the automated tests and browser QA.
 --   * Concurrency (a settings change racing an issue) cannot be tested in one transaction. The issue reads the settings
 --     row it has locked (FOR UPDATE), so it sees a consistent value; that is checked in S5 as text, not as a race.
@@ -253,6 +264,10 @@ declare
   v_doc1_json  jsonb;
   v_ready      boolean;
   v_inv_hash0  text;  v_inv_hash1  text;
+  v_ins_n      bigint;
+  v_ins_code   text;
+  v_ins_cons   text;
+  v_ins_msg    text;
   v_cancel_cols constant text[] := array['status', 'cancelled_at', 'cancelled_by', 'cancellation_reason', 'updated_at'];
 begin
   select id into v_admin from public.profiles where role = 'admin' order by created_at limit 1;
@@ -358,13 +373,13 @@ begin
       end if;
 
       v_failed := '';
-      foreach v_bad in array array['29zzver1234z1zr', '29ZZVER1234Z1Z', '', '29ZZVER 234Z1ZR', '29ZZVER1234Z1AR', '29ZZVER1234Z1ZR1'] loop
+      foreach v_bad in array array['29zzver1234z1zr', '29ZZVER1234Z1Z', '', '29ZZVER 234Z1ZR', '29ZZVER1234Z1AR', '29ZZVER1234Z1ZR1', '29ZZVER1234Z0ZR'] loop
         if pg_temp.set_gstin(v_admin, v_bad) <> '23514' or pg_temp.gstin() is distinct from g1 then
           v_failed := v_failed || '"' || v_bad || '" ';
         end if;
       end loop;
-      perform pg_temp.rec('B3 a lower-case, short, empty, spaced, mis-shaped or too-long value is refused (23514) and the setting keeps its value',
-        v_failed = '', coalesce(nullif(v_failed, ''), 'all six refused'));
+      perform pg_temp.rec('B3 a lower-case, short, empty, spaced, mis-shaped, too-long value, or a 0 in the 13th position (only 1-9 or a letter is allowed there), is refused (23514) and the setting keeps its value',
+        v_failed = '', coalesce(nullif(v_failed, ''), 'all seven refused'));
 
       v_code := pg_temp.set_gstin(v_admin, null);
       v_cur := pg_temp.gstin();
@@ -439,6 +454,62 @@ begin
           select * into v_new from public.invoices where id = pg_temp.as_uuid(v_out);
           perform pg_temp.rec('D8b the replacement of a payment receipt is a payment receipt and carries no GSTIN either, although the setting is G2',
             v_new.id is not null and v_new.replaces_id = v_doc2.id and v_new.document_series = 'payment_receipt' and v_new.business_gstin is null, coalesce(v_out, 'NULL'));
+
+          if v_doc4.id is null then
+            perform pg_temp.skip('D8c / D10a / D10b', 'the G2 tax invoice (D3) was not issued, so there is nothing to correct or copy');
+          else
+            -- D8c. The replacement of a TAX INVOICE takes the setting in force when it is issued. v_doc4 carries G2; the setting
+            -- is changed to G1 first, so a replacement that inherited the original's value (G2) would be told apart from one
+            -- that copies the setting (G1).
+            perform pg_temp.set_gstin(v_admin, g1);
+            v_out := pg_temp.correct(v_admin, v_doc4.id, 'ZZVERIFY 0041 replacement uses the current setting');
+            select * into v_new from public.invoices where id = pg_temp.as_uuid(v_out);
+            perform pg_temp.rec('D8c the replacement of a tax invoice that carried G2 carries G1, the setting in force when it was issued (not its original''s value); the cancelled original still carries G2',
+              v_new.id is not null and v_new.replaces_id = v_doc4.id and v_new.document_series = 'invoice' and v_new.business_gstin = g1
+              and v_doc4.business_gstin = g2
+              and (select business_gstin = g2 and status = 'cancelled' from public.invoices where id = v_doc4.id), coalesce(v_out, 'NULL'));
+
+            -- D10. The CHECK on invoices.business_gstin. The freeze trigger applies to UPDATE only, so a row can be INSERTed
+            -- directly (as verify_0037 C12 does). The copy is a CANCELLED copy of v_doc4 with a fresh number above every used
+            -- or reserved one, so no unique index (one issued document per payment, the replaces_id link) is in play and the
+            -- GSTIN is the only thing that differs between the accepted copy and the refused one.
+            select greatest(coalesce((select max(invoice_number) from public.invoices where document_series = 'invoice'), 0),
+                            coalesce((select max(invoice_number) from public.invoice_number_reservations), 0)) + 100
+              into v_ins_n;
+            begin
+              insert into public.invoices
+              select * from jsonb_populate_record(null::public.invoices,
+                to_jsonb(v_doc4) || jsonb_build_object('id', gen_random_uuid(), 'invoice_number', v_ins_n,
+                  'status', 'cancelled', 'cancelled_at', now(), 'cancellation_reason', 'ZZVERIFY 0041 control copy',
+                  'replaces_id', null, 'business_gstin', g1));
+              v_ins_code := 'OK';
+            exception when others then
+              get stacked diagnostics v_ins_cons = constraint_name, v_ins_msg = message_text;
+              v_ins_code := sqlstate;
+            end;
+            perform pg_temp.rec('D10a control: a cancelled copy of a fixture invoice with a well-formed business_gstin is accepted and stored as given (so the copy is otherwise valid)',
+              v_ins_code = 'OK'
+              and exists (select 1 from public.invoices where invoice_number = v_ins_n and document_series = 'invoice' and business_gstin = g1),
+              v_ins_code || ' ' || coalesce(v_ins_cons, '') || ' ' || coalesce(v_ins_msg, ''));
+
+            v_ins_cons := null;
+            v_ins_msg := null;
+            begin
+              insert into public.invoices
+              select * from jsonb_populate_record(null::public.invoices,
+                to_jsonb(v_doc4) || jsonb_build_object('id', gen_random_uuid(), 'invoice_number', v_ins_n + 1,
+                  'status', 'cancelled', 'cancelled_at', now(), 'cancellation_reason', 'ZZVERIFY 0041 malformed copy',
+                  'replaces_id', null, 'business_gstin', 'ZZ-NOT-A-GSTIN'));
+              v_ins_code := 'OK';
+            exception when others then
+              get stacked diagnostics v_ins_cons = constraint_name, v_ins_msg = message_text;
+              v_ins_code := sqlstate;
+            end;
+            perform pg_temp.rec('D10b the same copy with a malformed business_gstin is refused by the CHECK (23514, invoices_business_gstin_valid) and nothing is stored',
+              v_ins_code = '23514' and v_ins_cons = 'invoices_business_gstin_valid'
+              and not exists (select 1 from public.invoices where invoice_number = v_ins_n + 1 and document_series = 'invoice'),
+              v_ins_code || ' ' || coalesce(v_ins_cons, 'NULL') || ' ' || coalesce(v_ins_msg, ''));
+          end if;
         end if;
 
         -- A MEMBERSHIP-LEVEL invoice (a Paid membership with no payments) also copies the setting.
