@@ -157,36 +157,62 @@ Manage the student's valid membership period and use it as part of attendance el
 - Annual
 - Custom duration
 
-*(V1 Fee Structure.)* These five are the plans of memberships created before the centre-configurable fee structure; they stay on those memberships exactly as they are. A new membership or renewal takes its Plan from the centre's own packages (see "Packages and Fee Structure" below).
+*(V1 Fee Structure.)* These five are the plans of memberships created before the centre-configurable fee structure — **legacy memberships** — and they stay on those memberships exactly as they are. A new membership or renewal is created from one of the centre's packages (see "Packages and Fee Structure" below) and is a **package-linked membership**; a package-linked duration membership still records its duration option (Monthly, Quarterly, Half Yearly, Annual or Custom) as its Plan.
 
 ### Packages and Fee Structure
 *(V1 Fee Structure.)* The centre configures what it sells (Settings, §11); the application assumes no fixed price list.
 
-**Packages.** A package has a name, a frequency (how often the student attends, as the centre defines it) and a price. It is one of two types:
-- **Duration-based** — valid for a duration (for example 1, 3, 6 or 12 months). The centre defines the durations a package is offered for, and the price of each.
-- **Class-count** — valid for a number of classes, with either a fixed validity period or no expiry (see "Class-Count Packages").
+**Packages.** A package has a name, an optional description and one of exactly two types. There is no separate frequency field: a duration-based package is described by its duration options, a class-count package by its class allowance, and class scheduling stays separate (§7).
+- **Duration-based** — has a **monthly base fee** and offers one or more **duration options**: the standard options Monthly (1 month), Quarterly (3), Half Yearly (6) and Annual (12), and **Custom**, a whole number of calendar months. Quarterly, Half Yearly and Annual may each have a **package discount**; Monthly never has one, and Custom uses the discount of a standard option (see "Standard fee and package discount").
+- **Class-count** — gives a number of classes (its **class allowance**) for its own **independent price**. It defines no validity: the expiry is chosen for each membership (see "Class-Count Packages").
 
-**Duration prices and savings.** Each duration's price is either entered manually or calculated by a percentage from the package's base-duration price. The **duration saving** is calculated automatically — what the duration would cost at the base-duration price, less its own price — and is never typed in.
+**Package lifecycle.**
+- Packages are reusable. A package can be **deactivated**, which prevents new purchases (new memberships and renewals) but keeps every existing membership and its history; it can be **reactivated**. A renewal on a deactivated package requires the Admin to reactivate it first.
+- A package that has been used by a membership cannot be deleted, and its type cannot change.
+- Editing a package's name or description never rewrites how existing memberships are shown: each membership stores a **snapshot of the package name** it was created with.
+- Changes to a package's terms — its duration options or its class allowance — apply to **future purchases only**; existing memberships keep the terms they were created with. These changes are recorded for audit (who, when, before and after). V1 does not keep a separate effective-dated version history for package terms; only fees are effective-dated (below).
 
-**Effective-dated fee structure.** Packages, frequencies, durations and prices are kept in versions, each with an effective-from date. Changing a price creates a new version; earlier versions are preserved and never overwritten. A membership — new or renewal — is priced with the version in effect on its intended start date; if the start date changes, the fee follows the new date.
+**Standard fee and package discount.**
+- A duration option's **standard fee** is the monthly base fee multiplied by its number of months (for example ₹1,500 × 3 = ₹4,500 for Quarterly). For **Custom** it is the monthly base fee multiplied by the selected whole number of calendar months. No fixed-day calculation is used.
+- A **package discount** is either a fixed amount or a percentage, calculated against the standard fee. It does not require a reason. Monthly has no package discount.
+- **Custom duration.** The Admin selects the number of whole calendar months **when creating the membership**; it is not limited to a length configured in advance on the package. Standard fee = monthly base fee × the selected months.
+- **Custom duration discount.** A Custom duration uses the package discount of the **largest standard duration that does not exceed the selected number of months**: 2 months → Monthly (no package discount), 5 months → Quarterly, 7 months → Half Yearly, 10 months → Half Yearly, 12 months or more → Annual. If that standard duration has no package discount configured, **no package discount** applies; no other duration's discount is used instead. Any individual discount is applied afterwards, by the same calculation and rounding rules as for the standard options.
+- A class-count package's standard fee is its own price.
 
-**Additional discount.** On top of the duration saving, an Admin can apply an additional discount to a membership, either as a **fixed amount** or as a **percentage** (of the fee, after the duration saving). It is recorded separately from the fee and the saving, always with a reason (required), and every discount and every later change to it is kept in an audit record (who, when, amount and reason). There is no approval workflow in V1. A discount belongs to the membership it was given on: a renewal does **not** inherit it automatically; a renewal has an additional discount only if the Admin applies one to it.
+**Effective-dated fee history.**
+- Each package's fees — the monthly base fee and the package discounts of a duration-based package, or the price of a class-count package — are kept as a fee history of entries, each with an effective-from date. Several future entries may be scheduled. No two entries of one package have the same effective date, so the fee in force on any date is unambiguous.
+- A scheduled entry can be edited or cancelled before it takes effect. An entry in effect is never silently overwritten: a correction requires a reason. Scheduling, editing, cancelling and correcting are all kept in an audit record (who, when, before and after, reason).
+- A fee-history change **conflicts** when it would change which fee entry applies to an existing membership's start date. A conflicting change is **blocked**: the affected memberships and their agreed fees are shown, and the change cannot proceed until each affected membership is explicitly resolved. Blocking never reprices a membership and never alters a payment or an issued document.
+- Correcting a package's fee affects future pricing only. Correcting an existing membership's fee is a separate, explicit action (see "Existing memberships").
 
-**Amount.** The membership's Amount is the net amount payable: the fee less any additional discount. It is the customer's final amount, as in §5A.
+**Pricing a membership.**
+- A membership — new or renewal — is priced with the fee entry in effect on its **start date**. The creation date, the payment date and the end date do not affect which fee applies.
+- The order is: **standard fee → package discount → individual discount → final agreed fee**. For example: ₹1,500 × 3 = ₹4,500, less a ₹300 package discount and a ₹200 individual discount, gives a final agreed fee of ₹4,000.
+- **Individual discount.** An Admin may apply an individual discount to a membership, as a fixed amount or a percentage of the fee remaining after the package discount. It requires a reason — **Promotional Offer**, **Returning Member**, **Special Approval** or **Other**; Other requires an explanation. Before the membership is created the discount and its reason can be changed freely; afterwards only by an authorized, audited correction. A renewal never inherits an individual discount. There is no approval workflow in V1.
+- **Rounding.** Each discount calculation is rounded half up to two decimal places, and the final agreed fee is the result of those rounded steps. Tax is not affected: it is still back-calculated from the final amount exactly as in §5A.
+- **Limits.** The combined package and individual discounts cannot exceed the standard fee, and the final agreed fee must be **greater than ₹0** (greater than zero in the centre's currency). V1 has no other, configurable minimum.
+- **Currency.** A new membership is priced with a valid fee in the centre's **current** currency: a fee entry in another currency is not a valid standard fee, and fees are never converted automatically. The membership records the centre's currency at the time it is created (§11 "Regional Settings"); a later currency change never converts or reprices it, and existing memberships keep their original currency and agreed fee.
+- **Custom Fee Plan.** Standard package pricing is the default. The Admin may explicitly choose a **Custom Fee Plan** instead of standard fee resolution — for a special price even when a standard fee exists, or when no valid standard fee applies to the selected start date. It requires a custom agreed fee (greater than ₹0), a mandatory reason and explicit confirmation before the membership is created, and records the Admin and the time. After creation the agreed fee, currency and terms are preserved like any other membership's; payments and issued documents are never changed silently, and correcting the agreed fee is the separate, authorized, audited correction (see "Existing memberships"). The Custom Fee Plan amount **is the final agreed fee**: no package discount and no individual discount is applied on top of it, and a Custom Fee Plan is never reinterpreted as a standard package fee.
 
-**Rounding.** Every price the application calculates — a percentage-based duration price, a percentage discount, the net Amount — is rounded half up to two decimal places. Tax is not affected: it is still back-calculated from the final amount exactly as in §5A.
+**Amount.** The membership's Amount is the final agreed fee: the amount payable. It is the customer's final amount, as in §5A, and it is independent of the amount paid so far.
 
-**Minimum fee.** The net Amount after the duration saving and all discounts must be greater than zero. A discount that would bring it to zero or below is not accepted. V1 has no other, configurable minimum.
-
-**Existing memberships.** A membership keeps the fee, duration saving and discounts it was agreed with. Later changes to the fee structure — a new version, a different package, a package no longer offered — never alter it.
+**Existing memberships.**
+- A package-linked membership keeps the fee, package discount, individual discount, terms and currency it was agreed with. Later changes to the package or its fees — a new fee entry, a term change, deactivation — never alter it, and it is never repriced automatically.
+- Changing an existing package-linked membership's agreed fee, discounts or terms is a separate, authorized, audited action requiring a reason. If its start date is changed, the fee in effect on the new start date is resolved and the revised price is shown for confirmation before anything is saved. Payments and issued documents are never adjusted silently: payments follow the payment-editing rules (§5 "Payments") and documents the cancel-and-reissue rules (§5A "Corrections").
+- **Legacy memberships** are not migrated to, recreated in, or linked to the package catalogue automatically. Their fees, terms, dates, currency, payments and balances, issued documents, attendance and class balances are preserved, and they keep the edit workflow they have today, with two exceptions that apply to every membership: an issued document never changes silently (§5A "The Receipt Follows the Membership"), and a class-count membership's expiry changes only through the audited expiry edit ("Class-Count Packages"). Any future linking would be an explicit, audited action that never rewrites their historical terms.
 
 ### Class-Count Packages
 *(V1 Fee Structure.)* A class-count membership gives the student a fixed number of classes.
 - **Remaining classes** are tracked on the membership: the package's classes less the classes consumed, where a class is consumed by a recorded attendance that has not been reversed. They are never negative.
 - **Consumption is by Class Count Attendance.** A class is consumed when a completed class is recorded for the student in the separate **Class Count Attendance** workflow (§8 "Class Count Attendance"): one class for each recorded attendance, never twice for the same one. Reversing a recorded attendance (§8) restores that one class. A class-count membership is not used in session attendance (§8 "Eligibility"), so a Present mark in a class session never consumes a class.
-- **Validity** is configured on the package, and sets what makes the membership usable:
-  - **Fixed validity** — a period from the membership's start date (the End date is the end of that period). The membership is usable only while it has remaining classes **and** has not expired; from the day after its End date it cannot be used, whatever classes remain.
+- **Expiry** is chosen by the Admin for each class-count membership when it is created: either an **expiry date** entered manually (its End date) or **No expiry**. It is not calculated from days, weeks or months, and the package does not define it.
+  - **With an expiry date** — the membership is usable only while it has remaining classes **and** has not expired; from the day after its End date it cannot be used, whatever classes remain. Unused classes expire with it and are not carried forward.
   - **No expiry** — no End date. The membership is usable while it has remaining classes, and needs nothing else.
+- **Editing the expiry** applies to **every class-count membership**, package-linked or legacy (a legacy class-count membership is not migrated or linked to a package for it). It is a separate, authorized, audited action (Admin only) that requires a reason and keeps the previous and new expiry, the reason, who made the change and when. The Admin may extend or shorten the expiry, and switch between an expiry date and No expiry. An expiry edit never changes the agreed fee, the class allowance or any attendance record.
+  - **Shortening** never removes or reverses history: attendance already recorded after the new expiry stays as it is, is not reversed automatically and does not change the class allowance; it is shown with the informational flag **Attendance after current expiry**. No acknowledgement step is required in V1.
+  - New Class Count Attendance is recorded only within the membership's current validity.
+  - **Extending** an expired membership makes it usable again, subject to its remaining classes.
+- **Reversal and expiry.** Reversing a recorded class restores one class but never extends or changes the expiry. On an expired membership the restored class stays unusable unless the expiry is extended by the action above; on a No-expiry membership it remains available until used or the membership is cancelled.
 - **No classes remaining.** The membership is ineligible for further Class Count Attendance, and the workflow offers the renewal action (§8 "Class Count Attendance").
 - Unused classes are not automatically refunded and are not carried forward to a renewal or to any other membership.
 - **Both kinds together.** A student may hold a duration-based and a class-count membership at the same time. Each attendance is associated with the one membership that it uses and affects only that membership.
@@ -194,12 +220,14 @@ Manage the student's valid membership period and use it as part of attendance el
 ### Membership Information
 - Membership ID
 - Student
-- Plan — the package chosen (see "Packages and Fee Structure")
+- Plan — for a package-linked membership, its duration option (or class count); for a legacy membership, its original plan
+- Package — *(V1 Fee Structure.)* package-linked memberships only: the package, and a snapshot of its name at creation
 - Start date
 - End date
-- Fee details — *(V1 Fee Structure.)* the fee, the built-in duration saving and any additional discounts (fixed or percentage) with their reasons and audit history, as agreed when the membership was created
-- Classes remaining — *(V1 Fee Structure.)* class-count packages only
-- Amount — the net amount payable
+- Fee details — *(V1 Fee Structure.)* package-linked memberships only: the standard fee, the package discount, the individual discount (fixed or percentage) with its reason, and the final agreed fee — or, for a Custom Fee Plan, the custom agreed fee with its reason and who confirmed it when — as agreed when the membership was created, with the audit history of any later correction
+- Class allowance and classes remaining — *(V1 Fee Structure.)* class-count memberships only
+- Currency — the centre currency recorded when the membership was created
+- Amount — the final agreed fee (the amount payable)
 - Payment status
 - Payment date — recorded when the membership is Paid (see "Payment Date" below; part of the V1 Invoice / Receipt Enhancement, §5A)
 - Payments — zero or more recorded payments (see "Payments" below; V1 Tax Adjustment)
@@ -257,7 +285,7 @@ with attendance eligibility, which compares the same dates against the class
 session's own date (§8).
 
 ### End Date
-End date is calculated from the selected plan and start date, but remains
+**Legacy memberships.** End date is calculated from the selected plan and start date, but remains
 editable:
 - Monthly: start date + 1 month − 1 day
 - Quarterly: start date + 3 months − 1 day
@@ -267,10 +295,17 @@ editable:
 
 End date cannot precede start date. A same-day start and end date is allowed.
 
-*(V1 Fee Structure.)* For a duration-based package the End date is the start date plus the package's duration minus one day, by the same calendar rule, and remains editable. A class-count package's End date is the end of its fixed validity, or none when it has no expiry.
+*(V1 Fee Structure.)* **Package-linked duration memberships.** The Admin selects the start date; the system calculates the inclusive End date and it cannot be overridden manually:
+1. Add the duration option's number of months to the start date by calendar months, not fixed 30-day months.
+2. If the target month has no such day, use the last day of that month (for example 31 January + 1 month → 28 February, or 29 February in a leap year).
+3. Subtract one day.
+
+So a Monthly membership starting 31 January 2027 ends 27 February 2027, and one starting 15 January ends 14 February. A different period is obtained by a new membership (renewal) or by an authorized, audited start-date correction (§5 "Packages and Fee Structure", "Existing memberships"), never by typing an End date.
+
+*(V1 Fee Structure.)* **Class-count memberships.** The End date is the expiry date the Admin chose, or none for No expiry (§5 "Class-Count Packages"); it changes only through the audited expiry edit.
 
 ### Renewal
-Every renewal creates a new membership record. Previous membership records remain available for historical purposes. The new membership's start date defaults to the previous membership's end date plus one day, editable if needed. *(V1 Fee Structure.)* A renewal is priced like a new membership, with the fee in effect on its start date — not by copying the previous membership's amount — and does not automatically inherit the previous membership's additional discounts.
+Every renewal creates a new membership record. Previous membership records remain available for historical purposes. The new membership's start date defaults to the previous membership's end date plus one day, editable if needed. *(V1 Fee Structure.)* A renewal is a new package-linked membership, whether the previous membership was legacy or package-linked. It is priced like a new membership, with the fee in effect on its start date — not by copying the previous membership's amount — and never inherits the previous membership's individual discount. A renewal on a deactivated package requires the Admin to reactivate the package first. A class-count renewal starts with a fresh class balance.
 
 ### Cancellation
 Cancelling a membership retains the record; it is not deleted. An already-cancelled membership cannot be cancelled again. Cancellation does not affect batch enrollment.
@@ -359,7 +394,7 @@ An optional prefix can be shown in front of the invoice number, for example `INV
 An issued invoice stores:
 - its number and date, and the invoice number prefix (if any) that was in force when it was issued;
 - its financial values (amount and, when tax is enabled, the tax values);
-- *(V1 Fee Structure.)* the fee breakdown for a membership priced under the fee structure: the **fee**, the **built-in duration saving**, the **additional discount** and the **final amount**. The discount's reason is not part of the document; it stays in the membership's audit history. Documents issued before the fee structure have no breakdown and are not changed;
+- *(V1 Fee Structure.)* no fee breakdown: document layouts are unchanged by the fee structure. The standard fee, package discount, individual discount and final agreed fee are shown in the membership interface (Membership Details), not on invoices or receipts;
 - the customer and business information used on the document;
 - the tax information used;
 - the terms, signatory and document title used, where applicable.
@@ -372,7 +407,11 @@ A Paid membership has exactly one invoice (receipt), and that invoice **follows 
 - the membership period (start and end date);
 - the total amount, and — when the invoice has tax — the taxable amount and the tax amount, recalculated from the new amount with the tax-inclusive rule and the **tax rate the invoice was issued with**.
 
-*(V1 Fee Structure.)* **Fee corrections.** Changing a membership's fee, duration saving or additional discount after it was created is a fee correction. It always requires a reason and is kept in the audit history (who, when, old and new values, reason); the final amount must still be greater than zero (§5 "Minimum fee"), and calculated values are rounded as in §5. A fee correction never rewrites a payment document silently: where a payment document exists, it is corrected only by the cancel-and-reissue rules in "Corrections" below, and payments follow the existing payment-editing rules.
+*(V1 Fee Structure — approved rule, supersedes the automatic following above.)* **An issued invoice or receipt never changes silently**, for legacy and package-linked memberships alike. Where a document must be corrected, the existing cancel-and-reissue process (see "Corrections") is used where it applies. A **package-linked membership** is documented per payment only (see "Membership-Level and Payment-Level Documents") and never holds a membership-level document.
+
+**Current implementation, pending replacement.** The automatic following described above is still implemented for **legacy** membership-level receipts (migration 0030: `memberships_sync_invoice_trigger` → `sync_invoice_from_membership`). It is retained unchanged until its behaviour and impact have been investigated and a safe replacement is approved (`04-development-plan.md` Phase FS). Today's cancel-and-reissue applies to payment documents only, so a replacement for membership-level receipts is a decision still to be made. Nothing new may rely on the automatic following.
+
+*(V1 Fee Structure.)* **Fee corrections.** Changing a package-linked membership's agreed fee, package discount, individual discount or terms after it was created is a correction. It is Admin only, always requires a reason, and is kept in the audit history (who, when, old and new values, reason). The final agreed fee must still be greater than ₹0 and not below the payments already recorded, and calculated values are rounded as in §5. A correction never changes an issued document silently: where a document needs correcting, it is corrected only by the cancel-and-reissue rules in "Corrections" below, and payments follow the existing payment-editing rules.
 
 Editing the membership never issues another invoice and never allocates another number. The invoice number, prefix, invoice date, payment date, currency and tax terms stay as issued, as does everything copied from elsewhere when it was issued (business, customer, bank details, terms, signatory, signature, logo). If the update of the invoice fails, the membership edit fails with it. Membership Details (batch, schedule, duration) will follow the membership in the same way when it is added.
 
@@ -721,7 +760,7 @@ Attendance percentage is Present ÷ Eligible × 100, not Present ÷ Marked — a
 
 ### Class Count Attendance
 *(V1 Fee Structure.)* A separate workflow records attendance against class-count memberships. It is the third tab of Attendance, beside Today's Sessions and All Sessions, and is **Admin only**. It is not tied to a class session or its time, and it does not change session attendance (above), which stays as it is for duration-based memberships.
-- **Who is shown.** The students with a class-count membership that is usable today: active student, not Cancelled, started, with remaining classes, and — for fixed validity — not expired (§5 "Class-Count Packages"). Each shows their remaining classes.
+- **Who is shown.** The students with a class-count membership that is usable today: active student, not Cancelled, started, with remaining classes, and — when it has an expiry date — not expired (§5 "Class-Count Packages"). Each shows their remaining classes.
 - **Record a class.** Each student has an action that records one completed class. The Admin **confirms** it before it is recorded, and chooses the **attendance date** — the day the class was actually held, offered as today in the centre timezone and never replaced by it silently. The date must be on or after the membership's start date, on or before its end date when it has one, and not in the future in the centre timezone. The membership must be eligible now (usable today, as above) and the student active; a Cancelled membership never receives a new record. Recording deducts exactly one class and creates one attendance record linked to that membership, that student and the attendance date, keeping who recorded it and when. Several classes on the same date are separate records.
 - **No duplicate deductions.** One recorded attendance deducts one class once. Repeating the same action — a double click, a retry, a second device — never deducts again. Each record is made by its own request: recording a class again, including one that was reversed, is a new record with a new request.
 - **Never below zero.** Remaining classes cannot go below zero; nothing is recorded when none remain.
@@ -729,6 +768,7 @@ Attendance percentage is Present ÷ Eligible × 100, not Present ÷ Marked — a
 - **No classes remaining.** The student is ineligible for further Class Count Attendance. Instead of the record action, an appropriate **renewal action** is shown (Flow 09); the renewal is a new membership as in §5 "Renewal".
 - **Right membership.** A student with both a duration-based and a class-count membership is attended in each workflow against that workflow's own membership. A class-count record never consumes or alters a duration-based membership, and session attendance never consumes a class.
 - **History.** Records already made — with their reversals, the people who made them, their times and their reasons — and memberships of either kind that expired or ran out, are preserved and are never changed by later fee, package or membership changes. Membership Details shows a class-count membership's records (§5 "Membership Information"; 02-ux.md "Class Count Attendance"). Its class total cannot be set below the classes recorded and not reversed.
+- **Expiry edits.** After an audited expiry edit (§5 "Class-Count Packages"), new records follow the current expiry. A record made earlier whose attendance date is now after the expiry is kept unchanged, is not reversed, does not change the class balance, and shows the informational flag **Attendance after current expiry** (no acknowledgement step in V1).
 
 ### Online / Offline
 Not mandatory in V1. Both online and offline participation count simply as Present. Attendance mode may be considered later if the center needs it.
@@ -833,13 +873,14 @@ The Logo is uploaded from Center Profile (PNG, JPG or WebP, up to 2 MB) and appe
 Business identity (name, address, phone, email, logo) continues to come from Center Profile. Changing these settings affects invoices issued afterwards, never invoices already issued.
 
 ### Packages and Fees
-*(V1 Fee Structure.)* Admin configures (§5 "Packages and Fee Structure"):
-- **Packages** — name, frequency, and type (duration-based or class-count).
-- **Duration-based packages** — the durations offered and a price for each, entered manually or calculated by a percentage from the base-duration price.
-- **Class-count packages** — the number of classes, the price, and either a fixed validity (its length) or no expiry.
-- **Effective-from date** of each fee version.
+*(V1 Fee Structure.)* Admin only. Admin configures (§5 "Packages and Fee Structure"):
+- **Packages** — name, optional description, and type (duration-based or class-count; the type cannot change once the package has been used). No frequency field.
+- **Duration-based packages** — the duration options offered (Monthly, Quarterly, Half Yearly, Annual, Custom in whole calendar months), the monthly base fee, and an optional package discount (fixed amount or percentage of the standard fee) for Quarterly, Half Yearly and Annual. Monthly has none; Custom (months chosen per membership) uses the discount of the largest standard duration not exceeding its months, or none if that duration has none configured.
+- **Class-count packages** — the class allowance and an independent price. No validity is configured on the package; the expiry is chosen per membership.
+- **Fee history** — effective-dated fee entries (monthly base fee and package discounts, or class-count price), including future schedules, which can be edited or cancelled before they take effect and corrected afterwards only with a reason; every action is audited.
+- **Activation** — deactivate (no new purchases) and reactivate.
 
-A package that is no longer offered is deactivated, not deleted. Changing the fee structure affects memberships created afterwards, never existing ones.
+A package that is no longer offered is deactivated, not deleted; a used package can never be deleted. Changing a package's fees or terms affects memberships created afterwards, never existing ones. Instructors cannot view or change packages, fees, discounts or expiry.
 
 ### Instructors
 Admin can:
@@ -895,7 +936,7 @@ One active enrollment per batch keeps attendance eligibility unambiguous: a dupl
 - Membership status (Upcoming/Active/Expired) is derived from the current date, not stored; cancellation overrides any date-derived status.
 - A student cannot have overlapping non-cancelled duration-based membership periods. *(V1 Fee Structure.)* A student may hold a duration-based and a class-count membership at the same time.
 - Cancelled memberships are excluded from the overlap rule.
-- End date is calculated from plan and start date but remains editable.
+- End date is calculated from plan and start date. For a legacy membership it remains editable. *(V1 Fee Structure.)* For a package-linked duration membership it is calculated by calendar months (clamped to the last day of a shorter month, then minus one day) and cannot be overridden manually; for a class-count membership it is the chosen expiry date or none, changed only through the audited expiry edit.
 - End date cannot precede start date; a same-day start and end date is allowed.
 - Renewal's default start date is the previous membership's end date plus one day.
 - Payment status is Pending, Partially Paid or Paid, determined by the payments recorded against the membership; Paid means the recorded payments cover the full membership amount.
@@ -904,8 +945,9 @@ One active enrollment per batch keeps attendance eligibility unambiguous: a dupl
 - Payment status does not affect attendance eligibility.
 - Attendance eligibility requires active membership on the session date.
 - Renewals create new membership records.
-- *(V1 Fee Structure.)* A membership is priced with the fee in effect on its start date. Its fee, duration saving and discounts are kept with it, and later fee-structure changes never alter them. An additional discount (fixed amount or percentage) always has a reason and an audit record; a renewal does not inherit it automatically. The final amount after discounts is greater than zero, and calculated prices are rounded half up to two decimal places.
-- *(V1 Fee Structure.)* A class-count membership consumes one class for each recorded Class Count Attendance that has not been reversed (§8), never twice for the same one, and never below zero. The attendance date is chosen at recording: on or after the membership start, on or before its end date when it has one, never in the future (centre timezone); the membership must be eligible now, the student active, and a Cancelled membership takes no new record. An Admin can reverse a record with a required reason (3–500 characters): the original record and the reversal (who, when, why) are both kept, one class is restored, and a record is reversed once. With fixed validity it is usable only with remaining classes and unexpired; with no expiry, only with remaining classes. With none remaining it is ineligible and a renewal action is shown. Unused classes are neither refunded nor carried forward automatically. Class-count attendance is separate from session attendance, which is unchanged.
+- *(V1 Fee Structure.)* A package-linked membership is priced with the package's fee entry in effect on its start date: standard fee → package discount (against the standard fee) → individual discount (against the remaining fee) → final agreed fee. Each discount calculation is rounded half up to two decimal places; combined discounts cannot exceed the standard fee; the final agreed fee is greater than ₹0. The fee, discounts, package name, terms and currency are kept with the membership; later package or fee changes never alter them, and it is never repriced automatically. An individual discount always has a reason (Promotional Offer, Returning Member, Special Approval, or Other with an explanation); a renewal never inherits it. A Custom duration's months are chosen per membership, and it takes the package discount of the largest standard duration not exceeding them, or none if that duration has none. A valid standard fee is in the centre's current currency; fees are never converted. Standard pricing is the default; an Admin may explicitly use a **Custom Fee Plan** (custom agreed fee > ₹0, mandatory reason, Admin and time recorded, explicit confirmation before creation) for a special price or when no valid standard fee applies; its amount is the final agreed fee, with no package or individual discount applied on top. Changing an existing membership's agreed fee, discounts or terms is a separate, Admin-only, audited action with a reason.
+- *(V1 Fee Structure.)* Legacy memberships are never migrated or linked to packages automatically and keep their current edit workflow, except that issued documents never change silently and a class-count membership's expiry changes only through the audited expiry edit, for legacy and package-linked memberships alike.
+- *(V1 Fee Structure.)* A class-count membership consumes one class for each recorded Class Count Attendance that has not been reversed (§8), never twice for the same one, and never below zero. The attendance date is chosen at recording: on or after the membership start, on or before its end date when it has one, never in the future (centre timezone); the membership must be eligible now, the student active, and a Cancelled membership takes no new record. An Admin can reverse a record with a required reason (3–500 characters): the original record and the reversal (who, when, why) are both kept, one class is restored, and a record is reversed once. With an expiry date it is usable only with remaining classes and unexpired; with no expiry, only with remaining classes. The expiry is chosen per membership (a date or No expiry) and changed only by an Admin-only, audited expiry edit with a reason, which may extend, shorten or switch it; shortening keeps and flags any attendance already recorded after the new expiry, and a reversal never extends the expiry. With none remaining it is ineligible and a renewal action is shown. Unused classes are neither refunded nor carried forward automatically. Class-count attendance is separate from session attendance, which is unchanged.
 - *(V1 Fee Structure.)* A membership can have multiple payments, each with its own document, whether it is Upcoming, Active or Expired.
 - Expired memberships remain in history.
 - Cancelled memberships remain in history; cancellation does not delete the record.
@@ -1056,7 +1098,7 @@ Historical records must be protected when:
 - Basic settings
 - Stored Invoice / Receipt with invoice settings (V1 Invoice / Receipt Enhancement, §5A)
 - Payments with installments and mixed payment methods; a tax invoice or payment receipt per payment; cancel-and-reissue corrections (V1 Tax Adjustment, §5, §5A)
-- Centre-configured packages with an effective-dated fee structure, duration savings, additional discounts with an audit record, and class-count packages with their separate, Admin-only Class Count Attendance workflow (a third Attendance tab): a chosen attendance date, confirmation before recording, and audited reversals (V1 Fee Structure, §5, §8, §11)
+- Centre-configured packages with an effective-dated fee history, package discounts, individual discounts with a mandatory reason and an audit record, audited corrections, and class-count packages with an audited expiry edit with their separate, Admin-only Class Count Attendance workflow (a third Attendance tab): a chosen attendance date, confirmation before recording, and audited reversals (V1 Fee Structure, §5, §8, §11)
 
 ### Not Included in V1
 - Student login

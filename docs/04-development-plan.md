@@ -55,7 +55,8 @@ that is not in `01-product.md`, that is a defect in this document.
 | 16A | Historical eligibility snapshot (historical-integrity correction) | 🟨 In progress — migration `0015` applied, verified, and backfilled (Aerial Yoga 2026-09-11 confirmed Eligible 2 / Present 1 / Absent 1, matching step 7's QA target); **implementation sequence step 6, the enrollment effective-date validation in `lib/enrollments/`, is not yet built** — `validateScheduleChangeDate` still only rejects a date before today, not a date with existing attendance |
 | 17 | Reports | 🟨 In progress — data layer and `report_session_facts`/`session_attendance_summaries` (migrations `0016`, `0017`) applied and verified; Student/Batch/Attendance Summary report UIs and CSV/XLSX export implemented; **not yet committed, browser QA not yet performed** |
 | 18 | Dashboard (real data) | 🟨 In progress — real Today's/Upcoming Classes and role-appropriate summary tiles implemented for both roles; **not yet committed, browser QA not yet performed** |
-| 19 | Settings → remaining areas | 🟨 In progress — Center Profile and Roles & Permissions implemented; migration `0018` written and its verification script fixed, but **not yet confirmed applied**; not yet committed, browser QA not yet performed |
+| 19 | Settings → remaining areas | 🟨 In progress — Center Profile and Roles & Permissions implemented; migration `0018` written and its verification script fixed; **recorded in migration history (§6A), but its expected database objects and seed data have not been independently verified**; not yet committed, browser QA not yet performed |
+| FS | V1 Fee Structure (packages, fee history, discounts, audited corrections, class-count expiry edit) | 🟨 In progress — business rules approved 2026-10-13 and recorded in `01-product.md` §5/§5A/§8/§11/§12 and `02-ux.md`; **FS-1 complete** (pure JavaScript pricing/date library and unit tests, `lib/packages/`; not yet committed); FS-2 onwards not started, awaiting approval. See §5 "Phase FS". |
 | 20 | Integration & business-rule validation | ⬜ Not started |
 | 21 | Responsive and UX/UI audit | ⬜ Not started |
 | 22 | Production / case-study readiness | ⬜ Not started |
@@ -1267,6 +1268,285 @@ the original defect. Work beyond this sequence (Reports data layer and UI,
 Dashboard, Settings) proceeded in parallel and is tracked in the status
 table above — none of it depends on step 6.
 
+### Phase FS — V1 Fee Structure
+
+**Requirements source.** The approved rules (decided 2026-10-13) are in
+`01-product.md` §5 "Packages and Fee Structure", "Class-Count Packages",
+"Membership Information", "End Date", "Renewal"; §5A "Stored Document and
+Snapshot", "The Receipt Follows the Membership"; §8 "Class Count Attendance";
+§11 "Packages and Fees"; §12 "Membership"; and `02-ux.md` Settings, Flow 09
+and "Membership fee, discounts and class-count packages". This section plans
+the work only; it introduces no requirement.
+
+**Confirmed facts (repository inspection, 2026-10-13)**
+
+- No package, fee-history or discount objects exist in code or migrations.
+  The Settings tabs are Center Profile, Invoice / Receipt, Instructors and
+  Roles & Permissions (`app/settings/settings-tabs.js`).
+- Memberships are created and edited by direct table writes in
+  `lib/memberships/actions.js` (`createMembership`, `updateMembership`).
+  `authenticated` holds a whole-table `UPDATE` grant on `memberships`
+  (0008); admin RLS is the only database barrier, so any admin client can
+  change `amount`, dates or `end_date` without the server action.
+- `calculateMembershipEndDate` (`lib/memberships/validation.js`) rolls
+  calendar overflow forward (31 January + 1 month → 3 March, end 2 March).
+  The approved rule clamps (end 27 February). Postgres
+  `date + interval 'n months'` clamps, matching the approved rule.
+- Amount must be greater than 0 in `validateMembershipInput` and in the
+  0008 CHECK, which matches the approved "> ₹0" rule.
+- Renewal (`app/memberships/[id]/renew/page.js`) copies the previous plan
+  and amount; class-count renewal starts today with no expiry.
+- Overpayment is refused server-side (`record_membership_payment`, deferred
+  total checks, 0034); payment edits are audited (0038, 0040).
+- A membership with recorded payments is documented per payment and never
+  receives a new membership-level document (0036/0039, `01-product.md` §5A).
+  Because a new membership is Paid only through payments, a package-linked
+  membership should never hold a membership-level document — **derived from
+  the rules, not yet enforced by a dedicated guard.**
+- Class-count recording requires a membership usable today and an
+  attendance date within validity (0045 `record_class_count_attendance`);
+  reversal never touches `end_date`. A class-count `end_date` can today be
+  changed through the generic Edit form, unaudited; the 0045 history guard
+  allows it.
+- `plan` drives document descriptions (`issue_*_core`), `lib/status.js`
+  `PLAN`, the dashboard and list filters, and is constrained by
+  `memberships_plan_valid` / `invoices_plan_valid` (0042). Keeping `plan`
+  populated on package-linked memberships avoids touching those consumers.
+- Existing column-grant pattern: 0025, 0027, 0028, 0036, 0041.
+
+**Requires investigation before or during implementation**
+
+- Behaviour of 0031–0045 on the development database is **not verified**
+  (§6A); run their behaviour scripts, with approval, before FS-5.
+- Whether any legacy class-count memberships (created since 0042) exist on
+  the development database, and how many.
+- The exact database path by which a membership-level document could still
+  be issued (auto-issue trigger, Issue Invoice) for a package-linked
+  membership, to design the FS-5 guard.
+- How many legacy membership-level receipts exist on the development
+  database, and how many have already been changed by the sync (needs an
+  approved read-only query; FS-D).
+
+**Legacy document sync — investigation result (O1, repository only, 2026-10-13)**
+
+- **Path.** `memberships_sync_invoice_trigger` (0030) is an `AFTER UPDATE OF
+  amount, plan, start_date, end_date` row trigger on `memberships`, firing
+  only when one of those values actually changes. It calls
+  `memberships_sync_invoice()` (0030), which calls
+  `sync_invoice_from_membership(membership_id)`. Its current body is 0044's;
+  earlier bodies are 0030, 0031, 0033 and 0036.
+- **What it changes.** It acts only on the membership-level document
+  (`invoices.payment_id is null`, since 0036). Inside the same transaction it
+  sets `yoga.invoice_sync` to that invoice's id, and `invoices_freeze_snapshot`
+  (current body 0037) then allows exactly eight columns to change: `plan`,
+  `description`, `period_start`, `period_end`, `total_amount`,
+  `taxable_amount`, `tax_amount` and `service_details` (the last only for a
+  tracked receipt whose start date moved). Number, prefix, dates, currency,
+  tax terms and snapshots stay frozen. Payment documents never follow.
+- **Who triggers it.** Within the application, only Edit Membership
+  (`updateMembership`, `lib/memberships/actions.js`) writes those four
+  columns. Payment recording and editing change `payment_status`/
+  `payment_date`, which do not fire it. Any direct admin `UPDATE` (whole-table
+  grant, 0008) would also fire it.
+- **No membership-level correction path exists.** Cancel-and-reissue is
+  payment-documents-only: `correct_payment_document` refuses a document with
+  no payment (SQLSTATE 55000, 0037), and `invoices_correction_payment_only`
+  (0037) forbids a cancelled or replacing membership-level document. So
+  "use the existing cancellation and reissue process" has no existing
+  process for legacy membership-level receipts.
+- **Impact if the sync were simply removed.** A legacy edit of amount, plan
+  or dates would leave the issued receipt showing the old values with no way
+  to correct it. Therefore the trigger stays unchanged until FS-D's design is
+  approved.
+
+**Conflicts between approved rules and current implementation — proposed resolutions**
+
+| # | Approved rule | Current implementation | Proposed resolution |
+|---|---|---|---|
+| C1 | Clamped calendar end date | `addMonthsUTC` rolls forward | New clamped helper for package-linked memberships (FS-1) and SQL calculation in the create function (FS-5). The legacy helper is left unchanged, because legacy memberships keep their current edit workflow. |
+| C2 | No manual End date for package-linked duration memberships | End Date always editable | FS-6 form renders it read-only; FS-5 guard refuses direct changes. |
+| C3 | Fee resolved server-side from the start date | Amount typed by hand | FS-5 `create_membership_from_package` resolves and calculates in the database; the form only previews. |
+| C4 | Renewal priced on the new start date, no inherited discount | Renewal copies plan and amount | FS-6 renewal uses the package flow. |
+| C5 | Audited expiry edit for **every** class-count membership (O3) | Generic edit, unaudited | FS-7 function + audit table; a guard refuses any other `end_date` change on any `kind = 'class_count'` membership, legacy or package-linked; the Edit form stops offering it. |
+| C6 | Audited corrections of agreed fee and terms | `updateMembership` writes `amount`/dates freely | FS-8 correction function; FS-5 guard restricts package-linked rows only. Legacy rows unchanged. |
+| C7 | Issued documents never change silently, legacy and package-linked (O1) | 0030 sync rewrites a legacy membership-level receipt when its legacy membership is edited; no membership-level cancel-and-reissue exists | Package-linked memberships never hold membership-level documents (guard in FS-5). The legacy sync stays **unchanged** until FS-D (investigation → design → approval) delivers a safe replacement. |
+| C8 | Database-level enforcement | Whole-table `UPDATE` grant | FS-5 guard trigger on package-linked rows (column grants would also lock legacy rows, which must keep their workflow). |
+
+**Implementation phases** (each one reviewable commit, each needing approval;
+migration numbers are proposals, nothing is created)
+
+| Phase | Scope | Depends on | Likely files / objects | Safeguards | Verification and acceptance |
+|---|---|---|---|---|---|
+| **FS-0** Readiness | Wireframes for Settings → Packages & Fees, the package-linked Membership Details actions and the Custom Fee Plan flow; authorized behaviour verification of 0031–0045; investigation of legacy class-count memberships on the development database; verification of every path that can create or rewrite a membership-level document; settle the working tree | — | Docs, wireframes, §6A | No database writes beyond rollback-only scripts, each separately authorized | Approvals recorded in §7; wireframes approved; verification results recorded in §6A |
+| **FS-D** Legacy document protection (O1) — separate readiness task | **Business principle approved; technical design awaiting approval.** Recommended design: an **audited cancel-and-reissue workflow for legacy membership-level receipts**. The design must establish: (1) how the original issued document is preserved, unchanged and viewable; (2) how cancellation and replacement numbering work (which sequence the replacement uses; reservations under 0030 so no number is reused); (3) how correction history and audit records are kept (who, when, reason, link original ↔ replacement); (4) which functions, triggers, constraints and application paths need protection — at least `memberships_sync_invoice_trigger` / `memberships_sync_invoice` / `sync_invoice_from_membership` (0030 → 0044), `invoices_freeze_snapshot` (0037), `invoices_correction_payment_only` and `correct_payment_document` (0037), `memberships_auto_issue_invoice` and `issue_invoice` (0036), `updateMembership` (`lib/memberships/actions.js`); (5) how the legacy Edit workflow continues safely (for example: the edit saves, the receipt stays as issued, and the Admin is offered cancel-and-reissue); (6) how unauthorized direct database updates are prevented from rewriting issued documents (the whole-table `UPDATE` grant on `memberships`, 0008). Alternatives still on record: refusing such legacy edits outright, or another approved approach. | FS-0; approved read-only count of affected legacy receipts | Design note in this section; later a migration replacing the 0030 sync behaviour | `memberships_sync_invoice_trigger` **unchanged** until the design is approved; no document rewritten, renumbered or cancelled automatically | Design approved; then behaviour scripts proving a legacy edit changes no issued document and the cancel-and-reissue path preserves the original, its number and its history |
+| **FS-1** Pricing and date library — ✅ **Complete (2026-10-13)**, see "FS-1 completion record" | Pure functions: clamped month arithmetic and inclusive end date; fee-entry resolution by start date; standard fee (monthly base × months, including Custom whole months); package discount (against standard fee; none for Monthly; Custom months chosen per membership, discount of the largest standard duration not exceeding them, none if that duration has none configured); individual discount (against remaining fee); half-up rounding per step; limits (combined ≤ standard fee, final > 0); reason validation; "no valid standard fee" (no entry in effect, or entry in another currency); Custom Fee Plan validation (custom fee > 0, mandatory reason; the amount is the final fee and no discount is applied). Not wired to any screen. See "FS-1 implementation plan" below. | Approval of S1–S3 in the FS-1 implementation plan. **No** database, receipt-trigger or wireframe dependency. | New `lib/packages/pricing.js`, `lib/packages/validation.js`, tests | Integer paise arithmetic, as in `lib/memberships/payments-core.js` | Unit tests incl. ₹1,500 × 3 − 300 − 200 = 4,000; Custom 2/5/7/10/12/13 months → no / Quarterly / Half Yearly / Half Yearly / Annual / Annual discount; Custom 5 months on a package with no Quarterly discount → no package discount; fee entry in another currency → no valid standard fee; Custom Fee Plan > 0 with reason accepted, ≤ 0 or no reason refused; 31 Jan, 29 Feb, 30/31 month ends; percentage rounding at .005; combined = standard; final = 0 refused. `npm test`, lint. |
+| **FS-2** Catalogue schema | `packages`; duration options (terms, edited in place); effective-dated fee entries (monthly base fee + per-option package discounts, or class-count price; currency); package audit events. RLS: admin SELECT only; writes only through functions. | FS-1 | Migration `0046_packages_and_fee_history.sql` + `verify_0046_*` | Unique (package, effective date) among non-cancelled entries; type immutable once used; no DELETE grant; `ON DELETE RESTRICT` | Structural (read-only) and behaviour (rollback-only) scripts, including Instructor and anonymous refusal; §6A row |
+| **FS-3** Package and fee functions | Create/update package (name snapshot rule), terms edit (audited, future purchases only), activate/deactivate, schedule/edit/cancel fee entry before effective, correct entry with reason, conflict detection returning affected memberships and agreed fees | FS-2 | `0047_package_fee_functions.sql`; `lib/packages/actions.js`, `data.js` | SECURITY DEFINER with `is_admin()`, pinned `search_path`; package row lock | Behaviour: duplicate date refused; edit after effective refused; conflict blocked with affected list; audit rows written |
+| **FS-4** Settings → Packages & Fees UI | List, create, edit, terms, fee history, activate/deactivate, affected-memberships view | FS-3, wireframe | `app/settings/packages/*`, `settings-tabs.js` | Admin-only route guard (`requireRole`) | Lint, build, Browser QA desktop/mobile, empty/error/conflict states |
+| **FS-5** Membership pricing in the database | Nullable package-linked columns on `memberships` (package, fee entry, name snapshot, duration months, standard fee, package discount, individual discount type/value/amount, reason code/note; pricing mode `standard` / `custom_fee_plan` with the Custom Fee Plan reason and confirmed-by/at); consistency CHECK; `create_membership_from_package` (resolves a valid fee in the centre's current currency or accepts an explicit Custom Fee Plan, calculates end date in SQL, snapshots currency, refuses a deactivated package); guard trigger on package-linked rows; guard refusing membership-level documents for package-linked memberships | FS-3; 0031–0045 behaviour verified | `0048_package_linked_memberships.sql` + verification | No backfill; legacy rows untouched (byte-for-byte fingerprint check); deferred consistency checks; `amount` = final agreed fee | Behaviour: priced by start date; clamped end date; SQL result = FS-1 result for shared cases; direct UPDATE of protected columns refused; legacy edit unaffected |
+| **FS-6** Membership workflow UI | Package mode in Add Membership, Student Details → Add Membership, guided step 2 and Renew; Custom months input; "no valid standard fee" state; explicit Custom Fee Plan choice with fee, reason and confirmation; breakdown and Review; Record Payment Now validated against the resolved fee; Membership Details breakdown; Edit form hides protected fields for package-linked rows; list Plan filter offers packages | FS-4, FS-5 | `app/memberships/membership-form.js`, `lib/memberships/actions.js`, `app/memberships/[id]/renew/page.js`, `app/memberships/[id]/page.js`, `app/memberships/membership-filters.js`, guided-flow pages | Server action calls the database function; client values are previews only | Browser QA of all four entry points; payment and enrollment failure paths keep the membership; regression of payments and documents |
+| **FS-7** Class-count expiry edit (all class-count memberships, O3) | Audit table and `edit_class_count_expiry` (date or No expiry, reason) for every `kind = 'class_count'` membership, legacy or package-linked; guard refusing any other `end_date` change on class-count rows; Edit form stops offering it; flagged records (attended after current expiry, not reversed) shown with the informational flag `Attendance after current expiry`, no acknowledgement; Membership Details action and Class Attendance panel flag | FS-0 (wireframe for the Membership Details action); independent of FS-2–FS-6 | `0049_class_count_expiry_edits.sql`; `lib/class-count-attendance/*`, `lib/memberships/actions.js`, `app/memberships/membership-form.js`, `app/memberships/[id]/*` | Never touches fee, allowance, attendance or reversal rows; legacy class-count memberships are not linked to packages | Behaviour: extend re-enables recording; shorten keeps and flags records; reversal does not extend; Instructor refused |
+| **FS-8** Agreed-fee and term corrections | Audit table and correction function for fee, discounts and start date (re-resolve fee for a new start date, confirm the revised price, recalculate the end date); refuses a final fee ≤ 0 or below payments recorded; a Custom Fee Plan membership's correction never applies discounts (whether a correction may switch between Custom Fee Plan and standard pricing is still to be decided, §7) | FS-5 | `0050_membership_term_corrections.sql`; Membership Details | Payments and documents untouched; links to existing correction actions | Behaviour: audit row with old/new/reason/actor; payment-status recalculation follows existing rules; issued documents unchanged |
+| **FS-9** Integration regression | Full regression across memberships, payments, documents, attendance, class-count, reports, dashboard | All | — | — | `npm test`, lint, build; all relevant behaviour scripts; Browser QA both roles |
+
+**Required regression tests**
+
+- Payments: installments, mixed methods, overpayment refusal, payment edits
+  (0034–0040 behaviour scripts; `lib/memberships/*payment*.test.js`).
+- Documents: tax invoice and payment receipt numbering, duplicate guard,
+  cancel-and-reissue, GSTIN, PDF and receipt layouts unchanged
+  (0036–0041, 0044 scripts; `lib/invoices/*.test.js`).
+- Legacy memberships: current edit workflow, membership-level receipt
+  sync (0030), Paid → Pending guard, unchanged rows.
+- Session attendance eligibility for duration memberships
+  (`resolve_eligible_students`), including package-linked memberships.
+- Class-count: recording, net count, reversal, renewal fresh balance
+  (0043–0045 scripts; `lib/class-count-attendance/*.test.js`).
+- Enrollment: duplicate active enrollment refused; enrollment failure never
+  cancels a membership or reverses a payment.
+- Authorization: Instructor and anonymous callers refused on every new
+  function and table; Admin-only routes.
+- Pricing: Custom months and discount mapping (O2a, O2b), currency validity
+  (O5), Custom Fee Plan creation with reason and confirmation (O8); JS and SQL
+  give the same result for shared cases.
+- Class-count expiry: `Attendance after current expiry` flag shown, records
+  and balance unchanged (O7).
+
+**FS-1 completion record** (2026-10-13)
+
+- **Status:** ✅ Complete. Implemented to the plan below with S1–S3 approved.
+  Not yet committed.
+- **Files added:** `lib/packages/duration.js`, `lib/packages/pricing.js`,
+  `lib/packages/validation.js` and the matching `duration.test.js`,
+  `pricing.test.js`, `validation.test.js`. No existing source file changed;
+  nothing imports the new modules yet.
+- **Functions:** `resolveDurationMonths`, `packageDiscountDurationFor`,
+  `calculateDurationEndDate`, `validateDiscountInput`,
+  `validateIndividualDiscountReason`, `calculateDiscountPaise`,
+  `resolveStandardFeeEntry`, `priceStandardMembership`, `priceCustomFeePlan`.
+- **Results:** 57 new unit tests pass. Full `npm test`: 1,376 passing,
+  0 failing. `npm run lint`: 0 errors, 1 pre-existing warning
+  (`components/ui/avatar.js`, `<img>`). `npm run build`: successful.
+- **Not changed:** no SQL, migrations, database records, receipt triggers or
+  UI. Nothing staged or committed.
+- **Deviations from the plan:**
+  1. Additional error fields for invalid inputs the contract table did not
+     cover: `months` (`calculateDurationEndDate`, `priceStandardMembership`),
+     `start_date` (`resolveStandardFeeEntry`), `kind` and `fee`
+     (`priceStandardMembership`, for an unknown package type or an invalid fee
+     entry).
+  2. An exported `requiredReasonText` helper (shared by the Other explanation
+     and the Custom Fee Plan reason) and exported constants
+     (`STANDARD_DURATION_MONTHS`, `DURATION_OPTIONS`, `CUSTOM_MONTHS_MIN/MAX`,
+     `DISCOUNT_TYPES`, `INDIVIDUAL_DISCOUNT_REASONS`, `REASON_MIN_LENGTH`,
+     `REASON_MAX_LENGTH`, `MAX_PERCENT_BASIS_POINTS`).
+  3. Messages use the currency-independent wording "greater than 0" rather
+     than "greater than ₹0".
+  4. `packageDiscountSource` is `"monthly"` (with a package discount of 0)
+     for 1–2 month durations.
+  5. `fromPaise` was not needed; only `toPaise` is reused from
+     `lib/memberships/payments-core.js`.
+- **Not claimed:** these JavaScript results are the calculation contract
+  only. Agreement with the database calculation is **not** verified; that is
+  part of FS-5.
+
+**FS-1 implementation plan** (prepared 2026-10-13; implemented — see the
+completion record above)
+
+*Scope.* Pure JavaScript calculation and validation functions plus unit
+tests. No database, server action, UI, receipt-trigger or wireframe
+dependency; nothing imports them yet. They establish the calculation
+contract; the database stays authoritative in FS-5, and JS/SQL agreement is
+**not** claimed until FS-5 verifies it.
+
+*Conventions reused.* Node's built-in test runner (`npm test` →
+`node --test "lib/**/*.test.js"`), co-located `*.test.js` files using
+`node:test` and `node:assert/strict`; plain ES modules with relative `.js`
+imports (as in `lib/memberships/validity.js`); a new feature folder
+`lib/packages/`; validators return `{ success: true, data }` or
+`{ success: false, errors: { field: message } }` with user-facing messages
+(as in `lib/memberships/validation.js`); money as integer paise using
+`toPaise` / `fromPaise` from `lib/memberships/payments-core.js` (no imports
+of server-only code). No new dependency, no TypeScript. Existing files are
+not changed; in particular `calculateMembershipEndDate` (legacy, rolls
+forward) stays as it is.
+
+*Files (proposed).* `lib/packages/duration.js`, `lib/packages/pricing.js`,
+`lib/packages/validation.js`, and `duration.test.js`, `pricing.test.js`,
+`validation.test.js` beside them.
+
+*Functions and contracts.*
+
+| Function | Input | Output | Errors |
+|---|---|---|---|
+| `STANDARD_DURATION_MONTHS` (constant) | — | `{ monthly: 1, quarterly: 3, half_yearly: 6, annual: 12 }` | — |
+| `resolveDurationMonths(option, customMonths)` (`duration.js`) | option `monthly` \| `quarterly` \| `half_yearly` \| `annual` \| `custom`; `customMonths` string or number (custom only) | `{ success, data: months }` | `duration_option`: unknown option; `custom_months`: not a whole number in the allowed range (S2) |
+| `packageDiscountDurationFor(months)` (`duration.js`) | whole months ≥ 1 | the largest standard option not exceeding `months` (`monthly` for 1–2, `quarterly` 3–5, `half_yearly` 6–11, `annual` ≥ 12) | — (callers pass validated months) |
+| `calculateDurationEndDate(startDate, months)` (`duration.js`) | `YYYY-MM-DD`; whole months ≥ 1 | `{ success, data: "YYYY-MM-DD" }`: add calendar months, clamp to the last day of a shorter month, minus one day | `start_date`: not a valid calendar date |
+| `validateDiscountInput({ type, value })` (`validation.js`) | `type` `fixed` \| `percent`; `value` string | `{ success, data: { type: "fixed", valuePaise } \| { type: "percent", basisPoints } }` | `discount`: unknown type, not a positive amount with at most two decimals (fixed), or outside the allowed percentage range (S1) |
+| `validateIndividualDiscountReason({ code, note })` (`validation.js`) | `code` `promotional_offer` \| `returning_member` \| `special_approval` \| `other`; `note` string | `{ success, data: { code, note } }` | `discount_reason`: missing or unknown code; `discount_note`: missing for `other`, or outside the allowed length (S3) |
+| `calculateDiscountPaise(basePaise, discount)` (`pricing.js`) | integer paise; validated discount | integer paise: fixed → `valuePaise`; percent → `floor((basePaise × basisPoints + 5000) / 10000)` (round half up to the paisa) | — |
+| `resolveStandardFeeEntry(entries, startDate, centreCurrency)` (`pricing.js`) | fee entries `{ effectiveFrom, currency, cancelled, monthlyFeePaise?, packageDiscounts?, pricePaise? }[]` | `{ success, data: entry }`: the non-cancelled entry with the latest `effectiveFrom` ≤ `startDate` | `fee`: no entry in effect; `fee`: the entry in effect is in another currency (never converted, never falls back to an older entry); `fee`: two non-cancelled entries share that date (ambiguous) |
+| `priceStandardMembership({ kind, entry, months, individualDiscount })` (`pricing.js`) | `kind` `duration` \| `class_count`; resolved entry; months (duration); validated individual discount or null | `{ success, data: { pricingMode: "standard", standardFeePaise, packageDiscountSource, packageDiscountPaise, individualDiscountPaise, finalFeePaise } }`. Standard fee = `monthlyFeePaise × months` or `pricePaise`; package discount (duration only) from `packageDiscountDurationFor(months)`, none for `monthly` or when that option has none configured; individual discount against `standard − package` | `package_discount`: configured discount exceeds the standard fee; `individual_discount`: combined discounts exceed the standard fee; `final_fee`: final fee not greater than 0 |
+| `priceCustomFeePlan({ amount, reason, packageDiscount, individualDiscount })` (`pricing.js`) | amount string; reason string; any discount input | `{ success, data: { pricingMode: "custom_fee_plan", standardFeePaise: null, packageDiscountSource: null, packageDiscountPaise: null, individualDiscountPaise: null, finalFeePaise, reason } }` | `custom_fee`: not a positive amount with at most two decimals, or 0; `custom_fee_reason`: missing or outside the allowed length (S3); `discount`: any package or individual discount supplied ("A Custom Fee Plan takes no discounts") |
+
+Explicit confirmation, Admin identity and timestamp belong to the server
+action and database (FS-5/FS-6), not FS-1.
+
+*Unit tests (minimum).*
+
+- Monthly: ₹1,500 → standard ₹1,500, no package discount even if one is
+  configured for `monthly`.
+- Quarterly / Half Yearly / Annual: fixed and percentage package discounts
+  against `monthly × months`; the brief's example ₹1,500 × 3 − ₹300 − ₹200 =
+  ₹4,000.
+- Custom 2 / 5 / 7 / 10 / 12 / 13 months → Monthly (none) / Quarterly /
+  Half Yearly / Half Yearly / Annual / Annual; Custom 5 when Quarterly has no
+  discount configured → none (no search for another option).
+- Package discount then individual discount; individual percentage computed
+  on the remaining fee, not the standard fee.
+- Half-up rounding at each stage: a percentage yielding x.xx5 rounds up; a
+  value just below rounds down; each stage rounded before the next.
+- Combined discounts equal to the standard fee → refused (final would be 0);
+  greater → refused; final ₹0.01 → accepted.
+- Class-count: standard fee = price; no package discount; individual
+  discount allowed.
+- Custom Fee Plan: valid amount + reason → final fee = amount; with a
+  package entry that has discounts, and with an individual discount
+  supplied → refused; result never contains a discount; amount 0, negative,
+  three decimals or non-numeric → refused; empty reason → refused.
+- Fee resolution: latest entry on or before the start date; future and
+  cancelled entries ignored; order of the array irrelevant; start date
+  before every entry → no valid fee; entry in effect in another currency →
+  no valid fee (and no conversion, no fallback); duplicate effective date →
+  ambiguous error.
+- End dates: 15 Jan + 1 → 14 Feb; 31 Jan 2027 + 1 → 27 Feb 2027;
+  31 Jan 2028 + 1 → 28 Feb 2028 (leap year); 29 Feb 2028 + 12 → 27 Feb 2029;
+  30 Nov 2026 + 3 → 27 Feb 2027; 31 Aug 2026 + 6 → 27 Feb 2027;
+  15 Dec 2026 + 1 → 14 Jan 2027 (year boundary); 1 Mar + 1 → 31 Mar;
+  invalid date (`2026-02-30`, `2026-13-01`, empty) → error.
+- Invalid inputs: unknown duration option or discount type; Custom months
+  0, 1.5, "abc", outside range; percentage 0, above 100, too many decimals;
+  fixed discount negative or above the base; reason codes outside the list;
+  `other` without a note.
+- These tests do not repeat what `lib/memberships/*.test.js` already covers
+  (payments, legacy end dates, validity).
+
+*Specification details to confirm before FS-1 starts* (they set validation
+contracts; none reopens an approved rule):
+
+- **S1 — discount values.** Proposed: a discount is optional; when given it
+  must be greater than 0; a fixed amount has at most two decimals; a
+  percentage is greater than 0 and at most 100, with at most two decimals.
+- **S2 — Custom months range.** Proposed: a whole number from 1 to 120.
+- **S3 — reason text length.** Proposed: the `Other` explanation and the
+  Custom Fee Plan reason are trimmed and 3 to 500 characters, the same rule
+  as Class Count Attendance reversals (0045) and document corrections
+  (0037); a note for the other reason codes is optional, at most 500.
+
+**Open items** — see §7 (Fee Structure O1–O8, O2a, O2b, Custom Fee Plan
+discount handling, business-rule status, readiness summary).
+
 ### Phase 20 — Integration & business-rule validation
 End-to-end verification of the historical-integrity rules in `01-product.md`
 §12 — particularly that membership expiry/renewal, batch changes, student or
@@ -1309,6 +1589,122 @@ schedules · class_sessions · attendance · center_profile
 
 ---
 
+## 6A. Migration Reconciliation Ledger
+
+Record of which repository migrations are known to be applied to the
+development database, and on what evidence. This ledger is a statement of
+evidence, **not** a claim that every migration is fully verified.
+
+**Target:** Supabase project `yoga-attendance-demo` (`hrrkzrdihvkauyudhtqf`).
+**Audit date:** 2026-10-12. **Scope:** `supabase/migrations/0001`–`0045`.
+
+**What was established**
+
+- **Migration history** (`supabase_migrations.schema_migrations`) contains
+  versions `0001`–`0045`. History names have not yet been compared with the
+  repository file names.
+- **Catalog checks passed** for `0007`, `0014`, `0016`, `0017` and `0021`
+  (a read-only query reconstructed from the migration files during the
+  audit; it is not saved under `supabase/verification/`).
+- **Fingerprint checks were reported as passed** for `0034`–`0045`. The
+  query and its exact checks are not stored in the repository.
+- Results were reported by the person who ran the queries; raw outputs are
+  not stored in the repository.
+- **No migration was applied, repaired or re-run** during the audit, and
+  `supabase db push` was not used.
+
+**Limits of this evidence.** Catalog checks show that objects exist with
+the expected definitions. They do **not** prove data backfills or seed rows,
+RLS policies or their effect, trigger behaviour, or runtime behaviour of
+functions. Migration history rows show that a version was *recorded* as
+applied; they do not prove the schema matches. A migration whose objects
+were later replaced is **superseded, not missing**: the database holds only
+the latest definition.
+
+**Status legend**
+
+| Status | Meaning |
+|---|---|
+| **Catalog-confirmed** | History row present and a catalog or fingerprint check passed for its objects |
+| **Recorded only** | History row present; not catalog-checked |
+| *Superseded by* | Later migrations that replace or redefine this migration's functions, policies, constraints or indexes |
+| *Not verified* | Data effects, policies, triggers or behaviour that no check in this audit covered. Applies **in addition** to the status. Runtime behaviour is unverified for every migration. |
+
+| Migration | Status | Catalog evidence | Superseded by | Not verified |
+|---|---|---|---|---|
+| `0001` | Recorded only | — | `handle_new_user`: 0003 | Profile RLS policies; `on_auth_user_created` trigger |
+| `0002` | Recorded only | — | — | Instructor RLS policies |
+| `0003` | Recorded only | — | — | Body-only change (role hard-coded in `handle_new_user`) |
+| `0004` | Recorded only | — | — | `instructors_select_self` policy |
+| `0005` | Recorded only | — | — | Batch RLS policies |
+| `0006` | Recorded only | — | — | Student-code triggers; RLS policies |
+| `0007` | Catalog-confirmed | Table; PK; `student_id`/`batch_id` FKs `ON DELETE RESTRICT`; status CHECK; `batch_enrollments_end_after_start`; partial unique index `batch_enrollments_one_active_per_batch`; `batch_enrollments_batch_id_idx` | — | RLS and its three policies |
+| `0008` | Recorded only | — | Plan CHECK: 0031; payment-status CHECK: 0034; `memberships_no_overlap_per_student`: 0042 | Membership-code triggers; RLS policies |
+| `0009` | Recorded only | — | — | Schedule RLS policies |
+| `0010` | Recorded only | — | — | Class-session RLS policies |
+| `0011` | Recorded only | — | `resolve_eligible_students`: 0012, 0013, 0014, 0015, 0024, 0042; `save_session_attendance`: 0013, 0014, 0015, 0024 | Attendance RLS policies |
+| `0012` | Recorded only | — | `resolve_eligible_students(uuid, date)` dropped and replaced by 0013 | — |
+| `0013` | Recorded only | — | `resolve_eligible_students`: 0014, 0015, 0024, 0042; `save_session_attendance`: 0014, 0015, 0024 | **Data backfill:** `schedule_series`, `schedules.series_id`, `enrollment_schedules`; RLS policies |
+| `0014` | Catalog-confirmed | `can_access_session(uuid, date)`, `materialize_class_session(uuid, date)`: exist, `SECURITY DEFINER`, pinned `search_path`, expected return type, `EXECUTE` for `authenticated` | `resolve_eligible_students`: 0015, 0024, 0042; `save_session_attendance`: 0015, 0024 | Four instructor SELECT policies; RLS behaviour (`verify_0014_instructor_access.sql` not re-run) |
+| `0015` | Recorded only | — | `resolve_eligible_students`: 0024, 0042; `save_session_attendance`: 0024 | Snapshot **backfill** (separate script; recorded as done in §5 Phase 16A, not re-checked); RLS policies |
+| `0016` | Catalog-confirmed | `report_session_facts(date, date, uuid, uuid)`: exists, `SECURITY INVOKER`, `STABLE`, pinned `search_path`, returns `TABLE`, `EXECUTE` for `authenticated` | — | Function output |
+| `0017` | Catalog-confirmed | `session_attendance_summaries(jsonb)`: exists, `SECURITY INVOKER`, `STABLE`, pinned `search_path`, returns `TABLE`, `EXECUTE` for `authenticated` | — | Function output |
+| `0018` | Recorded only | — | — | **Seed row** in `center_profile`; RLS policies |
+| `0019` | Recorded only | — | `profile_photos_delete_admin` policy: 0026 | **Storage bucket row**; storage policies |
+| `0020` | Recorded only | — | `enrollment_schedules_delete_unstarted_admin` policy: 0024 | Policy behaviour |
+| `0021` | Catalog-confirmed | `schedule_usage(uuid, date)`, `delete_unused_schedule(uuid)`, `correct_unused_schedule(uuid, text, uuid, time, time, date, date)`: exist, `SECURITY DEFINER`, pinned `search_path`, return `jsonb`, `EXECUTE` for `authenticated`, not `anon`. Live bodies are the 0024 definitions (expected). | All three functions: 0024 | Runtime behaviour |
+| `0022` | Recorded only | — | — | **Data backfill:** `phone_country_code = '+91'` on students and instructors |
+| `0023` | Recorded only | — | — | — |
+| `0024` | Recorded only | — | `resolve_eligible_students`: 0042 | Timezone trigger; re-created policy |
+| `0025` | Recorded only | — | — | **Seed row** in `invoice_settings`; payment-rules trigger |
+| `0026` | Recorded only | — | `invoice_settings_guard`: 0027, 0036, 0041; `invoices_freeze_snapshot`: 0030, 0033, 0037; `issue_invoice_core`: 0027, 0029, 0030, 0031, 0033, 0036, 0041, 0044; `issue_invoice`, `memberships_auto_issue_invoice`, `memberships_invoice_guard`, `update_invoice_details`: 0036; `invoices_invoice_number_unique`, `invoices_membership_id_unique`: re-created 0036 | **Storage bucket row**; invoice triggers; RLS and storage policies |
+| `0027` | Recorded only | — | `invoice_settings_guard`: 0036, 0041; `issue_invoice_core`: 0029, 0030, 0031, 0033, 0036, 0041, 0044 | — |
+| `0028` | Recorded only | — | — | Bank-account trigger; RLS policies |
+| `0029` | Recorded only | — | `issue_invoice_core`: 0030, 0031, 0033, 0036, 0041, 0044 | — |
+| `0030` | Recorded only | — | `invoices_freeze_snapshot`: 0033, 0037; `invoices_reserve_number`: 0036; `issue_invoice_core`: 0031, 0033, 0036, 0041, 0044; `sync_invoice_from_membership`: 0031, 0033, 0036, 0044 | **Data backfill** of `invoice_number_reservations`; sync triggers |
+| `0031` | Recorded only | — | `memberships_plan_valid`, `invoices_plan_valid`: 0042; `issue_invoice_core`: 0033, 0036, 0041, 0044; `sync_invoice_from_membership`: 0033, 0036, 0044 | — |
+| `0032` | Recorded only | — | — | Function output |
+| `0033` | Recorded only | — | `invoices_freeze_snapshot`: 0037; `issue_invoice_core`: 0036, 0041, 0044; `sync_invoice_from_membership`: 0036, 0044 | — |
+| `0034` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | `record_membership_payment`: 0035 | Payment triggers and behaviour; RLS policies |
+| `0035` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | — | Behaviour |
+| `0036` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | `issue_payment_document`: 0037; `invoices_payment_id_unique`: re-created 0037; `invoice_settings_guard`: 0041; `issue_invoice_core`: 0041, 0044; `sync_invoice_from_membership`: 0044 | Numbering and document behaviour |
+| `0037` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | `issue_payment_document_core`: 0038, 0039, 0041, 0044 | Correction behaviour |
+| `0038` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | `issue_payment_document_core`: 0039, 0041, 0044 | Edit-history behaviour; RLS policy |
+| `0039` | Catalog-confirmed (reported fingerprint) | Fingerprint passed. Body-only migration: shows only that the guard is present in the current body. | `issue_payment_document_core`: 0041, 0044 | Guard behaviour |
+| `0040` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | — | Behaviour |
+| `0041` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | `issue_invoice_core`, `issue_payment_document_core`: 0044 | **Initial GSTIN value** in `invoice_settings`; behaviour |
+| `0042` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | — | Eligibility behaviour |
+| `0043` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | `class_count_attendance_guard`, `list_class_count_eligible`, `record_class_count_attendance`: 0045 | Read-only triggers; RLS policy |
+| `0044` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | `memberships_class_count_history_guard`: 0045 | History-guard behaviour |
+| `0045` | Catalog-confirmed (reported fingerprint) | Fingerprint passed | — | Read-only triggers; reversal behaviour; RLS policy |
+
+**Summary by evidence**
+
+- Catalog-confirmed (17): `0007`, `0014`, `0016`, `0017`, `0021`, `0034`–`0045`.
+- Recorded only (28): `0001`–`0006`, `0008`–`0013`, `0015`, `0018`–`0020`,
+  `0022`–`0033`.
+- No mismatch between migration history and catalog objects is indicated by
+  the evidence above.
+- Not established by this audit for any migration: data backfills and seed
+  rows, RLS policy effect, trigger behaviour, runtime function behaviour.
+
+**Open follow-ups** (each is a separate, approved step)
+
+1. Save the `0034`–`0045` fingerprint query and the `0007`/`0014`/`0016`/
+   `0017`/`0021` catalog query under `supabase/verification/` so the
+   evidence is reproducible.
+2. Optional read-only fingerprint check of the 28 recorded-only migrations,
+   including a comparison of history names with repository file names.
+3. Before work that builds on memberships, payments or documents
+   (`0031`–`0045`), run the relevant `*_behavior.sql` scripts on approval.
+   They write rollback-only fixtures.
+4. Do not run `supabase db push` or `supabase migration repair`; the history
+   is already complete and nothing here calls for a repair.
+
+Update this ledger whenever a migration is added, applied or verified.
+
+---
+
 ## 7. Open Items Requiring Decision
 
 | Item | Status |
@@ -1319,6 +1715,19 @@ schedules · class_sessions · attendance · center_profile
 | **Backfill date vs. schedule age (Phase 15A)** | The backfill dates each assignment from the enrollment's own start date, which can predate a schedule that was created later. Harmless in practice (eligibility also requires the schedule to have produced a session on that date) but it does store an assignment period wider than the schedule ever existed for. Alternative: date each assignment from the later of the enrollment start and the schedule series' first effective date. |
 | **Re-snapshot escape hatch (Phase 16A)** | Once a session's eligible set is snapshotted it is immutable, which is the intended behaviour. Whether an admin ever legitimately needs to add a student to an already-completed session's roster — and if so, through what audited mechanism — is **undecided and deliberately not built** in Phase 16A. Recorded here rather than answered by inventing a mechanism. |
 | **Eligible-but-unmarked students lost before Phase 16A (Phase 16A)** | For sessions completed before the snapshot existed, a student who was eligible but left unmarked, and has since dropped out of live eligibility, cannot be recovered — no attendance row, no stored `eligible_count`, no audit trail. Those sessions will under-report Eligible by that number. Accepted as unrecoverable; no action proposed. |
+| **Fee Structure O1 — protect issued documents** | ✅ **Decided 2026-10-13:** issued invoices and receipts never change silently, for legacy and package-linked workflows; corrections use cancel-and-reissue where applicable; the 0030 trigger is not removed or altered until investigated and a safe implementation is approved. Investigation result in §5 Phase FS. **Business principle approved; FS-D technical design awaiting approval.** No membership-level cancel-and-reissue exists; the recommended design is an audited cancel-and-reissue workflow for legacy membership-level receipts (§5 Phase FS, FS-D), not yet approved. |
+| **Fee Structure O2 — Custom duration and package discounts** | ✅ **Decided 2026-10-13:** Custom is a whole number of calendar months; standard fee = monthly base fee × months; Custom uses the package discount of the largest standard duration not exceeding its months (2 → Monthly, 5 → Quarterly, 7 → Half Yearly, 10 → Half Yearly); Monthly has no package discount; individual discount afterwards; no fixed-day calculation. Recorded in `01-product.md` §5, §11. |
+| **Fee Structure O2a — Custom months chosen per membership** | ✅ **Approved:** the Admin selects the Custom duration in whole calendar months when creating a membership; it is not restricted to a length configured on the package; standard fee = monthly base fee × selected months. Recorded in `01-product.md` §5, §11, §12 and `02-ux.md`. |
+| **Fee Structure O2b — Custom discount mapping** | ✅ **Approved:** the package discount of the largest standard duration not exceeding the selected months (2 → Monthly = none, 5 → Quarterly, 7 → Half Yearly, 10 → Half Yearly, 12 → Annual); if that duration has no discount configured, no package discount applies and no other duration is searched; then the individual discount by the approved rules (against the remaining fee, half-up per stage, mandatory reason, final > 0). Recorded in `01-product.md` §5, §11, §12 and `02-ux.md`. |
+| **Fee Structure O3 — expiry edits for all class-count memberships** | ✅ **Decided 2026-10-13:** the audited expiry edit applies to every class-count membership, including legacy ones, without linking them to packages; reason, previous and new expiry, Admin and time recorded; history and class balance preserved; no automatic extension on reversal; historical attendance outside the revised expiry flagged. Recorded in `01-product.md` §5, §12 and `02-ux.md`. |
+| **Fee Structure O4 — fee-history conflict** | ✅ **Decided 2026-10-13:** a change conflicts when it would change which fee entry applies to an existing membership's start date; it is blocked, affected memberships are shown and must be explicitly resolved; no automatic repricing; payments and issued documents unchanged. **Approved; closed.** Recorded in `01-product.md` §5. |
+| **Fee Structure O5 — currency** | ✅ **Approved:** new memberships use a valid fee in the centre's current currency; no automatic conversion; existing memberships keep their original currency and agreed fee; a Custom Fee Plan is the explicit alternative to standard fee resolution. Recorded in `01-product.md` §5, §12 and `02-ux.md`. |
+| **Fee Structure O6 — Monthly package discount** | ✅ **Resolved by the O2 decision (2026-10-13):** Monthly has no package discount. |
+| **Fee Structure O7 — attendance review flag** | ✅ **Approved:** historical attendance outside a revised class-count expiry shows the informational flag `Attendance after current expiry`; attendance and class balance preserved; no automatic reversal; no acknowledgement step in V1. Recorded in `01-product.md` §5, §8 and `02-ux.md`. |
+| **Fee Structure O8 — Custom Fee Plan** | ✅ **Approved:** standard package pricing is the default; the Admin may explicitly use a Custom Fee Plan for a special price (even when a standard fee exists) or when no valid standard fee applies to the start date; it requires a custom agreed fee, a mandatory reason, Admin identity, timestamp and explicit confirmation before creation; agreed fee, currency and terms preserved; payments and issued documents never changed silently; later fee corrections remain the separate audited action. Recorded in `01-product.md` §5, §12 and `02-ux.md`. (Supersedes the earlier proposal that the form simply could not be saved when no fee is in effect.) |
+| **Fee Structure — Custom Fee Plan discount handling** | ✅ **Approved 2026-10-13:** the Custom Fee Plan amount is the final agreed fee; no package discount and no individual discount is applied on top; standard pricing remains the default; a Custom Fee Plan is an explicit alternative for an Admin-approved special price or when no valid standard fee applies to the start date; it requires the custom agreed fee, a mandatory reason, Admin identity, timestamp and explicit confirmation before creation; agreed fee, currency and terms preserved; corrections remain the separate audited action; payments and issued documents never changed silently. Recorded in `01-product.md` §5, §12 and `02-ux.md`. **Implementation effects:** FS-1 validation (custom fee > 0, reason required, discount inputs refused in Custom Fee Plan mode); FS-5 schema (pricing mode `standard` / `custom_fee_plan`; discount columns NULL for a Custom Fee Plan; custom-plan reason; confirmed-by/at; CHECK tying them together) and create function (no fee resolution in custom mode); FS-6 UI (discount fields hidden; Review labels the plan). **Still open for FS-8 only (does not block FS-1):** whether a correction may switch a membership between a Custom Fee Plan and standard pricing. |
+| **Fee Structure — business-rule status (Q1–Q11, O1–O8)** | ✅ Q1 final fee > ₹0. ✅ Q2 package discount against the standard fee, individual discount against the remaining fee, half-up per stage, no reason for package discounts, combined ≤ standard fee. ✅ Q3 legacy memberships keep their edit workflow, except that issued documents never change silently and class-count expiry uses the audited edit. ✅ Q4/O3 class-count expiry is a manual date or No expiry, edited only by the audited expiry edit (extend, shorten, switch) for every class-count membership; history and balance preserved. ✅ Q5 package-name snapshot; document layouts unchanged. ✅ Q6 monthly base fee with duration options; Custom months chosen per membership (O2a). ✅ Q7/O1 issued documents never change silently; no breakdown on documents — legacy receipt-protection **implementation** is the separate FS-D design task. ✅ Q8/O4 start date decides the fee; start-date changes re-resolve with confirmation; conflicting fee-history changes blocked. ✅ Q9 no frequency field. ✅ Q10/O5 valid fee in the centre's current currency unless an explicit Custom Fee Plan; no conversion. ✅ Q11 only fees are effective-dated; package terms edited for future purchases, audited. ✅ O2/O2b/O6 Custom discount from the largest standard duration not exceeding the months, none if not configured; Monthly has none. ✅ O7 informational `Attendance after current expiry` flag. ✅ O8 Custom Fee Plan. Approved rules are not reopened without a concrete contradiction. |
+| **Fee Structure — readiness summary (2026-10-13)** | All business rules above are approved. **Awaiting approval:** FS-D technical design; the three FS-1 specification details (§5 Phase FS, "FS-1 implementation plan", S1–S3). **Still required:** wireframes for Settings → Packages & Fees, package-linked Membership Details actions and the Custom Fee Plan flow; authorized behaviour verification of 0031–0045; investigation of legacy class-count memberships on the development database; verification of every database path that can create or rewrite a membership-level document. None of these database facts is verified yet. FS-1 depends on none of the "still required" items. |
 | **Enforcing "at least one schedule assignment"** | Recorded as a product rule (`01-product.md` §4). Not expressible as a simple database constraint — the enrollment must exist before its assignments can reference it — so it is planned as form-level validation. Confirm that application-level enforcement is acceptable rather than a deferred constraint or trigger. |
 
 The AppShell structural relationship between Sidebar and Header previously
