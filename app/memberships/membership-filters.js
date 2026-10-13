@@ -18,6 +18,7 @@ import ViewSwitcher from "@/components/ui/view-switcher";
 import { FilterBar, FilterChips, FilterSheet, FilterSection } from "@/components/ui/filter-bar";
 import { ListToolbar } from "@/components/layout/list-page";
 import { buildListHref } from "@/lib/url-params";
+import { planFilterParams, planFilterValue } from "@/lib/memberships/list-filters";
 
 const PLAN_OPTIONS = [
   { value: "all", label: "All Plans" },
@@ -86,6 +87,8 @@ function optionLabel(options, value) {
 export default function MembershipFilters({
   defaultQuery,
   defaultPlan,
+  defaultPackageId = "",
+  packages = [],
   defaultPaymentStatus,
   defaultMembershipStatus,
   defaultFromDate,
@@ -96,7 +99,15 @@ export default function MembershipFilters({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { query, setQuery, searchFor } = useLiveSearch(defaultQuery);
-  const [plan, setPlan] = useState(defaultPlan);
+  // The Plan control: the legacy plans as before, then the centre's active packages (and the applied one, if it was deactivated).
+  const planOptions = [
+    ...PLAN_OPTIONS,
+    ...packages
+      .filter((pkg) => pkg.status === "active" || pkg.id === defaultPackageId)
+      .map((pkg) => ({ value: planFilterValue({ packageId: pkg.id }), label: `Package: ${pkg.name}` })),
+  ];
+  const appliedPlan = planFilterValue({ plan: defaultPlan, packageId: defaultPackageId });
+  const [plan, setPlan] = useState(appliedPlan);
   const [paymentStatus, setPaymentStatus] = useState(defaultPaymentStatus);
   const [membershipStatus, setMembershipStatus] = useState(defaultMembershipStatus);
   const [fromDate, setFromDate] = useState(defaultFromDate);
@@ -104,7 +115,6 @@ export default function MembershipFilters({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const isNarrow = useSyncExternalStore(subscribeNarrow, getNarrow, getNarrowServer);
 
-  const appliedPlan = defaultPlan;
   const appliedPayment = defaultPaymentStatus;
   const appliedStatus = defaultMembershipStatus;
   const appliedFrom = defaultFromDate;
@@ -147,8 +157,12 @@ export default function MembershipFilters({
       } else {
         params.delete("q");
       }
-      if (plan !== "all") params.set("plan", plan);
+      // One control, two params: a plan or a package, never both.
+      const chosen = planFilterParams(plan);
+      if (chosen.plan) params.set("plan", chosen.plan);
       else params.delete("plan");
+      if (chosen.package) params.set("package", chosen.package);
+      else params.delete("package");
       if (paymentStatus !== "all") params.set("payment", paymentStatus);
       else params.delete("payment");
       if (membershipStatus !== "all") params.set("status", membershipStatus);
@@ -169,6 +183,7 @@ export default function MembershipFilters({
     setToDate("");
     pushParams((params) => {
       params.delete("plan");
+      params.delete("package");
       params.delete("payment");
       params.delete("status");
       params.delete("from");
@@ -196,12 +211,13 @@ export default function MembershipFilters({
     if (key === "to") setToDate("");
     pushParams((params) => {
       params.delete(key);
+      if (key === "plan") params.delete("package");
     });
   }
 
   const chips = [];
   if (appliedPlan !== "all") {
-    chips.push({ key: "plan", label: `Plan: ${optionLabel(PLAN_OPTIONS, appliedPlan)}` });
+    chips.push({ key: "plan", label: `Plan: ${optionLabel(planOptions, appliedPlan)}` });
   }
   if (appliedPayment !== "all") {
     chips.push({
@@ -269,12 +285,12 @@ export default function MembershipFilters({
         onClearAll={clearAllIncludingSearch}
       >
         <FilterSection id="membership-plan" label="Plan">
-          <Select items={PLAN_OPTIONS} value={plan} onValueChange={setPlan}>
+          <Select items={planOptions} value={plan} onValueChange={setPlan}>
             <SelectTrigger aria-labelledby="membership-plan-label" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {PLAN_OPTIONS.map((option) => (
+              {planOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent, listStudentOptions } from "@/lib/students/data";
-import { createMembership } from "@/lib/memberships/actions";
+import { getActivePackages } from "@/lib/packages/data";
+import { createMembership, createPackageMembership } from "@/lib/memberships/actions";
 import { todayDateString } from "@/lib/memberships/data";
 import MembershipForm from "@/app/memberships/membership-form";
 import { getCenterCurrency } from "@/lib/center-profile/settings";
@@ -64,6 +65,8 @@ export default async function NewMembershipPage({ searchParams }) {
         <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
           <MembershipForm
             action={createMembershipForStudent}
+            packages={await getActivePackages()}
+            packageAction={createPackageMembership.bind(null, studentId, "standalone")}
             currency={await getCenterCurrency()}
             student={student}
             requireConfirmation

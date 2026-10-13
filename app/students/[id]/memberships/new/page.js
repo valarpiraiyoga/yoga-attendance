@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
-import { createMembership } from "@/lib/memberships/actions";
+import { createMembership, createPackageMembership } from "@/lib/memberships/actions";
+import { getActivePackages } from "@/lib/packages/data";
 import { todayDateString } from "@/lib/memberships/data";
 import MembershipForm from "@/app/memberships/membership-form";
 import { getCenterCurrency } from "@/lib/center-profile/settings";
@@ -36,7 +37,9 @@ export default async function NewStudentMembershipPage({ params, searchParams })
   const rawParams = await searchParams;
   const isGuided = rawParams?.guided === "1";
 
-  const createMembershipForStudent = createMembership.bind(null, id, isGuided ? "guided" : "student");
+  const context = isGuided ? "guided" : "student";
+  const createMembershipForStudent = createMembership.bind(null, id, context);
+  const createPackageMembershipForStudent = createPackageMembership.bind(null, id, context);
 
   return (
     <>
@@ -54,6 +57,8 @@ export default async function NewStudentMembershipPage({ params, searchParams })
         >
           <MembershipForm
             action={createMembershipForStudent}
+            packages={await getActivePackages()}
+            packageAction={createPackageMembershipForStudent}
             currency={await getCenterCurrency()}
             student={student}
             requireConfirmation={!isGuided}

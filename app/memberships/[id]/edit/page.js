@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getMembership } from "@/lib/memberships/data";
-import { updateMembership } from "@/lib/memberships/actions";
+import { updateMembership, updatePackageMembershipNotes } from "@/lib/memberships/actions";
 import MembershipForm from "@/app/memberships/membership-form";
 import PageHeader from "@/components/layout/PageHeader";
 
@@ -24,7 +24,8 @@ export default async function EditMembershipPage({ params }) {
     notFound();
   }
 
-  const updateMembershipById = updateMembership.bind(null, id);
+  // A package-linked membership can have its notes edited and nothing else; the action says so as well as the form.
+  const updateMembershipById = (membership.package_id ? updatePackageMembershipNotes : updateMembership).bind(null, id);
 
   return (
     <>

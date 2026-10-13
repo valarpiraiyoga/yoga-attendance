@@ -17,6 +17,8 @@ import {
 import { formatShare } from "@/lib/format";
 import { buildListHref } from "@/lib/url-params";
 import MembershipFilters from "@/app/memberships/membership-filters";
+import { getPackages } from "@/lib/packages/data";
+import { parsePackageFilter } from "@/lib/memberships/list-filters";
 import MembershipList from "@/app/memberships/membership-list";
 
 const PAGE_SIZE = 10;
@@ -42,7 +44,9 @@ export default async function MembershipsPage({ searchParams }) {
 
   const rawParams = await searchParams;
   const q = typeof rawParams.q === "string" ? rawParams.q : "";
-  const plan = PLANS.includes(rawParams.plan) ? rawParams.plan : "all";
+  // A package filter (`?package=<id>`) and a legacy plan filter (`?plan=`) share one control, which chooses one of them.
+  const packageId = parsePackageFilter(rawParams.package);
+  const plan = !packageId && PLANS.includes(rawParams.plan) ? rawParams.plan : "all";
   const paymentStatus = PAYMENT_STATUSES.includes(rawParams.payment) ? rawParams.payment : "all";
   const membershipStatus = MEMBERSHIP_STATUSES.includes(rawParams.status) ? rawParams.status : "all";
   const fromDate = typeof rawParams.from === "string" && DATE_PATTERN.test(rawParams.from) ? rawParams.from : "";
@@ -54,10 +58,11 @@ export default async function MembershipsPage({ searchParams }) {
     ? rawParams.sort
     : DEFAULT_MEMBERSHIP_SORT;
 
-  const [{ memberships, total }, counts] = await Promise.all([
+  const [{ memberships, total }, counts, packages] = await Promise.all([
     listMemberships({
       q,
       plan,
+      packageId,
       paymentStatus,
       membershipStatus,
       fromDate,
@@ -67,6 +72,7 @@ export default async function MembershipsPage({ searchParams }) {
       pageSize: PAGE_SIZE,
     }),
     getMembershipSummaryCounts(),
+    getPackages(),
   ]);
 
   // The same "today" `listMemberships` derived each row's status from, so a
@@ -74,7 +80,7 @@ export default async function MembershipsPage({ searchParams }) {
   const today = await todayDateString();
 
   const isFiltered =
-    Boolean(q) || plan !== "all" || paymentStatus !== "all" || membershipStatus !== "all" || Boolean(fromDate) || Boolean(toDate);
+    Boolean(q) || plan !== "all" || Boolean(packageId) || paymentStatus !== "all" || membershipStatus !== "all" || Boolean(fromDate) || Boolean(toDate);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -151,9 +157,11 @@ export default async function MembershipsPage({ searchParams }) {
       </div>
 
       <MembershipFilters
-        key={`${plan}:${paymentStatus}:${membershipStatus}:${fromDate}:${toDate}`}
+        key={`${plan}:${packageId}:${paymentStatus}:${membershipStatus}:${fromDate}:${toDate}`}
         defaultQuery={q}
         defaultPlan={plan}
+        defaultPackageId={packageId}
+        packages={packages.map((pkg) => ({ id: pkg.id, name: pkg.name, status: pkg.status }))}
         defaultPaymentStatus={paymentStatus}
         defaultMembershipStatus={membershipStatus}
         defaultFromDate={fromDate}

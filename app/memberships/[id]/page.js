@@ -54,6 +54,8 @@ import CoveredEnrollmentRow from "@/app/memberships/[id]/covered-enrollment-row"
 import MembershipHistoryRow from "@/app/memberships/[id]/membership-history-row";
 import InvoicePanel from "@/app/memberships/[id]/invoice-panel";
 import PaymentsPanel from "@/app/memberships/[id]/payments-panel";
+import PricingPanel from "@/app/memberships/[id]/pricing-panel";
+import { pricingSnapshotOf } from "@/lib/packages/membership-pricing";
 import ClassAttendancePanel from "@/app/memberships/[id]/class-attendance-panel";
 import { listClassCountHistory } from "@/lib/class-count-attendance/data";
 import { getPaymentsForMembership } from "@/lib/memberships/payments-data";
@@ -132,6 +134,8 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
   const status = MEMBERSHIP_STATUS[membership.status] ?? { label: membership.status, variant: "neutral" };
   const payment = PAYMENT_STATUS[membership.payment_status] ?? PAYMENT_STATUS.pending;
   const planLabel = PLAN[membership.plan] ?? membership.plan;
+  // A package-linked membership shows the pricing recorded when it was created; a legacy membership has none and is unchanged.
+  const pricing = pricingSnapshotOf(membership);
   const durationLabel = formatDuration(membership.start_date, membership.end_date);
   const period = formatPeriod(membership.start_date, membership.end_date);
 
@@ -320,6 +324,8 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
           Check Payments below before recording it again. Until a payment is recorded, this membership stays Pending.
         </Alert>
       ) : null}
+
+      {pricing ? <PricingPanel snapshot={pricing} /> : null}
 
       <PaymentsPanel
         membership={membership}

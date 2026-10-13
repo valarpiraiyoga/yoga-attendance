@@ -22,6 +22,8 @@ import { validateMembershipInput, calculateMembershipEndDate } from "@/lib/membe
 import { INITIAL_PAYMENT_FIELD, validateInitialPayment } from "@/lib/memberships/initial-payment";
 import { fromPaise, PAYMENT_METHOD_LABEL, toPaise } from "@/lib/memberships/payments-core";
 import PaymentFields, { usePaymentDraft } from "@/app/memberships/[id]/payment-fields";
+import PackageMembershipForm from "@/app/memberships/package-membership-form";
+import PackageMembershipEditForm from "@/app/memberships/package-membership-edit-form";
 
 const PLAN_OPTIONS = [
   { value: "monthly", label: "Monthly" },
@@ -79,7 +81,7 @@ function planLabel(plan) {
  * nothing about the payment is submitted, and the form saves exactly as before. The payment is validated and
  * recorded by the server action (lib/memberships/initial-payment.js); the status still follows the payments.
  */
-export default function MembershipForm({
+function LegacyMembershipForm({
   action,
   currency,
   student,
@@ -588,5 +590,37 @@ export default function MembershipForm({
         </ReviewDialog>
       ) : null}
     </>
+  );
+}
+
+/**
+ * The membership form. A NEW membership can be priced from a package (`packages` and `packageAction` given, V1 Fee Structure,
+ * FS-6): the package form is shown first, with a switch to the form below for a membership without a package. Everything
+ * else - Edit, Renew, every entry point that passes no packages, and a membership whose type is locked - is exactly the form
+ * above, unchanged. `packageInitialValues` start the package form (a renewal's package and start date); `defaultMode` is
+ * "package" (the default) or "manual", the form without a package, which a renewal of a membership without a package opens first.
+ */
+export default function MembershipForm(props) {
+  const { packages, packageAction, packageInitialValues, defaultMode = "package", membership } = props;
+  const offersPackages = Boolean(packageAction) && !membership && Array.isArray(packages) && packages.length > 0;
+  const [mode, setMode] = useState(defaultMode);
+
+  // A package-linked membership's Edit form offers its notes only; every other Edit form is the legacy form below.
+  if (membership?.package_id) return <PackageMembershipEditForm {...props} />;
+
+  if (!offersPackages) return <LegacyMembershipForm {...props} />;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div role="group" aria-label="Pricing" className="flex flex-wrap gap-2">
+        <Button type="button" size="sm" variant={mode === "package" ? "default" : "outline"} aria-pressed={mode === "package"} onClick={() => setMode("package")}>
+          From a package
+        </Button>
+        <Button type="button" size="sm" variant={mode === "manual" ? "default" : "outline"} aria-pressed={mode === "manual"} onClick={() => setMode("manual")}>
+          Without a package
+        </Button>
+      </div>
+      {mode === "package" ? <PackageMembershipForm {...props} action={packageAction} initialValues={packageInitialValues} /> : <LegacyMembershipForm {...props} />}
+    </div>
   );
 }

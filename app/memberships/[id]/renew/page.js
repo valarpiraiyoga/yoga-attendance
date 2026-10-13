@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getMembership } from "@/lib/memberships/data";
-import { createMembership } from "@/lib/memberships/actions";
+import { createMembership, createPackageMembership } from "@/lib/memberships/actions";
+import { getActivePackages } from "@/lib/packages/data";
 import { todayDateString } from "@/lib/memberships/data";
 import { calculateMembershipEndDate, addOneDayUTC } from "@/lib/memberships/validation";
 import MembershipForm from "@/app/memberships/membership-form";
@@ -67,6 +68,26 @@ export default async function RenewMembershipPage({ params }) {
 
   const createRenewal = createMembership.bind(null, previous.student_id, "renewal");
 
+  // Renewing from a package: only packages of the previous membership's type (a class-count membership is renewed as one),
+  // opening on the package form when the previous membership came from a package. The package, the duration and the start date
+  // carry over as a starting point; an individual discount never does (the package form starts with none).
+  const packages = (await getActivePackages()).filter((candidate) => candidate.kind === previous.kind);
+  const previousPackage = previous.package_id ? packages.find((candidate) => candidate.id === previous.package_id) : null;
+  const packageInitialValues = {
+    start_date: initialValues.start_date,
+    ...(previousPackage
+      ? {
+          package_id: previousPackage.id,
+          ...(previous.kind === "duration" && previousPackage.options.includes(previous.plan)
+            ? {
+                duration_option: previous.plan,
+                custom_months: previous.plan === "custom" && previous.duration_months ? String(previous.duration_months) : "",
+              }
+            : {}),
+        }
+      : {}),
+  };
+
   return (
     <>
       <PageHeader
@@ -79,6 +100,10 @@ export default async function RenewMembershipPage({ params }) {
         <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
           <MembershipForm
             action={createRenewal}
+            packages={packages}
+            packageAction={createPackageMembership.bind(null, previous.student_id, "renewal")}
+            packageInitialValues={packageInitialValues}
+            defaultMode={previous.package_id ? "package" : "manual"}
             currency={currency}
             student={previous.students}
             initialValues={initialValues}
