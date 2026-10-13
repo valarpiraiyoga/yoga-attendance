@@ -4,9 +4,9 @@ import { usePathname } from "next/navigation";
 import Tabs from "@/components/ui/tabs";
 
 /**
- * The four approved Settings tabs (`02-ux.md` "Settings" IA; wireframe
- * p.38–40, plus Invoice / Receipt from the V1 Invoice / Receipt Enhancement).
- * All four have a real screen (Phase 19 completes Center Profile and Roles &
+ * The five approved Settings tabs (`02-ux.md` "Settings" IA; wireframe
+ * p.38–40, plus Invoice / Receipt from the V1 Invoice / Receipt Enhancement, and Packages & Fees from the V1 Fee Structure).
+ * All five have a real screen (Phase 19 completes Center Profile and Roles &
  * Permissions; Instructors was already built).
  *
  * The canonical underline `Tabs` (06-ui-implementation-rules.md §15),
@@ -24,6 +24,7 @@ import Tabs from "@/components/ui/tabs";
 const TABS = [
   { key: "center-profile", label: "Center Profile", href: "/settings/center-profile" },
   { key: "invoice-receipt", label: "Invoice / Receipt", href: "/settings/invoice-receipt" },
+  { key: "packages", label: "Packages & Fees", href: "/settings/packages" },
   { key: "instructors", label: "Instructors", href: "/settings/instructors" },
   { key: "roles-permissions", label: "Roles & Permissions", href: "/settings/roles-permissions" },
 ];

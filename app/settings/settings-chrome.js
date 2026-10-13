@@ -5,18 +5,19 @@ import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import SettingsTabs from "@/app/settings/settings-tabs";
 
-// The four approved Settings tab pages (docs/02-ux.md "Settings"). Anything deeper - Add / Edit
+// The five approved Settings tab pages (docs/02-ux.md "Settings"). Anything deeper - Add / Edit
 // Instructor - is a task screen with its own back-button strip, not a fifth tab.
 const TAB_PAGES = [
   "/settings/center-profile",
   "/settings/invoice-receipt",
+  "/settings/packages",
   "/settings/instructors",
   "/settings/roles-permissions",
 ];
 
 /**
  * The Settings chrome, only where it belongs: the compact "Settings" strip and the four tabs
- * around the four tab pages. A deeper page (Add / Edit Instructor) gets the children as they
+ * around the five tab pages. A deeper page (Add / Edit Instructor) gets the children as they
  * are and draws its own strip with a back button, like every other task screen.
  *
  * A Client Component because a layout has no other way to know which child route is current
