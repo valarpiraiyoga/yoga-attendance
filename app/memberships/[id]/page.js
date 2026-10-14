@@ -57,7 +57,8 @@ import PaymentsPanel from "@/app/memberships/[id]/payments-panel";
 import PricingPanel from "@/app/memberships/[id]/pricing-panel";
 import { pricingSnapshotOf } from "@/lib/packages/membership-pricing";
 import ClassAttendancePanel from "@/app/memberships/[id]/class-attendance-panel";
-import { listClassCountHistory } from "@/lib/class-count-attendance/data";
+import { listClassCountHistory, listClassCountExpiryEdits } from "@/lib/class-count-attendance/data";
+import ExpiryPanel from "@/app/memberships/[id]/expiry-panel";
 import { getPaymentsForMembership } from "@/lib/memberships/payments-data";
 
 const SUCCESS_MESSAGES = {
@@ -115,12 +116,13 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const [history, coveredEnrollments, invoice, payments, classRecords] = await Promise.all([
+  const [history, coveredEnrollments, invoice, payments, classRecords, expiryEdits] = await Promise.all([
     listMembershipsForStudent(membership.student_id),
     listCoveredEnrollments(membership),
     getInvoiceForMembership(id),
     getPaymentsForMembership(id),
     membership.kind === "class_count" ? listClassCountHistory(id) : Promise.resolve([]),
+    membership.kind === "class_count" ? listClassCountExpiryEdits(id) : Promise.resolve([]),
   ]);
   const otherMemberships = history.filter((entry) => entry.id !== id);
 
@@ -364,6 +366,24 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         <ClassAttendancePanel
           classCount={membership.class_count}
           records={classRecords}
+          timeZone={await getCenterTimezone()}
+          endDate={membership.end_date}
+          student={
+            student
+              ? { full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }
+              : null
+          }
+          membership={{ code: membership.membership_code, planLabel, period }}
+        />
+      ) : null}
+
+      {/* Every class-count membership, legacy or package-linked: its expiry, the Edit expiry action, and the history of changes. */}
+      {membership.kind === "class_count" ? (
+        <ExpiryPanel
+          membershipId={membership.id}
+          expiry={membership.end_date}
+          startDate={membership.start_date}
+          edits={expiryEdits}
           timeZone={await getCenterTimezone()}
           student={
             student

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDate } from "@/lib/format";
 import { classCountText } from "@/lib/memberships/class-count";
 import ReverseClassDialog from "@/app/memberships/[id]/reverse-class-dialog";
+import { EXPIRY_FLAG_LABEL, attendedAfterExpiry } from "@/lib/class-count-attendance/expiry-core";
 
 /** `12 Oct 2026, 4:05 pm` in the centre's time zone. */
 function formatStamp(value, timeZone) {
@@ -27,11 +28,15 @@ function formatStamp(value, timeZone) {
  * why. Each Recorded row has Reverse; nothing is edited or deleted. `classCount` is the NET count (a reversed record does
  * not take a class).
  *
+ * A record that was not reversed and whose attendance date is after the membership's CURRENT expiry (`endDate`) carries the
+ * informational flag "Attendance after current expiry": an expiry edit shortened it, or it was recorded before. The record is
+ * kept, not reversed, and still counts; there is nothing to acknowledge.
+ *
  * @param {{ classCount: { total: number, used: number, remaining: number }, records: object[], timeZone: string,
- *   student: object|null, membership: { code: string, planLabel: string, period: string } }} props
+ *   endDate: string|null, student: object|null, membership: { code: string, planLabel: string, period: string } }} props
  *   `records` are from `listClassCountHistory`.
  */
-export default function ClassAttendancePanel({ classCount, records, timeZone, student, membership }) {
+export default function ClassAttendancePanel({ classCount, records, timeZone, endDate = null, student, membership }) {
   return (
     <Panel>
       <PanelHeader
@@ -74,7 +79,10 @@ export default function ClassAttendancePanel({ classCount, records, timeZone, st
                         </span>
                       </div>
                     ) : (
-                      <Badge variant="success">Recorded</Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="success">Recorded</Badge>
+                        {attendedAfterExpiry(record, endDate) ? <Badge variant="info">{EXPIRY_FLAG_LABEL}</Badge> : null}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>

@@ -17,6 +17,7 @@ import {
 import StudentContext from "@/components/ui/student-context";
 import ReviewDialog, { ReviewRow } from "@/components/ui/review-dialog";
 import { formatCurrency } from "@/lib/currencies";
+import { formatDate } from "@/lib/format";
 import StudentIdentityHeader from "@/components/ui/student-identity-header";
 import { validateMembershipInput, calculateMembershipEndDate } from "@/lib/memberships/validation";
 import { INITIAL_PAYMENT_FIELD, validateInitialPayment } from "@/lib/memberships/initial-payment";
@@ -385,6 +386,15 @@ function LegacyMembershipForm({
             ) : null}
           </div>
 
+          {isClassCount && membership ? (
+            // An existing class-count membership's expiry is changed only by Edit expiry on its details page (audited, with a
+            // reason), never from this form: it is shown here and not submitted.
+            <div className="flex flex-col gap-2">
+              <Label>Expiry</Label>
+              <p className="text-body text-text-primary">{membership.end_date ? formatDate(membership.end_date) : "No expiry"}</p>
+              <p className="text-small text-text-secondary">To change the expiry, use Edit expiry on the membership page.</p>
+            </div>
+          ) : (
           <div className="flex flex-col gap-2">
             <Label htmlFor="end_date">{isClassCount ? "End Date (optional)" : "End Date"}</Label>
             <Input
@@ -411,6 +421,7 @@ function LegacyMembershipForm({
               </p>
             ) : null}
           </div>
+          )}
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
