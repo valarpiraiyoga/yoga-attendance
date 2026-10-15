@@ -41,7 +41,7 @@ Students will be managed by the center in V1 and will not require their own logi
 ## 2. Users & Roles
 
 ### Admin
-Full management access to Dashboard, Students, Memberships, Batches, Schedule, Attendance, Attendance History, Reports, Settings, and Instructor management.
+Full management access to Dashboard, Students, Memberships, Documents, Batches, Schedule, Attendance, Attendance History, Reports, Settings, and Instructor management.
 
 ### Instructor
 Can view their dashboard, assigned classes, relevant class sessions, take attendance, edit attendance for their own assigned sessions, and view relevant attendance history.
@@ -474,6 +474,38 @@ Once an invoice has been issued for a membership, the issued invoice is preserve
 - A **legacy membership-level receipt** has no cancel or correction workflow yet (see "The Receipt Keeps Its Issued Details"). The membership's price, package terms, validity, attendance eligibility and every other payment are never changed by a document correction.
 
 *(Service details on a new document — migration 0056.)* The batch, class days and times shown on a document are a snapshot taken when the **first** document of a membership is issued. They are resolved for the membership's **start date**; **only if no enrollment applies then**, they are resolved for the center's date of issue; if neither finds a batch, the document shows the generic membership description and period. Several batches or schedules are each listed once, in a fixed order. This applies to new documents only: an existing document is never backfilled, and a replacement never re-reads this data.
+
+### Documents Register (Central Documents)
+*(Approved 2026-10-16. **Phase 1 is a read-only list**; the enhancements listed at the end are future and not approved.)*
+
+**Purpose.** Let the Admin see every stored invoice and receipt across all memberships in one place, without opening each membership. It is a view of the existing `invoices` documents (§5A): there is no second document table, and nothing in the register issues, edits, cancels or corrects a document.
+
+**Who.** Admin only. An Instructor has no access to the register (the same rule as every invoice and receipt).
+
+**What it lists.** One row per stored document, issued **and** cancelled: payment-level **tax invoices** (invoice series), **payment receipts** (payment receipt series) and **legacy membership-level receipts** (invoice series, no payment). A cancelled document and its replacement are two separate rows — the cancelled one marked Cancelled, the replacement Issued — so the history stays visible for audit. Nothing is merged, hidden or counted: the register shows documents, it does not total them, so a payment that has a cancelled document and a replacement is never counted twice.
+
+**Columns.**
+- **Document number** (the stored prefix and number, for example INV-837), linking to the document's existing detail page.
+- **Type** — the document's **stored title** (Invoice, Receipt or Payment Receipt).
+- **Customer** — the customer name **as written on the document** (its snapshot, which can differ from the student's current name after a correction) and the customer code.
+- **Membership** — the membership number, linking to Membership Details.
+- **Document date.**
+- **Amount** — the document's stored total (tax included where it has tax).
+- **Status** — Issued or Cancelled.
+
+**Search and filters** (all in the URL, so a view can be shared and reloaded; changing one returns to page 1).
+- **Search** matches the document number (typed with or without its prefix, for example INV-837 or 837), the **snapshot** customer name and the customer code. It does **not** search the student's current name.
+- **Document series** — all, invoice series (tax invoices and legacy membership-level receipts) or payment receipt series.
+- **Status** — all, Issued or Cancelled.
+- **Document date** — from and to (inclusive).
+
+**Order and paging.** Newest document date first (Oldest first is selectable), then the highest number, then a stable tie-break, in pages of 10, exactly like the Memberships list.
+
+**Opening a document.** A payment-level document opens `/memberships/[id]/documents/[documentId]` (its page shows the Cancelled status, reason, replacement link and correction history). A legacy membership-level receipt opens `/memberships/[id]/invoice`.
+
+**Rules.** Numbering, issuing, cancelling, correcting, payments, memberships and the stored snapshots are unchanged by the register, and it adds no database table or migration.
+
+**Future enhancements (not approved, not part of Phase 1).** A correction-history column on each row ("Replaces INV-837" / "Replaced by INV-838"); summary figures or totals (if ever added, only Issued documents may be summed); export; and search by the student's current name.
 
 ### Actions
 A stored invoice is intended to support:
@@ -928,7 +960,7 @@ Full access to all product areas and management functions.
 #### Instructor
 Access to Dashboard, assigned classes, Attendance, and relevant Attendance History.
 
-Instructor does not manage global Students, Memberships, Batches, Schedules, Reports, or Settings.
+Instructor does not manage global Students, Memberships, Documents, Batches, Schedules, Reports, or Settings.
 
 ---
 
@@ -1125,6 +1157,7 @@ Historical records must be protected when:
 - Center profile
 - Basic settings
 - Stored Invoice / Receipt with invoice settings (V1 Invoice / Receipt Enhancement, §5A)
+- Central Documents register: a read-only, Admin-only list of every stored invoice and receipt, issued and cancelled, with search and filters (§5A; Phase 1)
 - Payments with installments and mixed payment methods; a tax invoice or payment receipt per payment; cancel-and-reissue corrections (V1 Tax Adjustment, §5, §5A)
 - Centre-configured packages with an effective-dated fee history, package discounts, individual discounts with a mandatory reason and an audit record, audited corrections, and class-count packages with an audited expiry edit with their separate, Admin-only Class Count Attendance workflow (a third Attendance tab): a chosen attendance date, confirmation before recording, and audited reversals (V1 Fee Structure, §5, §8, §11)
 
