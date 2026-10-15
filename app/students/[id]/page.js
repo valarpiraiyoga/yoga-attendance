@@ -28,8 +28,11 @@ import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { getRecentStudentAttendance } from "@/lib/reports/data";
-import { InstructorCell } from "@/components/ui/session-cells";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { listStudentClassCountAttendance } from "@/lib/class-count-attendance/data";
+import { combineRecentAttendance } from "@/lib/class-count-attendance/attendance-rows";
+import { RECENT_ATTENDANCE_ROWS, recentAttendanceRange } from "@/lib/attendance/recent";
+import { addDaysUTC } from "@/lib/schedules/validation";
+import RecentAttendanceTable from "@/app/students/[id]/recent-attendance-table";
 import {
   listEnrollmentsForStudent,
   listScheduleAssignmentsForEnrollment,
@@ -95,22 +98,19 @@ function DetailRow({ label, children, valueClassName }) {
   );
 }
 
-const ATTENDANCE_STATUS = {
-  present: { label: "Present", variant: "success" },
-  absent: { label: "Absent", variant: "danger" },
-};
-
 /**
- * The student's latest recorded attendance (`getRecentStudentAttendance`), or
- * `null` when it cannot be loaded, so the rest of Student Details still renders
- * and the panel says so rather than claiming there is none.
+ * The student's latest recorded attendance: session attendance (`getRecentStudentAttendance`) and class-count records
+ * (`listStudentClassCountAttendance`), read independently and merged newest first (`combineRecentAttendance`). A source that
+ * cannot be loaded is `null`: the other still shows (with a note), and only when both fail does the panel say attendance is
+ * unavailable - never claiming there is none. The rest of Student Details renders either way.
  */
 async function loadRecentAttendance(studentId, today) {
-  try {
-    return await getRecentStudentAttendance(studentId, today);
-  } catch {
-    return null;
-  }
+  const { dateFrom, dateTo } = recentAttendanceRange(today, addDaysUTC);
+  const [sessions, classCount] = await Promise.all([
+    getRecentStudentAttendance(studentId, today).catch(() => null),
+    listStudentClassCountAttendance(studentId, { dateFrom, dateTo, limit: RECENT_ATTENDANCE_ROWS }).catch(() => null),
+  ]);
+  return combineRecentAttendance({ sessions, classCount, limit: RECENT_ATTENDANCE_ROWS });
 }
 
 /**
@@ -400,51 +400,25 @@ export default async function StudentDetailsPage({ params, searchParams }) {
 
       <Panel className="order-4 lg:col-span-2 xl:order-none xl:col-span-1">
         <PanelHeader icon={ClipboardList} title="Recent Attendance" className="mb-2" />
-        {!recentAttendance ? (
+        {recentAttendance.unavailable ? (
           <EmptyState
             size="compact"
             title="Recent attendance is not available right now"
             description="Try refreshing the page."
           />
-        ) : recentAttendance.length === 0 ? (
+        ) : recentAttendance.items.length === 0 ? (
           <EmptyState
             size="compact"
             title="No recent attendance yet"
             description="Attendance for this student will appear here once classes are marked."
           />
         ) : (
-          <Table aria-label="Recent attendance">
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Date</TableHead>
-                <TableHead>Batch</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden sm:table-cell">Instructor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentAttendance.map((session) => {
-                const status = ATTENDANCE_STATUS[session.status];
-                return (
-                  <TableRow key={session.id}>
-                    <TableCell className="whitespace-nowrap font-medium text-text-primary">
-                      {formatDateWithWeekday(session.session_date)}
-                    </TableCell>
-                    <TableCell className="text-text-primary">
-                      {session.batch?.name ?? "—"}
-                      {session.batch?.code ? <span className="text-text-secondary"> · {session.batch.code}</span> : null}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={status.variant}>{status.label}</Badge>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <InstructorCell name={session.instructor?.full_name} photoUrl={session.instructor?.photo_url} />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <>
+            <RecentAttendanceTable items={recentAttendance.items} />
+            {recentAttendance.partial ? (
+              <p className="mt-2 text-small text-text-secondary">Some attendance could not be loaded. Try refreshing the page.</p>
+            ) : null}
+          </>
         )}
       </Panel>
         </div>

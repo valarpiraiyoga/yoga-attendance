@@ -25,7 +25,9 @@ function groupAnchorId(date) {
  * live here as overrides on top of that default, so they survive the URL
  * changes a date selection causes.
  *
- * `groups`: `{ date, items }[]` in display order. What a group's items look
+ * `groups`: `{ date, items, extraLabel? }[]` in display order. `items` are the sessions and alone give the "N Sessions" count; an
+ * optional `extraLabel` (Attendance History's class-count records) is shown after it and never changes that count - a date
+ * with no sessions shows only the extra label. What a group's items look
  * like is the caller's business: `renderCards(group)` / `renderTable(group)`
  * draw them (function props, so a caller is itself a client component).
  * `layout` is `"cards"`, `"table"`, or `""` (no explicit choice): then both
@@ -117,7 +119,9 @@ export default function DateGroupTimeline({
               >
                 <span className="min-w-0 text-body font-semibold text-text-primary">{label}</span>
                 <span className="ml-auto shrink-0 text-small font-medium whitespace-nowrap text-brand">
-                  {count} {count === 1 ? "Session" : "Sessions"}
+                  {count > 0 || !group.extraLabel ? `${count} ${count === 1 ? "Session" : "Sessions"}` : null}
+                  {count > 0 && group.extraLabel ? " · " : null}
+                  {group.extraLabel ?? null}
                 </span>
                 {open ? (
                   <ChevronUp className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />

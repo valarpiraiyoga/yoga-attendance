@@ -8,12 +8,20 @@ import { Button } from "@/components/ui/button";
 import {
   DEFAULT_HISTORY_SORT,
   HISTORY_RANGE_LIMIT,
+  QUICK_DATE_COUNT,
   getHistoryDateNavigation,
   listAttendanceHistory,
 } from "@/lib/attendance-history/data";
 import { isValidMonth, monthOf, monthRange } from "@/lib/attendance-history/calendar";
 import { groupSessionsByDate, isValidDateString } from "@/lib/attendance-history/grouping";
 import { listBatchOptions } from "@/lib/batches/data";
+import {
+  listClassCountAttendanceDates,
+  listClassCountAttendanceDatesScoped,
+  listClassCountAttendanceRange,
+  listClassCountAttendanceRangeScoped,
+} from "@/lib/class-count-attendance/data";
+import { mergeHistoryGroups, mergeNavigationDays, showClassCountInHistory } from "@/lib/class-count-attendance/attendance-rows";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import { ATTENDANCE_STATUSES } from "@/lib/attendance/validation";
 import { getCentreToday } from "@/lib/center-profile/settings";
@@ -40,6 +48,13 @@ const BASE_PATH = "/attendance-history";
  * month), `date` (the group that opens; default is the newest date shown),
  * plus the toolbar's `q`, `batch`, `instructor`, `status`, `layout`. "Today",
  * and so the default month, is the centre-timezone date (01-product.md §7A).
+ *
+ * Class-count attendance: its records are a separate section within each date group, and a date that has only class-count records
+ * is a group too and is marked on the calendar and in Quick dates. An Admin reads them directly (the tables are Admin-only under
+ * RLS); an Instructor reads them ONLY through the scoped database functions of migration 0052 (the `...Scoped` reads), which return
+ * just the records of students that instructor is authorized for, with a Reversed status but no reversal reason, and no Membership link. They are kept apart from `sessions` and `total`, so no session count, Present / Absent total or percentage
+ * includes them. A batch, instructor or Present / Absent filter hides them (they have none of those); the search matches the
+ * student name or the membership code. Each class-count read is independent: if it fails, the sessions still show.
  */
 export default async function AttendanceHistoryPage({ searchParams }) {
   const user = await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
@@ -66,7 +81,14 @@ export default async function AttendanceHistoryPage({ searchParams }) {
   let rangeTo = requestedTo || defaultRange.to;
   if (rangeFrom > rangeTo) [rangeFrom, rangeTo] = [rangeTo, rangeFrom];
 
-  const [{ sessions, total }, navigation, batchOptions, instructorOptions] = await Promise.all([
+  const canSeeClassCount = isAdmin || user.role === ROLES.INSTRUCTOR;
+  const showClassCount = showClassCountInHistory({ isAdmin, isInstructor: !isAdmin, batchId, instructorId, attendanceStatus });
+  const readRange = isAdmin ? listClassCountAttendanceRange : listClassCountAttendanceRangeScoped;
+  const readDates = isAdmin ? listClassCountAttendanceDates : listClassCountAttendanceDatesScoped;
+  const settle = (promise) => promise.then((value) => ({ ok: true, value }), () => ({ ok: false }));
+  const { from: monthFrom, to: monthTo } = monthRange(month);
+
+  const [{ sessions, total }, navigation, batchOptions, instructorOptions, classCountResult, classCountMonth, classCountRecent] = await Promise.all([
     listAttendanceHistory({
       dateFrom: rangeFrom,
       dateTo: rangeTo,
@@ -81,9 +103,22 @@ export default async function AttendanceHistoryPage({ searchParams }) {
     getHistoryDateNavigation(month),
     listBatchOptions(),
     isAdmin ? listInstructorOptions() : Promise.resolve([]),
+    showClassCount ? settle(readRange({ dateFrom: rangeFrom, dateTo: rangeTo, q })) : null,
+    canSeeClassCount ? settle(readDates({ dateFrom: monthFrom, dateTo: monthTo })) : null,
+    canSeeClassCount ? settle(readDates()) : null,
   ]);
 
-  const groups = groupSessionsByDate(sessions);
+  const classCountRecords = classCountResult?.ok ? classCountResult.value.records : [];
+  const classCountTotal = classCountResult?.ok ? classCountResult.value.total : 0;
+  const classCountFailed = Boolean(classCountResult) && !classCountResult.ok;
+  // Calendar days and Quick dates: sessions as before, plus (Admin or Instructor, each within their own access) the dates that hold class-count records - in a separate
+  // `classCount` number, so a session count never includes one. A failed class-count read just leaves them out.
+  const monthDays = canSeeClassCount ? mergeNavigationDays(navigation.monthDays, classCountMonth?.ok ? classCountMonth.value : []) : navigation.monthDays;
+  const quickDates = canSeeClassCount
+    ? mergeNavigationDays(navigation.quickDates, classCountRecent?.ok ? classCountRecent.value : []).slice(0, QUICK_DATE_COUNT)
+    : navigation.quickDates;
+
+  const groups = mergeHistoryGroups(groupSessionsByDate(sessions), classCountRecords);
   const requestedDate = isValidDateString(rawParams.date) ? rawParams.date : "";
   const selectedDate = groups.some((group) => group.date === requestedDate) ? requestedDate : (groups[0]?.date ?? "");
 
@@ -106,8 +141,8 @@ export default async function AttendanceHistoryPage({ searchParams }) {
             basePath={BASE_PATH}
             currentParams={rawParams}
             month={month}
-            monthDays={navigation.monthDays}
-            quickDates={navigation.quickDates}
+            monthDays={monthDays}
+            quickDates={quickDates}
             selectedDate={selectedDate}
             rangeFrom={rangeFrom}
             rangeTo={rangeTo}
@@ -132,6 +167,17 @@ export default async function AttendanceHistoryPage({ searchParams }) {
               instructorOptions={instructorOptions}
             />
 
+            {classCountFailed ? (
+              <p role="status" className="mt-4 text-small text-text-secondary">
+                Class count attendance could not be loaded. Session attendance is shown below.
+              </p>
+            ) : null}
+            {canSeeClassCount && !showClassCount ? (
+              <p className="mt-4 text-small text-text-secondary">
+                Class count attendance is hidden while a batch, instructor or Present / Absent filter is on.
+              </p>
+            ) : null}
+
             <div className="mt-5">
               {groups.length === 0 ? (
                 <EmptyState
@@ -154,6 +200,11 @@ export default async function AttendanceHistoryPage({ searchParams }) {
                   {total > sessions.length ? (
                     <p className="mt-4 text-small text-text-secondary">
                       Showing the most recent {sessions.length} of {total} sessions. Narrow the date range to see the rest.
+                    </p>
+                  ) : null}
+                  {classCountTotal > classCountRecords.length ? (
+                    <p className="mt-2 text-small text-text-secondary">
+                      Showing the most recent {classCountRecords.length} of {classCountTotal} class count records. Narrow the date range to see the rest.
                     </p>
                   ) : null}
                 </>

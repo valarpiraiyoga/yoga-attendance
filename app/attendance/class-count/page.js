@@ -9,8 +9,8 @@ import AttendanceViewToggle from "@/app/attendance/attendance-view-toggle";
 import ClassCountList from "@/app/attendance/class-count/class-count-list";
 
 /**
- * Class Count Attendance - the third tab of Attendance (beside Today's Sessions and All Sessions), Admin only
- * (01-product.md §8 "Class Count Attendance"; 02-ux.md "Class Count Attendance").
+ * Class Count Attendance - the third tab of Attendance (beside Today's Sessions and All Sessions), for an Admin and for an
+ * Instructor (01-product.md §8 "Class Count Attendance"; 02-ux.md "Class Count Attendance").
  *
  * A route of its own rather than a view of `app/attendance/page.js`, so the session workflow of that page is not
  * touched: this tab never reads a class session or the `attendance` table. It lists the class-count memberships a
@@ -18,13 +18,21 @@ import ClassCountList from "@/app/attendance/class-count/class-count-list";
  * memberships whose classes are all used, each with Renew. Duration memberships never appear here, and nothing here
  * changes session attendance.
  *
- * Admin only: the layout (app/attendance/layout.js) also admits an instructor to the other two tabs, so this page
- * repeats `requireRole` itself - an instructor who types the URL is sent home - and the database refuses them again.
+ * Roles: an Admin sees every eligible class-count membership and, below it, the used-up ones with Renew. An Instructor sees only
+ * the memberships of the students they are authorized for - the database (`list_class_count_eligible`, migration 0053) returns
+ * nothing else and no phone number - and has no Renew (renewing is a membership action and Admin only), so the used-up list is
+ * neither read nor shown. Recording is checked again in the database (`record_class_count_attendance`); this page repeats
+ * `requireRole` itself because the layout does not re-run on client-side navigation.
  */
 export default async function ClassCountAttendancePage() {
-  await requireRole(ROLES.ADMIN);
+  const user = await requireRole(ROLES.ADMIN, ROLES.INSTRUCTOR);
+  const isAdmin = user.role === ROLES.ADMIN;
 
-  const [eligible, toRenew, today] = await Promise.all([listClassCountEligible(), listClassCountToRenew(), todayDateString()]);
+  const [eligible, toRenew, today] = await Promise.all([
+    listClassCountEligible(),
+    isAdmin ? listClassCountToRenew() : Promise.resolve([]),
+    todayDateString(),
+  ]);
 
   return (
     <>
@@ -39,7 +47,13 @@ export default async function ClassCountAttendancePage() {
         <AttendanceViewToggle active="class-count" showClassCount />
 
         {eligible.length === 0 && toRenew.length === 0 ? (
-          <EmptyState description="No class-count memberships to record. A membership appears here once it has started and has classes left." />
+          <EmptyState
+            description={
+              isAdmin
+                ? "No class-count memberships to record. A membership appears here once it has started and has classes left."
+                : "No class-count memberships to record for your students. A membership appears here once it has started and has classes left."
+            }
+          />
         ) : (
           <div className="flex flex-col gap-8">
             <section aria-labelledby="class-count-record-heading" className="flex flex-col gap-3">

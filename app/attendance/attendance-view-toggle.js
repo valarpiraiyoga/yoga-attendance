@@ -7,8 +7,8 @@ const VIEWS = [
   { key: "all", label: "All Sessions", href: "/attendance?view=all", icon: List },
 ];
 
-// The third tab (01-product.md §8 "Class Count Attendance"): Admin only, and a route of its own, so the two session
-// views above are exactly what they were. An instructor is never shown it.
+// The third tab (01-product.md §8 "Class Count Attendance"): for an Admin and an Instructor, and a route of its own, so the two
+// session views above are exactly what they were.
 const CLASS_COUNT_VIEW = { key: "class-count", label: "Class Count Attendance", href: "/attendance/class-count", icon: ListChecks };
 
 /**
@@ -17,7 +17,7 @@ const CLASS_COUNT_VIEW = { key: "class-count", label: "Class Count Attendance", 
  * from `lg` up (the recorded exception to "named sections are tabs",
  * 06-ui-implementation-rules.md §16.4), and the standard underline `Tabs`
  * below it. Both are plain server-rendered links, so switching is a URL
- * change; only one is displayed at a time. For an Admin (`showClassCount`) a third
+ * change; only one is displayed at a time. With `showClassCount` (an Admin or an Instructor) a third
  * tab, Class Count Attendance, follows the two session views.
  */
 export default function AttendanceViewToggle({ active, showClassCount = false }) {

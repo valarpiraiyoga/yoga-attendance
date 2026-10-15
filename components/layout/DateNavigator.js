@@ -11,6 +11,14 @@ function sessionsLabel(count) {
   return `${count} ${count === 1 ? "session" : "sessions"}`;
 }
 
+// A day or quick date may also carry `classCount` (Attendance History, Admin: class-count records). It is a separate number:
+// the session count above never includes it. Absent on All Sessions, where nothing changes.
+function dayLabel(sessions, classCount = 0) {
+  return [sessions > 0 || classCount === 0 ? sessionsLabel(sessions) : null, classCount > 0 ? `${classCount} class count` : null]
+    .filter(Boolean)
+    .join(", ");
+}
+
 /**
  * The date navigator shared by Attendance History and Attendance -> All Sessions
  * (`ui-reference/02`):
@@ -37,6 +45,7 @@ export default function DateNavigator({
   rangeTo,
 }) {
   const countByDate = new Map(monthDays.map((day) => [day.date, day.count]));
+  const classCountByDate = new Map(monthDays.map((day) => [day.date, day.classCount ?? 0]));
   const weeks = buildMonthGrid(month);
 
   function dateHref(date) {
@@ -95,7 +104,9 @@ export default function DateNavigator({
           {weeks.flat().map((cell, index) => {
             if (!cell) return <span key={`blank-${index}`} />;
 
-            const count = countByDate.get(cell.date) ?? 0;
+            const sessionCount = countByDate.get(cell.date) ?? 0;
+            const classCount = classCountByDate.get(cell.date) ?? 0;
+            const count = sessionCount + classCount; // a day with anything to open
             const isSelected = cell.date === selectedDate;
             const dot = (
               <span
@@ -128,7 +139,7 @@ export default function DateNavigator({
                 key={cell.date}
                 href={dateHref(cell.date)}
                 scroll={false}
-                aria-label={`${formatDate(cell.date)}, ${sessionsLabel(count)}`}
+                aria-label={`${formatDate(cell.date)}, ${dayLabel(sessionCount, classCount)}`}
                 aria-current={isSelected ? "date" : undefined}
                 className="flex flex-col items-center gap-0.5 rounded-md py-0.5 hover:bg-brand/5 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
               >
@@ -169,7 +180,7 @@ export default function DateNavigator({
                     )}
                   >
                     <span>{formatDate(quick.date)}</span>
-                    <span className="text-small text-brand">{sessionsLabel(quick.count)}</span>
+                    <span className="text-small text-brand">{dayLabel(quick.count, quick.classCount)}</span>
                   </Link>
                 </li>
               );
