@@ -79,7 +79,7 @@ export function usePaymentDraft({ today, balancePaise, taxInvoiceDefault = true,
  * inputs themselves carry no names). Render the component only while the payment is wanted: no component, no field.
  *
  * `showTaxInvoice` is on wherever a payment is recorded; editing a recorded payment turns it off (its tax invoice
- * choice is not editable).
+ * choice is not editable). `showPaymentDate` is on everywhere except the document correction (its payment date cannot change).
  */
 export default function PaymentFields({
   draft,
@@ -91,6 +91,7 @@ export default function PaymentFields({
   formError = null,
   taxInvoiceDefault = true,
   showTaxInvoice = true,
+  showPaymentDate = true,
   idPrefix = "payment",
   fieldName,
   onRowRemoved,
@@ -109,19 +110,21 @@ export default function PaymentFields({
         </p>
       ) : null}
 
-      <FormField id={`${idPrefix}-date`} label="Payment date" required error={fieldErrors.payment_date}>
-        {(field) => (
-          <Input
-            {...field}
-            type="date"
-            required
-            max={today}
-            disabled={disabled}
-            value={draft.paymentDate}
-            onChange={(event) => draft.setPaymentDate(event.target.value)}
-          />
-        )}
-      </FormField>
+      {showPaymentDate ? (
+        <FormField id={`${idPrefix}-date`} label="Payment date" required error={fieldErrors.payment_date}>
+          {(field) => (
+            <Input
+              {...field}
+              type="date"
+              required
+              max={today}
+              disabled={disabled}
+              value={draft.paymentDate}
+              onChange={(event) => draft.setPaymentDate(event.target.value)}
+            />
+          )}
+        </FormField>
+      ) : null}
 
       <fieldset className="flex flex-col gap-3">
         <legend className="text-small mb-2 font-medium text-text-primary">Payment methods</legend>

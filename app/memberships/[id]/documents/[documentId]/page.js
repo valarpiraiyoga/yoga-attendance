@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Download, History } from "lucide-react";
+import { Download, FilePen, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
@@ -14,7 +14,7 @@ import { formatInvoiceNumberOf } from "@/lib/invoices/invoice-number";
 import { DOCUMENT_TITLE_LABEL } from "@/lib/invoices/membership-invoice";
 import InvoiceDocument from "@/app/memberships/[id]/invoice/invoice-document";
 import PrintInvoiceButton from "@/app/memberships/[id]/invoice/print-invoice-button";
-import CorrectDocument from "@/app/memberships/[id]/documents/[documentId]/correct-document";
+import CancelDocument from "@/app/memberships/[id]/documents/[documentId]/cancel-document";
 
 const labelOf = (row) => `${DOCUMENT_TITLE_LABEL[row.document_title] ?? row.document_title} ${formatInvoiceNumberOf(row)}`;
 
@@ -24,9 +24,11 @@ const labelOf = (row) => `${DOCUMENT_TITLE_LABEL[row.document_title] ?? row.docu
  * (app/memberships/[id]/invoice/page.js). It reads only the stored document row, a snapshot that never
  * follows later membership edits, with its payment's methods and correction history.
  *
- * Correction (Step 6): an issued document offers Correct Document, which cancels it and issues its
- * replacement. A cancelled document stays viewable - marked Cancelled with its reason, linked to its
- * replacement - and can be neither edited nor corrected again.
+ * Correction (Step 6, 0055): an issued document offers Correct Document, which opens the correction page; there the Admin
+ * corrects and reviews the details, and the database cancels this document and issues its replacement. It also offers Cancel
+ * Document, which only cancels it (a reason, no replacement). A cancelled document stays viewable - marked Cancelled with its
+ * reason, linked to its replacement when it has one - and can be neither edited, corrected nor cancelled again: both actions are
+ * hidden.
  */
 export default async function PaymentDocumentPage({ params }) {
   await requireRole(ROLES.ADMIN);
@@ -64,7 +66,13 @@ export default async function PaymentDocumentPage({ params }) {
               Download PDF
             </Button>
             {isCancelled ? null : (
-              <CorrectDocument membershipId={id} documentId={document.id} title={invoiceDocument.title} number={invoiceDocument.number} />
+              <>
+                <Button variant="outline" render={<Link href={`/memberships/${id}/documents/${document.id}/correct`} />} nativeButton={false}>
+                  <FilePen className="size-4" aria-hidden="true" />
+                  Correct Document
+                </Button>
+                <CancelDocument membershipId={id} documentId={document.id} title={invoiceDocument.title} number={invoiceDocument.number} />
+              </>
             )}
           </>
         }

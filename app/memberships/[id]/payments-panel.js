@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Wallet } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import EmptyState from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { formatCurrency } from "@/lib/currencies";
 import { formatDate } from "@/lib/format";
@@ -128,6 +129,17 @@ export default function PaymentsPanel({ membership, payments, today, student, me
                         ) : (
                           <span className="text-small text-text-secondary">Not available</span>
                         )}
+                        {payment.cancelledDocument ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            render={<Link href={`/memberships/${membership.id}/documents/${payment.cancelledDocument.id}`} />}
+                            nativeButton={false}
+                            aria-label={`View Cancelled Invoice ${DOCUMENT_TITLE_LABEL[payment.cancelledDocument.document_title] ?? payment.cancelledDocument.document_title} ${formatInvoiceNumberOf(payment.cancelledDocument)}`}
+                          >
+                            View Cancelled Invoice
+                          </Button>
+                        ) : null}
                         {payment.editable ? (
                           <EditPayment
                             membershipId={membership.id}
