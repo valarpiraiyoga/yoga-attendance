@@ -38,7 +38,7 @@ export default function InvoicePanel({ membership, invoice, student, membershipS
       <PanelHeader
         icon={Receipt}
         title="Invoice / Receipt"
-        description="The receipt follows the membership details. Its number stays assigned to this membership."
+        description="This receipt keeps the details it was issued with. Later changes to the membership do not change it. Its number stays assigned to this membership."
         className="mb-4 min-h-8"
         action={
           invoice ? (

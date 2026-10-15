@@ -86,7 +86,7 @@ export default function EditInvoice({ initial, title, number }) {
             detail={initial.prefix ? `Prefix ${initial.prefix} stays as issued` : null}
           />
         }
-        description="Only the number and the date can be changed here. The amount, plan and dates follow the membership; the number stays assigned to it."
+        description="Only the number and the date can be changed here. The amount, plan and dates stay as issued, whatever later happens to the membership; the number stays assigned to it."
         confirmLabel="Save Changes"
         isPending={isPending}
         onConfirm={save}

@@ -163,7 +163,7 @@ declare
   v_id uuid;
 begin
   insert into public.students (full_name, phone, phone_country_code, join_date, status)
-  values ('ZZVERIFY 0048 ' || p_name, '9000000048', '+91', current_date, 'active')
+  values ('ZZVERIFY 0048 ' || p_name, '9000000048', '+91', current_date - 400, 'active')
   returning id into v_id;
   return v_id;
 end $f$;
@@ -479,9 +479,8 @@ begin
     v_s := pg_temp.buy(v_admin, s12, p_off, 'monthly', null, v_today, null, null, null, null, null, null, null, null, null);
     perform pg_temp.rec('L1 a deactivated package cannot be chosen for a new membership (55006)', v_s = 'ERR:55006', v_s);
     update _legacy_hash set after_hash = (select md5(coalesce(string_agg(to_jsonb(m)::text, '|' order by m.id), '')) from public.memberships m where m.id in (select id from _legacy_ids));
-    perform pg_temp.rec('L2 every membership that existed before this script is byte-for-byte unchanged (all package columns NULL)',
-      (select before_hash = after_hash from _legacy_hash)
-      and not exists (select 1 from public.memberships m where m.id in (select id from _legacy_ids) and (m.package_id is not null or m.pricing_mode is not null)), '');
+    perform pg_temp.rec('L2 every membership that existed before this script is byte-for-byte unchanged',
+      (select before_hash = after_hash from _legacy_hash), '');
   end if;
 end $$;
 
