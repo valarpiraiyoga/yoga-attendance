@@ -24,7 +24,6 @@ import { INITIAL_PAYMENT_FIELD, validateInitialPayment } from "@/lib/memberships
 import { fromPaise, PAYMENT_METHOD_LABEL, toPaise } from "@/lib/memberships/payments-core";
 import PaymentFields, { usePaymentDraft } from "@/app/memberships/[id]/payment-fields";
 import PackageMembershipForm from "@/app/memberships/package-membership-form";
-import PackageMembershipEditForm from "@/app/memberships/package-membership-edit-form";
 
 const PLAN_OPTIONS = [
   { value: "monthly", label: "Monthly" },
@@ -616,9 +615,8 @@ export default function MembershipForm(props) {
   const offersPackages = Boolean(packageAction) && !membership && Array.isArray(packages) && packages.length > 0;
   const [mode, setMode] = useState(defaultMode);
 
-  // A package-linked membership's Edit form offers its notes only; every other Edit form is the legacy form below.
-  if (membership?.package_id) return <PackageMembershipEditForm {...props} />;
-
+  // Edit of a package-linked membership is its own workflow (app/memberships/[id]/edit/package-membership-editor.js); every Edit form
+  // that reaches here is the legacy form below.
   if (!offersPackages) return <LegacyMembershipForm {...props} />;
 
   return (

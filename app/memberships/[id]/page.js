@@ -38,7 +38,13 @@ import PageHeader from "@/components/layout/PageHeader";
 import FieldRow from "@/components/layout/FieldRow";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { getMembership, listMembershipsForStudent, listCoveredEnrollments, todayDateString } from "@/lib/memberships/data";
+import {
+  getMembership,
+  listMembershipsForStudent,
+  listCoveredEnrollments,
+  listMembershipTermCorrections,
+  todayDateString,
+} from "@/lib/memberships/data";
 import { getInvoiceForMembership } from "@/lib/invoices/data";
 import { getInvoiceSectionState } from "@/lib/invoices/membership-invoice";
 import { getMembershipValidity } from "@/lib/memberships/validity";
@@ -59,6 +65,7 @@ import { pricingSnapshotOf } from "@/lib/packages/membership-pricing";
 import ClassAttendancePanel from "@/app/memberships/[id]/class-attendance-panel";
 import { listClassCountHistory, listClassCountExpiryEdits } from "@/lib/class-count-attendance/data";
 import ExpiryPanel from "@/app/memberships/[id]/expiry-panel";
+import CorrectionsPanel from "@/app/memberships/[id]/corrections-panel";
 import { getPaymentsForMembership } from "@/lib/memberships/payments-data";
 
 const SUCCESS_MESSAGES = {
@@ -116,13 +123,16 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const [history, coveredEnrollments, invoice, payments, classRecords, expiryEdits] = await Promise.all([
+  const isPackageLinked = Boolean(membership.package_id);
+  const [history, coveredEnrollments, invoice, payments, classRecords, expiryEdits, corrections] = await Promise.all([
     listMembershipsForStudent(membership.student_id),
     listCoveredEnrollments(membership),
     getInvoiceForMembership(id),
     getPaymentsForMembership(id),
     membership.kind === "class_count" ? listClassCountHistory(id) : Promise.resolve([]),
     membership.kind === "class_count" ? listClassCountExpiryEdits(id) : Promise.resolve([]),
+    // Corrections (migration 0050) belong to a package-linked membership only; a legacy one keeps its Edit form.
+    isPackageLinked ? listMembershipTermCorrections(id) : Promise.resolve([]),
   ]);
   const otherMemberships = history.filter((entry) => entry.id !== id);
 
@@ -328,6 +338,17 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
       ) : null}
 
       {pricing ? <PricingPanel snapshot={pricing} /> : null}
+
+      {/* A package-linked membership: the history of its corrections; they are made in Edit Membership. */}
+      {isPackageLinked ? (
+        <CorrectionsPanel
+          membershipId={membership.id}
+          currency={membership.currency}
+          canEdit={membership.status !== "cancelled"}
+          corrections={corrections}
+          timeZone={await getCenterTimezone()}
+        />
+      ) : null}
 
       <PaymentsPanel
         membership={membership}
