@@ -473,6 +473,8 @@ Once an invoice has been issued for a membership, the issued invoice is preserve
 - The replacement carries forward, exactly as stored on the original, its **plan, description, membership period and service details**. They are never refreshed from the current membership, enrollment, batch or schedule, and no existing document is rewritten.
 - A **legacy membership-level receipt** has no cancel or correction workflow yet (see "The Receipt Keeps Its Issued Details"). The membership's price, package terms, validity, attendance eligibility and every other payment are never changed by a document correction.
 
+*(Service details on a new document — migration 0056.)* The batch, class days and times shown on a document are a snapshot taken when the **first** document of a membership is issued. They are resolved for the membership's **start date**; **only if no enrollment applies then**, they are resolved for the center's date of issue; if neither finds a batch, the document shows the generic membership description and period. Several batches or schedules are each listed once, in a fixed order. This applies to new documents only: an existing document is never backfilled, and a replacement never re-reads this data.
+
 ### Actions
 A stored invoice is intended to support:
 - View
