@@ -126,6 +126,7 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
 
           <EnrollmentForm
             action={createEnrollmentForStudent}
+            joinDate={student.join_date}
             student={{ full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }}
             batchOptions={batchOptions}
             currentSchedules={currentSchedules}

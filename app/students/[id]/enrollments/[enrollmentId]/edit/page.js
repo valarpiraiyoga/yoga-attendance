@@ -54,6 +54,7 @@ export default async function EditEnrollmentPage({ params }) {
           <StudentIdentityHeader student={student} className="mb-6" />
           <EnrollmentForm
             action={updateEnrollmentById}
+            joinDate={student.join_date}
             student={{ full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }}
             enrollment={enrollment}
             batchOptions={batchOptions}

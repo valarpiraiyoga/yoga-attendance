@@ -124,6 +124,12 @@ A student can belong to multiple batches at the same time, supporting combo offe
 ### Batch Changes
 A student can change batches. Enrollment must retain effective start/end dates so historical attendance remains correct.
 
+### Join Date and Start Dates
+- An enrollment's effective start date and a membership's start date cannot be **before the student's join date**. The rule is judged when a record is created and when its start date is **changed**; any other edit of an existing record (status, end date, notes, payments) is never refused because the record already starts before the join date.
+- A student's join date cannot be moved **later** than the start of an **active** enrollment or a **non-cancelled** membership. Inactive enrollments and cancelled memberships are history and do not block it. Moving the join date earlier is always allowed and is how an earlier start is corrected.
+- Records that already start before their student's join date are not changed automatically; they stay as they are until the join date is corrected.
+- **Editing an enrollment's start date** moves the schedule assignments that begin exactly on its **previous** start date to the new one, in the same save. An assignment added later by a schedule change, an assignment's end date, class sessions, attendance records, saved eligibility snapshots and frozen rosters are not changed. If the move would overlap another assignment of the same schedule, or leave an assignment ending before its start, nothing is saved. The save reports how many schedule assignments moved. Changing the batch is not a start-date move.
+
 ### Schedule Assignment
 A batch may run several recurring schedules, including more than one on the same weekday (§6, §7). A student enrolled in that batch does not automatically attend all of them: the enrollment records which schedules that student attends.
 

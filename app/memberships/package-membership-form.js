@@ -20,6 +20,7 @@ import { DURATION_LABELS, DURATION_OPTIONS_ORDER, KIND_LABELS } from "@/lib/pack
 import { packageMembershipInputOf, previewStandardPrice, validatePackageMembershipInput } from "@/lib/packages/membership-creation";
 import { INDIVIDUAL_DISCOUNT_REASONS, REASON_MAX_LENGTH } from "@/lib/packages/validation";
 import PaymentFields, { usePaymentDraft } from "@/app/memberships/[id]/payment-fields";
+import { joinDateLabel } from "@/lib/students/join-date";
 
 // The errors this form shows beside a field. Any other error from the server is shown in the banner, so none is lost.
 const FIELD_ERRORS = new Set([
@@ -345,6 +346,7 @@ export default function PackageMembershipForm({
             />
             <p id="start_date-help" className="text-small text-text-secondary">
               {isCustomPlan ? "The first day of the membership." : "The fee in effect on this date prices the membership."}
+              {student?.join_date ? ` Not before the student's join date (${joinDateLabel(student.join_date)}).` : ""}
             </p>
             <FieldError message={fieldErrors.start_date} />
           </div>

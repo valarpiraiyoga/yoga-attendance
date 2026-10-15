@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import EnrollmentReviewDialog from "@/app/students/[id]/enrollments/enrollment-review-dialog";
 import { DAY_LABELS } from "@/lib/schedules/validation";
+import { joinDateLabel } from "@/lib/students/join-date";
 import {
   validateEnrollmentInput,
   validateScheduleSelection,
@@ -70,6 +71,7 @@ function scheduleLabel(schedule) {
 export default function EnrollmentForm({
   action,
   student,
+  joinDate,
   enrollment,
   batchOptions,
   currentSchedules,
@@ -332,6 +334,9 @@ export default function EnrollmentForm({
                 fieldErrors.effective_start_date ? "effective_start_date-error" : undefined
               }
             />
+            {joinDate ? (
+              <p className="text-small text-text-secondary">Cannot be before the student&rsquo;s join date ({joinDateLabel(joinDate)}).</p>
+            ) : null}
             {fieldErrors.effective_start_date ? (
               <p id="effective_start_date-error" role="alert" className="text-small text-danger">
                 {fieldErrors.effective_start_date}

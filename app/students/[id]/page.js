@@ -46,6 +46,7 @@ import StudentStatusButton from "@/app/students/[id]/student-status-button";
 import StudentCardMenu from "@/app/students/student-card-menu";
 import GuidedComplete from "@/app/students/guided-complete";
 import { formatPhone } from "@/lib/phone";
+import { movedAssignmentsText } from "@/lib/students/join-date";
 
 const SUCCESS_MESSAGES = {
   updated: "Student updated successfully.",
@@ -146,7 +147,10 @@ export default async function StudentDetailsPage({ params, searchParams }) {
     )
   );
   const rawParams = await searchParams;
-  const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
+  const baseMessage = SUCCESS_MESSAGES[rawParams?.success] ?? null;
+  // An edited enrollment start date can move its initial schedule assignments (migration 0051): say how many, when it did.
+  const movedText = rawParams?.success === "enrollment_updated" ? movedAssignmentsText(rawParams?.moved) : "";
+  const message = baseMessage && movedText ? `${baseMessage} ${movedText}` : baseMessage;
 
   // The Add Student guided flow's finish (`createEnrollment` redirects here
   // with `?guided=1`): show its completion screen instead of the details.
