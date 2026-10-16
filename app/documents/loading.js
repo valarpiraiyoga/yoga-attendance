@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Documents register loading state (app/documents/page.js), in the proportions of the finalized list layout: the header strip, the
- * toolbar, the summary row and a few document cards.
+ * KPI tiles, the toolbar, the summary row and a few document cards.
  */
 export default function Loading() {
   return (
@@ -21,6 +21,13 @@ export default function Loading() {
       </div>
 
       <Container>
+        {/* KPI tiles: the StatTileGroup grid (two columns, four from `lg`). */}
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Skeleton className="h-18.5 rounded-card" />
+          <Skeleton className="h-18.5 rounded-card" />
+          <Skeleton className="h-18.5 rounded-card" />
+          <Skeleton className="h-18.5 rounded-card" />
+        </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Skeleton className="h-9 flex-1 rounded-md" />
           <Skeleton className="h-9 w-24 rounded-md" />

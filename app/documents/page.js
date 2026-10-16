@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Container from "@/components/layout/Container";
@@ -7,17 +7,20 @@ import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/ui/pagination";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { listDocuments } from "@/lib/documents/data";
+import { getCenterCurrency } from "@/lib/center-profile/settings";
+import { getDocumentSummary, listDocuments } from "@/lib/documents/data";
 import { DOCUMENTS_PAGE_SIZE, DOCUMENT_SORT_OPTIONS, parseDocumentListParams } from "@/lib/documents/list-core";
 import { buildListHref } from "@/lib/url-params";
 import DocumentFilters from "@/app/documents/document-filters";
 import DocumentList from "@/app/documents/document-list";
+import DocumentSummary from "@/app/documents/document-summary";
 
 /**
  * Documents - the central register (Phase 1, read-only; 01-product.md section 5A "Documents Register", 02-ux.md "Documents").
  * Every stored invoice and receipt, issued and cancelled, across all memberships: search, filters, newest first, 10 per page, a
  * table from `lg` and cards below - the Memberships list pattern. It only reads: no document is issued, edited, cancelled or
- * corrected here, and nothing is summed (a payment with a cancelled document and its replacement appears as two rows).
+ * corrected here. A payment with a cancelled document and its replacement appears as two rows. The KPI tiles above the toolbar
+ * are center-wide figures (they ignore the search and filters); only Issued Value adds anything up, and only issued documents.
  */
 export default async function DocumentsPage({ searchParams }) {
   // Authorization boundary. app/documents/layout.js also calls requireRole, but a layout does not re-run on client-side navigation
@@ -28,7 +31,16 @@ export default async function DocumentsPage({ searchParams }) {
   const params = parseDocumentListParams(rawParams);
   const { q, series, status, fromDate, toDate, page, view, sort } = params;
 
-  const { documents, total } = await listDocuments(params);
+  const [{ documents, total }, summary, currency] = await Promise.all([
+    listDocuments(params),
+    // The tiles must never take the list down: on a failure they show a dash and the register below still works.
+    // (A Next.js redirect or not-found from the role check is re-thrown, never swallowed.)
+    getDocumentSummary().catch((error) => {
+      unstable_rethrow(error);
+      return null;
+    }),
+    getCenterCurrency(),
+  ]);
   const totalPages = Math.max(1, Math.ceil(total / DOCUMENTS_PAGE_SIZE));
 
   // A page past the last one (a stale link, or a filter that shrank the list): go to the last page.
@@ -48,6 +60,8 @@ export default async function DocumentsPage({ searchParams }) {
       />
 
       <Container>
+        <DocumentSummary summary={summary} currency={currency} />
+
         <DocumentFilters
           key={`${series}:${status}:${fromDate}:${toDate}`}
           defaultQuery={q}
