@@ -151,6 +151,16 @@ The one exception is an assignment that has not started yet when it is removed â
 ### Deactivation
 Inactive students remain in the system. Deactivation does not remove historical student, membership, enrollment, or attendance records.
 
+### Communication History *(migration 0057)*
+Staff keep an internal, chronological record of their communications with a student. It is record keeping only: nothing is sent to the student, and there is no WhatsApp, phone or call-log integration, no notification or reminder, and no rating or assessment.
+
+- **A communication** records when it happened (date and time, on the centre's clock; it can be an earlier conversation, but not a future one), its type (**Phone Call**, **WhatsApp**, **In Person** or **Other**), a short subject, the discussion notes, and the staff member who recorded it (taken from the signed-in user, never entered).
+- **Optional follow-up.** A communication may carry one follow-up: a follow-up date (not before the communication's date) and a note describing the action to take. It starts **Pending**. Without a follow-up nothing is pending.
+- **Completing a follow-up** marks it **Completed** and records when and by whom; its date and note are kept as recorded, and the follow-up stays linked to its communication. Completing creates no new communication: when staff actually contact the student again, they add a separate communication.
+- **History** is shown newest first. Communications are not deleted in V1.
+- **Editing** *(migration 0058)*. Staff can correct a communication's date and time, type, subject and notes, with the same rules as when it was recorded. A **pending** follow-up's date and note can be changed, or the follow-up removed; a follow-up can be added to a communication without one. A **completed** follow-up records what was done, so it cannot be changed or removed: its date, note, status, completion time and who completed it stay as they are. The original record keeps its identity, who recorded it and when; the edit records who last edited it and when (earlier values are not kept).
+- **Access.** An Admin, for every student. The database also allows an Instructor for the students they are authorized for (a current active enrollment and assignment on a series they teach, or attendance on a session they own); in V1 it is shown on Student Details, which is Admin only, so Instructors have no screen for it yet.
+
 ---
 
 ## 5. Memberships

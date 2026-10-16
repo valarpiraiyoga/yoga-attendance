@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { getCentreToday } from "@/lib/center-profile/settings";
+import { notFound, unstable_rethrow } from "next/navigation";
+import { getCenterTimezone, getCentreToday } from "@/lib/center-profile/settings";
 import {
   ArrowRight,
   Calendar,
@@ -33,6 +33,8 @@ import { combineRecentAttendance } from "@/lib/class-count-attendance/attendance
 import { RECENT_ATTENDANCE_ROWS, recentAttendanceRange } from "@/lib/attendance/recent";
 import { addDaysUTC } from "@/lib/schedules/validation";
 import RecentAttendanceTable from "@/app/students/[id]/recent-attendance-table";
+import CommunicationHistory from "@/app/students/[id]/communications/communication-history";
+import { listStudentCommunications } from "@/lib/communications/data";
 import {
   listEnrollmentsForStudent,
   listScheduleAssignmentsForEnrollment,
@@ -136,10 +138,16 @@ export default async function StudentDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const [enrollments, currentMembership, recentAttendance] = await Promise.all([
+  const [enrollments, currentMembership, recentAttendance, communications, timeZone] = await Promise.all([
     listEnrollmentsForStudent(id),
     getCurrentMembershipForStudent(id),
     loadRecentAttendance(id, today),
+    // The history must never take the page down: on a failure its panel says so and the rest still works.
+    listStudentCommunications(id).catch((error) => {
+      unstable_rethrow(error);
+      return null;
+    }),
+    getCenterTimezone(),
   ]);
   const assignmentsByEnrollmentId = new Map(
     await Promise.all(
@@ -508,6 +516,13 @@ export default async function StudentDetailsPage({ params, searchParams }) {
         </Panel>
         </div>
       </div>
+
+      <CommunicationHistory
+        studentId={student.id}
+        student={{ full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }}
+        timeZone={timeZone}
+        communications={communications}
+      />
 
       <Panel>
         <PanelHeader icon={FileText} title="Additional Information" className="mb-2" />
