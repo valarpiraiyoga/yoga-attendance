@@ -146,6 +146,8 @@ Changing which schedule a student attends closes the existing assignment on the 
 
 The one exception is an assignment that has not started yet when it is removed — one whose effective start date is on or after the date the removal takes effect. It has no past to reconstruct and cannot be closed on the day before it starts, so it is withdrawn (deleted) rather than left as a one-day assignment that would still apply on the change date. An assignment that has already covered any past day is never deleted.
 
+**Recorded attendance on the effective date.** Effective dates are date-only. An enrollment cannot start, and a schedule or batch change cannot take effect, on a date on which the student already has recorded class-session attendance - in any batch or series - because a change effective on a date and a session already attended that date cannot be ordered against each other. The Admin is asked to choose a later effective date. The rule applies to a new enrollment's start date, a changed start date and the schedule/batch effective date; it does not apply to end dates, status or instructor changes (a session keeps the instructor it was materialized with), and class-count attendance is not session-based and is not checked. It prevents new same-day conflicts; the saved eligibility snapshot of a completed session is what keeps already-recorded history immutable.
+
 ### Deactivation
 Inactive students remain in the system. Deactivation does not remove historical student, membership, enrollment, or attendance records.
 
