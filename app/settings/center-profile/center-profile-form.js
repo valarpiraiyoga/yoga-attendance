@@ -228,7 +228,7 @@ export default function CenterProfileForm({ action, profile }) {
         </p>
 
         <div className="flex justify-end gap-3">
-          <Button type="reset" variant="outline" disabled={isPending}>
+          <Button type="reset" variant="secondary" disabled={isPending}>
             Cancel
           </Button>
           <Button type="submit" disabled={isPending}>

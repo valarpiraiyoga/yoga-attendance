@@ -299,11 +299,11 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
           </div>
           <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0 sm:items-center">
             {isCompleted ? (
-              <Button type="button" variant="outline" onClick={cancelEditing} disabled={isPending}>
+              <Button type="button" variant="secondary" onClick={cancelEditing} disabled={isPending}>
                 Cancel
               </Button>
             ) : (
-              <Button variant="outline" render={<Link href="/attendance" />} nativeButton={false}>
+              <Button variant="secondary" render={<Link href="/attendance" />} nativeButton={false}>
                 Cancel
               </Button>
             )}

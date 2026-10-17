@@ -55,24 +55,25 @@ function shown(value, change, currency) {
  */
 export default function CorrectionsPanel({ membershipId, currency, canEdit, corrections, timeZone }) {
   return (
-    <Panel aria-label="Corrections">
+    <Panel aria-label="Corrections" className="sm:p-4">
       <PanelHeader
         icon={PencilRuler}
+        tone="brand"
         title="Corrections"
         description="Changes to the package, price or dates after the membership was created, each with its reason. Payments and receipts are never changed by a correction."
         action={
           canEdit ? (
-            <Button variant="outline" size="sm" render={<Link href={`/memberships/${membershipId}/edit`} />} nativeButton={false}>
+            <Button variant="secondary" size="sm" render={<Link href={`/memberships/${membershipId}/edit`} />} nativeButton={false}>
               Edit Membership
             </Button>
           ) : null
         }
-        className="mb-4 min-h-8"
+        className="mb-3"
       />
       {corrections === null ? (
         <EmptyState size="sm" title="The corrections could not be loaded" description="Try refreshing the page." />
       ) : corrections.length === 0 ? (
-        <EmptyState size="sm" title="No corrections" description="A correction of this membership's package, price or dates appears here, with its reason." />
+        <EmptyState size="compact" title="No corrections" description="A correction of this membership's package, price or dates appears here, with its reason." />
       ) : (
         <ul className="flex flex-col divide-y divide-border">
           {corrections.map((correction) => (

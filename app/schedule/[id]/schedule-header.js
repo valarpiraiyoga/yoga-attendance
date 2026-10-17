@@ -71,7 +71,7 @@ export default function ScheduleHeader({ schedule, today }) {
       }
       actions={
         <>
-          <Button variant="outline" render={<Link href={`/schedule/${schedule.id}/edit`} />} nativeButton={false}>
+          <Button variant="secondary" render={<Link href={`/schedule/${schedule.id}/edit`} />} nativeButton={false}>
             <Pencil className="size-4" aria-hidden="true" />
             Edit Schedule
           </Button>

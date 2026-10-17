@@ -4,14 +4,18 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils"
 
 /**
- * Four semantic variants (06-ui-implementation-rules.md §6, matching
+ * Semantic variants (06-ui-implementation-rules.md §6, matching
  * `00 Design System.png` §7's Primary/Secondary/Tertiary/Destructive):
- * `default` (brand fill, the one primary action per view), `outline`
- * (secondary — border + neutral text, e.g. Cancel/Clear/Previous), `ghost`
- * (tertiary — chromeless until hover, icon buttons and low-emphasis row
- * actions), `destructive` (danger tint, solid on hover). `secondary` and
- * `link` are kept for API completeness (shadcn convention) though nothing
- * in this app currently uses `secondary`.
+ *
+ *   `default`     PRIMARY - solid brand blue, white text and icons: the main action of a section or form (Add Student, Add
+ *                 Membership, Save).
+ *   `secondary`   SECONDARY - light brand-blue fill, blue text and icons, same height, radius, type and spacing as the primary:
+ *                 supporting actions and navigation (Cancel, Back, View Full Schedule, Edit, Download, Clear Filters).
+ *   `outline`     bordered neutral button for controls that are not a "main" or "supporting" action: toolbar and filter
+ *                 controls, pagination, toggles and inline row actions.
+ *   `ghost`       tertiary - chromeless until hover: icon buttons and low-emphasis row actions.
+ *   `destructive` danger tint, solid on hover.
+ *   `link`        text link.
  *
  * Sizes sit on the 4px spacing scale (§6): `sm` 32 / `default` 36 / `lg` 40,
  * with matching `icon-sm` / `icon` / `icon-lg` squares. There is no `xs` —
@@ -29,7 +33,7 @@ const buttonVariants = cva(
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "bg-primary/10 text-primary hover:bg-primary/15 active:bg-primary/20 aria-expanded:bg-primary/15",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:

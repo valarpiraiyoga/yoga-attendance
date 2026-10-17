@@ -57,7 +57,7 @@ export default function DashboardTodaysClasses({
           </div>
         </div>
         {isAdmin ? (
-          <Button variant="outline" size="sm" className="self-start" render={<Link href="/schedule" />} nativeButton={false}>
+          <Button variant="secondary" size="sm" className="self-start" render={<Link href="/schedule" />} nativeButton={false}>
             View Full Schedule
             <ArrowRight className="size-4" aria-hidden="true" />
           </Button>

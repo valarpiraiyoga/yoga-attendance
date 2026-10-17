@@ -290,7 +290,7 @@ export default function ReviewAttendanceChanges({
           </p>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-            <Button variant="outline" disabled={isPending} render={<Link href={editHref} />} nativeButton={false}>
+            <Button variant="secondary" disabled={isPending} render={<Link href={editHref} />} nativeButton={false}>
               Back to Edit Attendance
             </Button>
             <Button type="button" disabled={isPending} onClick={handleConfirmSave}>
@@ -302,7 +302,7 @@ export default function ReviewAttendanceChanges({
         <EmptyState
           description="No attendance changes to review. Nothing will be saved."
           action={
-            <Button variant="outline" render={<Link href={editHref} />} nativeButton={false}>
+            <Button variant="secondary" render={<Link href={editHref} />} nativeButton={false}>
               Back to Edit Attendance
             </Button>
           }

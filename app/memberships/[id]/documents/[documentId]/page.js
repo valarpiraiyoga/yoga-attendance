@@ -58,7 +58,7 @@ export default async function PaymentDocumentPage({ params }) {
           <>
             <PrintInvoiceButton />
             <Button
-              variant="outline"
+              variant="secondary"
               render={<a href={`/memberships/${id}/documents/${documentId}/pdf`} />}
               nativeButton={false}
             >
@@ -67,7 +67,7 @@ export default async function PaymentDocumentPage({ params }) {
             </Button>
             {isCancelled ? null : (
               <>
-                <Button variant="outline" render={<Link href={`/memberships/${id}/documents/${document.id}/correct`} />} nativeButton={false}>
+                <Button variant="secondary" render={<Link href={`/memberships/${id}/documents/${document.id}/correct`} />} nativeButton={false}>
                   <FilePen className="size-4" aria-hidden="true" />
                   Correct Document
                 </Button>

@@ -296,7 +296,7 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
       <div className="mt-2 flex justify-end gap-3 border-t border-border pt-5">
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           disabled={isPending}
           render={<Link href={cancelHref} />}
           nativeButton={false}

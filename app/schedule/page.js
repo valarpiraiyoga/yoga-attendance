@@ -172,7 +172,7 @@ export default async function SchedulePage({ searchParams }) {
           }
           action={
             isFiltered ? (
-              <Button variant="outline" render={<Link href="/schedule?view=list" />} nativeButton={false}>
+              <Button variant="secondary" render={<Link href="/schedule?view=list" />} nativeButton={false}>
                 Clear Filters
               </Button>
             ) : (

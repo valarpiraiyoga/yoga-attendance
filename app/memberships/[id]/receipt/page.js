@@ -117,7 +117,7 @@ export default async function MembershipReceiptPage({ params }) {
             <PrintReceiptButton />
             {whatsAppUrl ? (
               <Button
-                variant="outline"
+                variant="secondary"
                 render={<a href={whatsAppUrl} target="_blank" rel="noopener noreferrer" />}
                 nativeButton={false}
               >
@@ -126,7 +126,7 @@ export default async function MembershipReceiptPage({ params }) {
               </Button>
             ) : (
               <span title={noNumberLabel}>
-                <Button variant="outline" disabled aria-label={noNumberLabel}>
+                <Button variant="secondary" disabled aria-label={noNumberLabel}>
                   <MessageCircle className="size-4" aria-hidden="true" />
                   Send WhatsApp
                 </Button>

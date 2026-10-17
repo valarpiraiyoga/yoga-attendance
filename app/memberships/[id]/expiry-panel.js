@@ -32,9 +32,10 @@ const expiryText = (value) => (value ? formatDate(value) : NO_EXPIRY_LABEL);
  */
 export default function ExpiryPanel({ membershipId, expiry, startDate, edits, timeZone, student, membership }) {
   return (
-    <Panel aria-label="Expiry">
+    <Panel aria-label="Expiry" className="sm:p-4">
       <PanelHeader
         icon={CalendarClock}
+        tone="brand"
         title="Expiry"
         description={`Current expiry: ${expiryText(expiry)}`}
         action={
@@ -46,7 +47,7 @@ export default function ExpiryPanel({ membershipId, expiry, startDate, edits, ti
             membership={membership}
           />
         }
-        className="mb-4 min-h-8"
+        className="mb-3"
       />
       {edits.length === 0 ? (
         <EmptyState size="sm" title="No expiry changes" description="Changes to this membership's expiry appear here, with their reason." />

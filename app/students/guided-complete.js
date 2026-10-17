@@ -70,11 +70,11 @@ export default function GuidedComplete({ student, membership, enrollment }) {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Button variant="outline" render={<Link href={`/students/${student.id}`} />} nativeButton={false}>
+          <Button variant="secondary" render={<Link href={`/students/${student.id}`} />} nativeButton={false}>
             <UserRound className="size-4" aria-hidden="true" />
             View Student
           </Button>
-          <Button variant="outline" render={<Link href="/students/new" />} nativeButton={false}>
+          <Button variant="secondary" render={<Link href="/students/new" />} nativeButton={false}>
             <UserPlus className="size-4" aria-hidden="true" />
             Add Another Student
           </Button>

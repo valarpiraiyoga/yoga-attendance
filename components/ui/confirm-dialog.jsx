@@ -142,7 +142,7 @@ export default function ConfirmDialog({
           {hideCancel ? null : (
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               disabled={isPending}
               className="flex-1"
               onClick={() => onOpenChange(false)}

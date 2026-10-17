@@ -240,7 +240,7 @@ export default async function AttendancePage({ searchParams }) {
                   description="No sessions match your search or filters."
                   action={
                     isFiltered ? (
-                      <Button variant="outline" render={<Link href="/attendance" />} nativeButton={false}>
+                      <Button variant="secondary" render={<Link href="/attendance" />} nativeButton={false}>
                         Clear Filters
                       </Button>
                     ) : undefined
@@ -382,7 +382,7 @@ export default async function AttendancePage({ searchParams }) {
                   }
                   action={
                     isFiltered ? (
-                      <Button variant="outline" render={<Link href="/attendance?view=all" />} nativeButton={false}>
+                      <Button variant="secondary" render={<Link href="/attendance?view=all" />} nativeButton={false}>
                         Clear Filters
                       </Button>
                     ) : undefined

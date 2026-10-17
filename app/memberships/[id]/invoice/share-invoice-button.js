@@ -63,7 +63,7 @@ export default function ShareInvoiceButton({ share }) {
 
   return (
     <>
-      <Button type="button" variant="outline" onClick={handleShare} disabled={busy} aria-busy={busy}>
+      <Button type="button" variant="secondary" onClick={handleShare} disabled={busy} aria-busy={busy}>
         <Share2 className="size-4" aria-hidden="true" />
         {busy ? "Preparing…" : "Share / WhatsApp"}
       </Button>

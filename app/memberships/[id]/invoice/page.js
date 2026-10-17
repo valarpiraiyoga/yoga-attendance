@@ -69,7 +69,7 @@ export default async function InvoiceDetailPage({ params }) {
           <>
             <PrintInvoiceButton />
             <Button
-              variant="outline"
+              variant="secondary"
               render={<a href={`/memberships/${id}/invoice/pdf`} />}
               nativeButton={false}
             >

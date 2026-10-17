@@ -650,7 +650,7 @@ export default function PackageMembershipForm({
               Skip this step
             </Button>
           ) : null}
-          <Button type="button" variant="outline" disabled={isPending} render={<Link href={cancelHref} />} nativeButton={false}>
+          <Button type="button" variant="secondary" disabled={isPending} render={<Link href={cancelHref} />} nativeButton={false}>
             Cancel
           </Button>
           {requireConfirmation ? (

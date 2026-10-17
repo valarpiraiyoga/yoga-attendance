@@ -70,7 +70,7 @@ export default function ReviewDialog({
         ) : null}
 
         <div className="flex gap-3">
-          <Button type="button" variant="outline" className="flex-1" disabled={isPending} onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="secondary" className="flex-1" disabled={isPending} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button type="button" className="flex-1" disabled={isPending} onClick={onConfirm}>

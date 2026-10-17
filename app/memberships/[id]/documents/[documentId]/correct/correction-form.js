@@ -308,7 +308,7 @@ export default function CorrectionForm({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <Button type="button" variant="outline" disabled={isPending} onClick={() => setStep("edit")}>
+          <Button type="button" variant="secondary" disabled={isPending} onClick={() => setStep("edit")}>
             Back to edit
           </Button>
           <Button type="button" disabled={isPending} onClick={confirmCorrection}>
@@ -464,7 +464,7 @@ export default function CorrectionForm({
       </Section>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <Button type="button" variant="outline" render={<Link href={backHref} />} nativeButton={false} disabled={isPending}>
+        <Button type="button" variant="secondary" render={<Link href={backHref} />} nativeButton={false} disabled={isPending}>
           Cancel
         </Button>
         <Button type="submit" disabled={isPending}>

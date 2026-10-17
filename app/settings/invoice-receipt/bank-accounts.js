@@ -206,7 +206,7 @@ export default function BankAccounts({ accounts }) {
         title="Bank Accounts"
         description="Manage bank accounts used on new invoices. Changes apply to invoices issued from now on."
         action={
-          <Button type="button" variant="outline" onClick={() => openEditor(null)}>
+          <Button type="button" onClick={() => openEditor(null)}>
             <Plus className="size-4" aria-hidden="true" />
             Add Bank Account
           </Button>

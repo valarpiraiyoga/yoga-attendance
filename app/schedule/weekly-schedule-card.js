@@ -91,7 +91,7 @@ export default function WeeklyScheduleCard({ schedule, style, dayLabel, timeRang
         hideCancel
         onConfirm={() => setOpen(false)}
       >
-        <Button variant="outline" className="w-full" render={<Link href={`/schedule/${schedule.id}`} />} nativeButton={false}>
+        <Button variant="secondary" className="w-full" render={<Link href={`/schedule/${schedule.id}`} />} nativeButton={false}>
           View Schedule
           <ArrowRight className="size-4" aria-hidden="true" />
         </Button>

@@ -38,12 +38,13 @@ function formatStamp(value, timeZone) {
  */
 export default function ClassAttendancePanel({ classCount, records, timeZone, endDate = null, student, membership }) {
   return (
-    <Panel>
+    <Panel className="sm:p-4">
       <PanelHeader
         icon={ClipboardCheck}
+        tone="brand"
         title="Class Attendance"
         description={`${classCount.used} used · ${classCountText(classCount)}`}
-        className="mb-4 min-h-8"
+        className="mb-3"
       />
       {records.length === 0 ? (
         <EmptyState size="sm" title="No classes recorded yet." description="Classes recorded for this membership appear here." />

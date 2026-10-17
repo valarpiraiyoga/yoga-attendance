@@ -72,7 +72,7 @@ export default function BatchHeader({ batch, active, children }) {
           </>
         }
         actions={
-          <Button variant="outline" render={<Link href={`/batches/${batch.id}/edit`} />} nativeButton={false}>
+          <Button variant="secondary" render={<Link href={`/batches/${batch.id}/edit`} />} nativeButton={false}>
             <Pencil className="size-4" aria-hidden="true" />
             Edit Batch
           </Button>

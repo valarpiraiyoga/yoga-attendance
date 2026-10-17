@@ -31,9 +31,10 @@ export default function PaymentsPanel({ membership, payments, today, student, me
   const money = (paise) => formatCurrency(fromPaise(paise), currency);
 
   return (
-    <Panel>
+    <Panel className="sm:p-4">
       <PanelHeader
         icon={Wallet}
+        tone="brand"
         title="Payments"
         description={
           legacyPaid
@@ -53,7 +54,7 @@ export default function PaymentsPanel({ membership, payments, today, student, me
             />
           )
         }
-        className="mb-4 min-h-8"
+        className="mb-3"
       />
 
       {payments.length === 0 ? (
@@ -68,7 +69,7 @@ export default function PaymentsPanel({ membership, payments, today, student, me
           <p className="text-small mb-3 text-text-secondary">{PAYMENT_DOCUMENT_BLOCKED_MESSAGE}</p>
         ) : null}
         <div className="overflow-x-auto rounded-lg border border-border">
-          <Table aria-label="Payments">
+          <Table aria-label="Payments" className="[&_td]:px-4 [&_td]:py-2.5 [&_th]:h-10 [&_th]:px-4">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="whitespace-nowrap">Date</TableHead>

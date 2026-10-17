@@ -303,7 +303,7 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <Button type="button" variant="outline" disabled={isPending} onClick={() => setStep("edit")}>
+          <Button type="button" variant="secondary" disabled={isPending} onClick={() => setStep("edit")}>
             Back to edit
           </Button>
           <Button type="button" disabled={isPending} onClick={confirmCorrection}>
@@ -555,7 +555,7 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
       </Section>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <Button type="button" variant="outline" render={<Link href={cancelHref} />} nativeButton={false} disabled={isPending}>
+        <Button type="button" variant="secondary" render={<Link href={cancelHref} />} nativeButton={false} disabled={isPending}>
           Cancel
         </Button>
         <Button type="submit" disabled={isPending}>

@@ -129,7 +129,7 @@ export default async function BatchesPage({ searchParams }) {
           }
           action={
             isFiltered ? (
-              <Button variant="outline" render={<Link href="/batches" />} nativeButton={false}>
+              <Button variant="secondary" render={<Link href="/batches" />} nativeButton={false}>
                 Clear Filters
               </Button>
             ) : (

@@ -92,7 +92,7 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
       <Panel>
         <EmptyState size="sm" title="No eligible students" description="No students were eligible for this session." />
         <div className="mt-4 flex justify-center">
-          <Button variant="outline" render={<Link href={detailsHref} />} nativeButton={false}>
+          <Button variant="secondary" render={<Link href={detailsHref} />} nativeButton={false}>
             Cancel
           </Button>
         </div>
@@ -182,7 +182,7 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
           <MarkedProgress summary={summary} />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0 sm:items-center">
-          <Button variant="outline" render={<Link href={detailsHref} />} nativeButton={false}>
+          <Button variant="secondary" render={<Link href={detailsHref} />} nativeButton={false}>
             Cancel
           </Button>
           <Button type="button" onClick={handleReviewChanges}>

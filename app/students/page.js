@@ -151,7 +151,7 @@ export default async function StudentsPage({ searchParams }) {
           }
           action={
             isFiltered ? (
-              <Button variant="outline" render={<Link href="/students" />} nativeButton={false}>
+              <Button variant="secondary" render={<Link href="/students" />} nativeButton={false}>
                 Clear Filters
               </Button>
             ) : (

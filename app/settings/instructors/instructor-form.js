@@ -205,7 +205,7 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
       <div className="mt-2 flex justify-end gap-3 border-t border-border pt-5">
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           disabled={isPending}
           render={<Link href="/settings/instructors" />}
           nativeButton={false}

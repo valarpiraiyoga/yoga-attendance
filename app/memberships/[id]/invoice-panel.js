@@ -34,15 +34,16 @@ export default function InvoicePanel({ membership, invoice, student, membershipS
   const state = getInvoiceSectionState({ membership, invoice });
 
   return (
-    <Panel aria-label="Invoice">
+    <Panel aria-label="Invoice" className="sm:p-4">
       <PanelHeader
         icon={Receipt}
+        tone="brand"
         title="Invoice / Receipt"
         description="This receipt keeps the details it was issued with. Later changes to the membership do not change it. Its number stays assigned to this membership."
-        className="mb-4 min-h-8"
+        className="mb-3"
         action={
           invoice ? (
-            <Button variant="outline" render={<Link href={`/memberships/${membership.id}/invoice`} />} nativeButton={false}>
+            <Button variant="secondary" render={<Link href={`/memberships/${membership.id}/invoice`} />} nativeButton={false}>
               View Invoice
             </Button>
           ) : state.canIssue ? (

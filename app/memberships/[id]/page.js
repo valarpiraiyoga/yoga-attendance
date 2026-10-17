@@ -1,20 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowRight,
-  CalendarDays,
-  CircleCheck,
-  FileText,
-  Gauge,
-  Hash,
-  History,
-  Banknote,
-  Layers,
-  Mail,
-  Pencil,
-  Phone,
-  RefreshCw,
-} from "lucide-react";
+import { FileText, Layers } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -22,18 +7,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import Avatar from "@/components/ui/avatar";
 import EmptyState from "@/components/ui/empty-state";
 import FlashToast from "@/components/ui/flash-toast";
 import Alert from "@/components/ui/alert";
 import { PAYMENT_NOT_RECORDED_NOTICE } from "@/lib/memberships/initial-payment";
-import MembershipTag from "@/components/ui/membership-tag";
-import Progress from "@/components/ui/progress";
-import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import Container from "@/components/layout/Container";
-import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
 import PageHeader from "@/components/layout/PageHeader";
 import FieldRow from "@/components/layout/FieldRow";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
@@ -47,17 +25,13 @@ import {
 } from "@/lib/memberships/data";
 import { getInvoiceForMembership } from "@/lib/invoices/data";
 import { getInvoiceSectionState } from "@/lib/invoices/membership-invoice";
-import { getMembershipValidity } from "@/lib/memberships/validity";
-import { formatDate } from "@/lib/format";
-import { NO_EXPIRY_LABEL, formatPeriod } from "@/lib/memberships/period";
-import { classCountText } from "@/lib/memberships/class-count";
-import { formatCurrency } from "@/lib/currencies";
-import { centreDateOf } from "@/lib/class-sessions/validation";
-import { getCenterTimezone } from "@/lib/center-profile/settings";
-import { MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
-import CancelMembership from "@/app/memberships/[id]/cancel-membership";
+import { formatPeriod } from "@/lib/memberships/period";
+import { getCenterSettings, getCenterTimezone } from "@/lib/center-profile/settings";
+import { PLAN } from "@/lib/status";
+import StudentHeader from "@/app/students/[id]/student-header";
 import CoveredEnrollmentRow from "@/app/memberships/[id]/covered-enrollment-row";
-import MembershipHistoryRow from "@/app/memberships/[id]/membership-history-row";
+import MembershipListPanel from "@/app/memberships/[id]/membership-list-panel";
+import MembershipCarousel from "@/app/memberships/[id]/membership-carousel";
 import InvoicePanel from "@/app/memberships/[id]/invoice-panel";
 import PaymentsPanel from "@/app/memberships/[id]/payments-panel";
 import PricingPanel from "@/app/memberships/[id]/pricing-panel";
@@ -74,42 +48,16 @@ const SUCCESS_MESSAGES = {
   renewed: "Membership renewed successfully.",
 };
 
-function formatDuration(startDate, endDate) {
-  if (!startDate || !endDate) return "—";
-  const start = new Date(`${startDate}T00:00:00Z`);
-  const end = new Date(`${endDate}T00:00:00Z`);
-  const days = Math.round((end - start) / 86400000) + 1;
-  if (!Number.isFinite(days) || days < 1) return "—";
-  if (days === 1) return "1 day";
-  if (days < 60) return `${days} days`;
-  const months = Math.round(days / 30);
-  return months === 1 ? "~1 month" : `~${months} months`;
-}
-
-/** Validity bar colour, as on the Memberships list: red once Expired, orange while payment is Pending, else green. */
-function validityTone(membership, validity) {
-  if (validity.status === "expired") return "danger";
-  if (membership.payment_status === "pending") return "warning";
-  return "success";
-}
-
-/** Days used so far, from the same reading the list's progress bar uses (`getMembershipValidity`). */
-function usedDays(validity) {
-  if (validity.status === "active") return validity.totalDays - validity.daysLeft;
-  if (validity.status === "expired") return validity.totalDays;
-  return 0;
-}
-
 /**
  * Membership Details (composed screen — 02-ux.md "Composed Membership
  * screens": no dedicated approved wireframe, built from the same panelled
  * layout as Student Details, so no tabs). The header only identifies — who
  * (student), which membership (code · plan) — and carries the actions; the
- * four summary tiles below it give the current state (Status, Validity,
- * Payment, Progress); below them Covered Batch Enrollments (derived,
- * never stored — 01-product.md §12), Membership History (the student's other
- * memberships — renewal always creates a new record, the previous one remains
- * here, never overwritten), and the membership's notes.
+ * Membership carousel (the selected membership's summary card). From `xl` the page is two columns: the student's Memberships list on the left (search, Status and Plan
+ * filters, the current membership highlighted; each card opens that membership) and these details on the right; below `xl` the
+ * list follows the details. The list is the one place to switch between the student's memberships (renewal always creates a new
+ * record, the previous one remains there, never overwritten), so the details do not repeat them. The details continue with Pricing,
+ * Corrections, Payments, Covered Batch Enrollments (derived, never stored — 01-product.md §12) and the membership's notes.
  */
 export default async function MembershipDetailsPage({ params, searchParams }) {
   // Authorization boundary — see app/memberships/layout.js for why this must
@@ -134,7 +82,6 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
     // Corrections (migration 0050) belong to a package-linked membership only; a legacy one keeps its Edit form.
     isPackageLinked ? listMembershipTermCorrections(id) : Promise.resolve([]),
   ]);
-  const otherMemberships = history.filter((entry) => entry.id !== id);
 
   const rawParams = await searchParams;
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
@@ -143,57 +90,10 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
   // A membership with recorded payments is documented per payment (Payments panel), not at membership level.
   const hasPayments = payments.length > 0;
   const invoiceState = getInvoiceSectionState({ membership, invoice, hasPayments });
-  const status = MEMBERSHIP_STATUS[membership.status] ?? { label: membership.status, variant: "neutral" };
-  const payment = PAYMENT_STATUS[membership.payment_status] ?? PAYMENT_STATUS.pending;
   const planLabel = PLAN[membership.plan] ?? membership.plan;
   // A package-linked membership shows the pricing recorded when it was created; a legacy membership has none and is unchanged.
   const pricing = pricingSnapshotOf(membership);
-  const durationLabel = formatDuration(membership.start_date, membership.end_date);
   const period = formatPeriod(membership.start_date, membership.end_date);
-
-  // The same "today" the Memberships list derived each row's status and validity from:
-  // the centre's date (its time zone from Center Settings), not the server's UTC date.
-  const validity = getMembershipValidity(membership, await todayDateString());
-  const showProgress = validity.status !== "cancelled";
-  const used = usedDays(validity);
-
-  // Progress tile text — the same reading the former Days Progress card gave: the share used once the
-  // membership has begun, "not started" while Upcoming, nothing once Cancelled. Calculations are unchanged.
-  const isUpcoming = validity.status === "upcoming";
-  // A class-count membership shows its classes used and left. No end date: no days to count and no bar to fill.
-  const classCount = membership.class_count;
-  const classPercent = classCount && classCount.total > 0 ? Math.round((classCount.used / classCount.total) * 100) : 0;
-  const isOpenEnded = showProgress && validity.noExpiry && !classCount;
-  const progressValue = !showProgress
-    ? "—"
-    : isUpcoming
-      ? "Not started"
-      : classCount
-        ? `${classCount.remaining} left`
-        : isOpenEnded
-          ? NO_EXPIRY_LABEL
-          : `${validity.percentUsed}% used`;
-  const progressCaption = !showProgress
-    ? "Membership cancelled"
-    : isUpcoming
-      ? `Starts ${formatDate(membership.start_date)}`
-      : classCount
-        ? classCountText(classCount)
-        : isOpenEnded
-          ? "No end date"
-          : `${used} of ${validity.totalDays} days`;
-
-  // Status tile caption — the date that closed or will close the membership, from its own record.
-  const statusCaption =
-    membership.status === "cancelled"
-      ? membership.cancelled_at
-        ? `Cancelled ${formatDate(centreDateOf(membership.cancelled_at, await getCenterTimezone()))}`
-        : "Cancelled"
-      : membership.status === "expired"
-        ? `Ended ${formatDate(membership.end_date)}`
-        : membership.end_date
-          ? `Ends ${formatDate(membership.end_date)}`
-          : NO_EXPIRY_LABEL;
 
   return (
     <>
@@ -203,128 +103,49 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         title="Membership Details"
         description={`Plan, payment and validity for ${student?.full_name ?? "this student"}.`}
       />
-      <Container className="flex flex-col gap-6">
-      <>
-        <EntityDetailHeader
-          decorative={false}
-          wash
-          className="mb-0"
-          avatar={<Avatar name={student?.full_name} src={student?.photo_url} size="lg" />}
-          title={student?.full_name ?? "—"}
-          status={<Badge variant={status.variant}>{status.label}</Badge>}
-          subMeta={
-            <>
-              <span className="inline-flex items-center gap-1.5">
-                <Hash className="size-3.5 shrink-0" aria-hidden="true" />
-                Student ID: {student?.student_code ?? "—"}
-              </span>
-              {student?.phone ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Phone className="size-3.5 shrink-0" aria-hidden="true" />
-                  {student.phone}
-                </span>
-              ) : null}
-              {student?.email ? (
-                <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
-                  <Mail className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span className="min-w-0 break-all">{student.email}</span>
-                </span>
-              ) : null}
-              {student ? (
-                <Link
-                  href={`/students/${student.id}`}
-                  className="inline-flex items-center gap-1 font-medium text-brand hover:underline"
-                >
-                  View Student
-                  <ArrowRight className="size-3.5" aria-hidden="true" />
-                </Link>
-              ) : null}
-              <MembershipTag code={membership.membership_code} plan={planLabel} />
-            </>
-          }
-          actions={
-            <>
-              <Button variant="outline" render={<Link href={`/memberships/${id}/renew`} />} nativeButton={false}>
-                <RefreshCw className="size-4" aria-hidden="true" />
-                Renew
-              </Button>
-              <Button variant="outline" render={<Link href={`/memberships/${id}/edit`} />} nativeButton={false}>
-                <Pencil className="size-4" aria-hidden="true" />
-                Edit Membership
-              </Button>
-              <CancelMembership
-                membershipId={membership.id}
-                studentId={student?.id}
-                paymentStatus={membership.payment_status}
-                invoiceExists={Boolean(invoice)}
-                hasPayments={hasPayments}
-                invoiceToIssue={
-                  invoiceState.canIssue
-                    ? {
-                        needsPaymentDate: invoiceState.needsPaymentDate,
-                        paymentDateLabel: invoiceState.paymentDate.kind === "recorded" ? formatDate(invoiceState.paymentDate.date) : null,
-                      }
-                    : null
-                }
-                isCancelled={membership.status === "cancelled"}
-                student={
-                  student
-                    ? { full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }
-                    : null
-                }
-                membership={{ code: membership.membership_code, planLabel, period }}
-              />
-            </>
-          }
+      <Container className="flex flex-col gap-4">
+        {/* The student's own header card - the same one Student Details shows. Its overflow menu's shortcuts are this membership
+            and the student's active enrollment that overlaps it. */}
+        {student ? (
+          <StudentHeader
+            student={student}
+            membershipId={membership.id}
+            enrollmentId={coveredEnrollments.find((enrollment) => enrollment.status === "active")?.id ?? null}
+            showEdit={false}
+          />
+        ) : null}
+
+        <div className="grid items-start gap-4 xl:grid-cols-[19rem_minmax(0,1fr)]">
+        <div className="order-last min-w-0 xl:order-first">
+          <MembershipListPanel
+            memberships={history.map((entry) => ({
+              id: entry.id,
+              membership_code: entry.membership_code,
+              plan: entry.plan,
+              kind: entry.kind,
+              total_classes: entry.total_classes,
+              package_name: entry.package_name,
+              start_date: entry.start_date,
+              end_date: entry.end_date,
+              amount: entry.amount,
+              currency: entry.currency,
+              status: entry.status,
+            }))}
+            currentId={membership.id}
+            studentId={membership.student_id}
+          />
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-4">
+        {/* The selected membership as the summary card, with its neighbours (the same order as the list) partly visible. */}
+        <MembershipCarousel
+          memberships={history}
+          selectedId={membership.id}
+          studentId={membership.student_id}
+          centreName={(await getCenterSettings()).name ?? ""}
+          today={await todayDateString()}
         />
 
-        {/* Current state at a glance — each tile answers one question: what state (Status), when
-            (Validity), what is owed (Payment), how much is used (Progress). */}
-        <StatTileGroup ariaLabel="Membership summary" columns={2} className="-mt-2 grid-cols-1 xl:grid-cols-4">
-          <StatTile
-            compact
-            icon={CircleCheck}
-            label="Status"
-            value={status.label}
-            caption={statusCaption}
-            tone={
-              membership.status === "active"
-                ? "success"
-                : membership.status === "upcoming"
-                  ? "warning"
-                  : membership.status === "cancelled"
-                    ? "danger"
-                    : "neutral"
-            }
-          />
-          <StatTile compact icon={CalendarDays} label="Validity" value={period} caption={durationLabel} tone="neutral" />
-          <StatTile
-            compact
-            icon={Banknote}
-            label="Payment"
-            value={formatCurrency(membership.amount, membership.currency)}
-            caption={payment.label}
-            tone={membership.payment_status === "paid" ? "success" : "warning"}
-          />
-          <StatTile
-            compact
-            icon={Gauge}
-            label="Progress"
-            value={progressValue}
-            caption={progressCaption}
-            tone={showProgress ? validityTone(membership, validity) : "neutral"}
-          >
-            {showProgress && !isOpenEnded ? (
-              <Progress
-                className="mt-2 h-1.5"
-                value={classCount ? classPercent : validity.percentUsed}
-                tone={validityTone(membership, validity)}
-                label={classCount ? "Classes used" : "Membership validity used"}
-              />
-            ) : null}
-          </StatTile>
-        </StatTileGroup>
-      </>
 
       {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
       <FlashToast message={message} />
@@ -337,7 +158,7 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         </Alert>
       ) : null}
 
-      {pricing ? <PricingPanel snapshot={pricing} /> : null}
+      {pricing ? <PricingPanel snapshot={pricing} membershipId={membership.id} canEdit={membership.status !== "cancelled"} /> : null}
 
       {/* A package-linked membership: the history of its corrections; they are made in Edit Membership. */}
       {isPackageLinked ? (
@@ -415,12 +236,13 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         />
       ) : null}
 
-      <Panel>
+      <Panel className="sm:p-4">
         <PanelHeader
           icon={Layers}
+          tone="brand"
           title="Covered Batch Enrollments"
           description="Batch enrollments that overlap this membership's period."
-          className="mb-4 min-h-8"
+          className="mb-3"
         />
         {coveredEnrollments.length === 0 ? (
           <EmptyState
@@ -430,7 +252,7 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
           />
         ) : (
           <div className="overflow-hidden rounded-lg border border-border">
-            <Table aria-label="Covered batch enrollments">
+            <Table aria-label="Covered batch enrollments" className="[&_td]:px-4 [&_td]:py-2.5 [&_th]:h-10 [&_th]:px-4">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="whitespace-nowrap">Batch</TableHead>
@@ -454,48 +276,14 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         )}
       </Panel>
 
-      <Panel>
-        <PanelHeader
-          icon={History}
-          title="Membership History"
-          description="The student's other memberships."
-          className="mb-4 min-h-8"
-        />
-        {otherMemberships.length === 0 ? (
-          <EmptyState
-            size="sm"
-            title="No other memberships"
-            description="No other membership records for this student."
-          />
-        ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <Table aria-label="Membership history">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="whitespace-nowrap">Membership ID</TableHead>
-                  <TableHead className="whitespace-nowrap">Plan</TableHead>
-                  <TableHead className="whitespace-nowrap">Period</TableHead>
-                  <TableHead className="whitespace-nowrap">Amount</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {otherMemberships.map((entry) => (
-                  <MembershipHistoryRow key={entry.id} entry={entry} student={student} />
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </Panel>
-
-      <Panel>
-        <PanelHeader icon={FileText} title="Additional Information" className="mb-4 min-h-8" />
+      <Panel className="sm:p-4">
+        <PanelHeader icon={FileText} tone="brand" title="Additional Information" className="mb-3" />
         <FieldRow icon={FileText} label="Notes">
           <p className="text-body break-words whitespace-pre-line text-text-primary">{membership.notes || "No notes."}</p>
         </FieldRow>
       </Panel>
+        </div>
+        </div>
       </Container>
     </>
   );

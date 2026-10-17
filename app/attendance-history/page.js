@@ -188,7 +188,7 @@ export default async function AttendanceHistoryPage({ searchParams }) {
                   }
                   action={
                     isFiltered ? (
-                      <Button variant="outline" render={<Link href={BASE_PATH} />} nativeButton={false}>
+                      <Button variant="secondary" render={<Link href={BASE_PATH} />} nativeButton={false}>
                         Clear Filters
                       </Button>
                     ) : undefined

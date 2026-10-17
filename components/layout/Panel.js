@@ -33,7 +33,9 @@ export function Panel({ children, className, ...props }) {
  * description. Without an action the row is top-aligned too, so the title
  * starts at the panel's padding edge regardless of `min-h-*` on the caller.
  */
-export function PanelHeader({ icon: Icon, title, description, action, className }) {
+export function PanelHeader({ icon: Icon, title, description, action, className, tone }) {
+  // `tone="brand"`: the icon in the brand colour and one size up (Student Details' sections). The default stays neutral.
+  const brand = tone === "brand";
   return (
     <div
       className={cn(
@@ -44,8 +46,11 @@ export function PanelHeader({ icon: Icon, title, description, action, className 
     >
       <div className="flex min-w-0 items-start gap-2">
         {Icon ? (
-          <span aria-hidden="true" className="flex h-5.5 w-4 shrink-0 items-center justify-center text-text-secondary">
-            <Icon className="size-4" aria-hidden="true" />
+          <span
+            aria-hidden="true"
+            className={cn("flex h-5.5 shrink-0 items-center justify-center", brand ? "w-5 text-brand" : "w-4 text-text-secondary")}
+          >
+            <Icon className={brand ? "size-5" : "size-4"} aria-hidden="true" />
           </span>
         ) : null}
         <div className="min-w-0">

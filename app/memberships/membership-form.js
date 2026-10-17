@@ -524,7 +524,7 @@ function LegacyMembershipForm({
           ) : null}
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={isPending}
             render={<Link href={cancelHref} />}
             nativeButton={false}

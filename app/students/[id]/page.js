@@ -1,38 +1,22 @@
 import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
-import { getCenterTimezone, getCentreToday } from "@/lib/center-profile/settings";
-import {
-  ArrowRight,
-  Calendar,
-  CalendarDays,
-  ClipboardList,
-  CreditCard,
-  FileText,
-  Hash,
-  Layers,
-  Pencil,
-  Plus,
-  UserRound,
-} from "lucide-react";
+import { getCenterSettings, getCenterTimezone, getCentreToday } from "@/lib/center-profile/settings";
+import { CreditCard, FileText, Layers, Pencil, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import BatchAvatar from "@/components/ui/batch-avatar";
 import EmptyState from "@/components/ui/empty-state";
 import FlashToast from "@/components/ui/flash-toast";
-import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import Container from "@/components/layout/Container";
-import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
 import PageHeader from "@/components/layout/PageHeader";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
-import { getRecentStudentAttendance } from "@/lib/reports/data";
 import { listStudentClassCountAttendance } from "@/lib/class-count-attendance/data";
 import { combineRecentAttendance } from "@/lib/class-count-attendance/attendance-rows";
 import { RECENT_ATTENDANCE_ROWS, recentAttendanceRange } from "@/lib/attendance/recent";
 import { addDaysUTC } from "@/lib/schedules/validation";
-import RecentAttendanceTable from "@/app/students/[id]/recent-attendance-table";
 import CommunicationHistory from "@/app/students/[id]/communications/communication-history";
 import { listStudentCommunications } from "@/lib/communications/data";
 import {
@@ -41,17 +25,27 @@ import {
   isScheduleAssignmentActive,
 } from "@/lib/enrollments/data";
 import { DAY_LABELS, DAYS_OF_WEEK } from "@/lib/schedules/validation";
-import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
-import { formatDate, formatDateWithWeekday, formatTimeRange } from "@/lib/format";
-import { NO_EXPIRY_LABEL, formatPeriod } from "@/lib/memberships/period";
-import { classCountText } from "@/lib/memberships/class-count";
-import { formatCurrency } from "@/lib/currencies";
-import { ENTITY_STATUS, MEMBERSHIP_STATUS, PAYMENT_STATUS, PLAN } from "@/lib/status";
-import StudentStatusButton from "@/app/students/[id]/student-status-button";
-import StudentCardMenu from "@/app/students/student-card-menu";
+import { listMembershipsForStudent, pickCurrentMembership } from "@/lib/memberships/data";
+import { formatDate, formatTimeRange } from "@/lib/format";
+import { ENTITY_STATUS } from "@/lib/status";
+import StudentHeader from "@/app/students/[id]/student-header";
 import GuidedComplete from "@/app/students/guided-complete";
-import { formatPhone } from "@/lib/phone";
 import { movedAssignmentsText } from "@/lib/students/join-date";
+import {
+  batchAssignments,
+  buildAttendanceStrip,
+  calendarBatches,
+  instructorsByDate,
+  sessionsByDate,
+  monthBounds,
+  parseCalendarMonth,
+  pickCalendarBatch,
+} from "@/lib/students/attendance-calendar";
+import { listStudentBatchAttendance, listStudentBatchClassDates } from "@/lib/students/attendance-calendar-data";
+import AttendanceCalendar, { CLASS_COUNT_TAB } from "@/app/students/[id]/attendance-calendar";
+import MembershipSummaryCard from "@/app/students/[id]/membership-summary-card";
+import MembershipHistory from "@/app/students/[id]/membership-history";
+import ProfileContact from "@/app/students/[id]/profile-contact";
 
 const SUCCESS_MESSAGES = {
   updated: "Student updated successfully.",
@@ -59,11 +53,6 @@ const SUCCESS_MESSAGES = {
   enrollment_updated: "Batch enrollment updated successfully.",
   membership_added: "Membership added successfully.",
 };
-
-// Enrollment schedule table columns: Day · Time · Instructor. Below `sm` the
-// header row is hidden and the instructor drops to its own line under the time.
-const SCHEDULE_COLUMNS =
-  "grid grid-cols-[3rem_minmax(0,1fr)] gap-x-4 sm:grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)]";
 
 /** Monday-first, then by start time — a stable, readable order for the schedule table. */
 function sortAssignmentsByWeek(assignments) {
@@ -78,54 +67,26 @@ function sortAssignmentsByWeek(assignments) {
   );
 }
 
-/** A field's value — the one value style every detail panel uses. */
-function Value({ children, className }) {
-  return (
-    <p className={`text-body font-medium break-words text-text-primary ${className ?? ""}`}>{children}</p>
-  );
-}
-
 /**
- * One field of a side panel: the muted label on the left, the value on the right,
- * for the narrow column the Membership and Profile & Contact panels sit in.
+ * The student's latest class-count records (`listStudentClassCountAttendance`), shown in Recent Attendance's "Class count" tab
+ * exactly as before (`combineRecentAttendance`, newest first). `unavailable` when they could not be read - never "none".
  */
-function DetailRow({ label, children, valueClassName }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0">
-      <dt className="text-small shrink-0 text-text-secondary">{label}</dt>
-      <dd className="min-w-0 text-right">
-        <Value className={valueClassName}>{children}</Value>
-      </dd>
-    </div>
-  );
-}
-
-/**
- * The student's latest recorded attendance: session attendance (`getRecentStudentAttendance`) and class-count records
- * (`listStudentClassCountAttendance`), read independently and merged newest first (`combineRecentAttendance`). A source that
- * cannot be loaded is `null`: the other still shows (with a note), and only when both fail does the panel say attendance is
- * unavailable - never claiming there is none. The rest of Student Details renders either way.
- */
-async function loadRecentAttendance(studentId, today) {
+async function loadClassCountAttendance(studentId, today) {
   const { dateFrom, dateTo } = recentAttendanceRange(today, addDaysUTC);
-  const [sessions, classCount] = await Promise.all([
-    getRecentStudentAttendance(studentId, today).catch(() => null),
-    listStudentClassCountAttendance(studentId, { dateFrom, dateTo, limit: RECENT_ATTENDANCE_ROWS }).catch(() => null),
-  ]);
-  return combineRecentAttendance({ sessions, classCount, limit: RECENT_ATTENDANCE_ROWS });
+  const records = await listStudentClassCountAttendance(studentId, { dateFrom, dateTo, limit: RECENT_ATTENDANCE_ROWS }).catch(() => null);
+  if (records === null) return { items: [], unavailable: true };
+  return { items: combineRecentAttendance({ sessions: [], classCount: records, limit: RECENT_ATTENDANCE_ROWS }).items, unavailable: false };
 }
 
 /**
- * Student Details (wireframe p10; `04 Student detail.png`) — a single page,
- * not tabs (02-ux.md: "Student Details is a single page, not tabs" — settled
- * explicitly to resolve the earlier IA/wireframe conflict, and confirmed for
- * this refinement). Hierarchy, top to bottom: the page strip; the identity header
- * (who; status, ID, gender, joined; actions) — the same header as Membership
- * Details; four compact summary cards; the working content in two columns from `xl`
- * (left: Batch Enrollments then Recent Attendance; right: Current Membership, a summary
- * and entry point, then Profile & Contact: phone, email, date of birth, gender); and
- * Additional Information (the notes) full width at the bottom. No student field is
- * dropped: name, ID and join date are in the identity header, the rest below it.
+ * Student Details (the approved Student Details design). A single page, not tabs: the page strip; the identity header (photo,
+ * name, status; Student ID, join date, gender; the status toggle, Edit Student and the overflow menu); then two columns from
+ * `xl` - left: Batch Enrollments, Recent Attendance (the per-batch month calendar), Profile & Contact, Additional Information
+ * (the notes), Communication History; right: Membership (the current membership) and Membership History (the others). Below
+ * `xl` the columns stack in that same order. No student field is dropped.
+ *
+ * Recent Attendance reads `?attendanceBatch=` (a batch id, or "class-count") and `?attendanceMonth=YYYY-MM`; every other panel
+ * ignores them.
  */
 export default async function StudentDetailsPage({ params, searchParams }) {
   await requireRole(ROLES.ADMIN);
@@ -138,17 +99,21 @@ export default async function StudentDetailsPage({ params, searchParams }) {
     notFound();
   }
 
-  const [enrollments, currentMembership, recentAttendance, communications, timeZone] = await Promise.all([
+  const [enrollments, memberships, classCount, communications, timeZone, centre] = await Promise.all([
     listEnrollmentsForStudent(id),
-    getCurrentMembershipForStudent(id),
-    loadRecentAttendance(id, today),
+    listMembershipsForStudent(id),
+    loadClassCountAttendance(id, today),
     // The history must never take the page down: on a failure its panel says so and the rest still works.
     listStudentCommunications(id).catch((error) => {
       unstable_rethrow(error);
       return null;
     }),
     getCenterTimezone(),
+    getCenterSettings(),
   ]);
+  const currentMembership = pickCurrentMembership(memberships);
+  const otherMemberships = memberships.filter((membership) => membership.id !== currentMembership?.id);
+
   const assignmentsByEnrollmentId = new Map(
     await Promise.all(
       enrollments.map(async (enrollment) => [enrollment.id, await listScheduleAssignmentsForEnrollment(enrollment.id)])
@@ -171,12 +136,46 @@ export default async function StudentDetailsPage({ params, searchParams }) {
       />
     );
   }
-  const membershipStatus = currentMembership
-    ? (MEMBERSHIP_STATUS[currentMembership.status] ?? { label: currentMembership.status, variant: "neutral" })
-    : null;
-  const studentStatus = ENTITY_STATUS[student.status] ?? ENTITY_STATUS.inactive;
-  const isActive = student.status === "active";
-  const activeEnrollmentCount = enrollments.filter((enrollment) => enrollment.status === "active").length;
+
+  // Recent Attendance: the batch tab and the month in the URL, and that month's recorded attendance for that batch.
+  const batches = calendarBatches(enrollments);
+  const calendarMonth = parseCalendarMonth(rawParams?.attendanceMonth, today);
+  const wantsClassCount = rawParams?.attendanceBatch === CLASS_COUNT_TAB && (classCount.items.length > 0 || classCount.unavailable);
+  const calendarBatch = wantsClassCount ? null : pickCalendarBatch(batches, rawParams?.attendanceBatch);
+  const selectedTab = wantsClassCount
+    ? CLASS_COUNT_TAB
+    : (calendarBatch?.id ?? (classCount.items.length > 0 || classCount.unavailable ? CLASS_COUNT_TAB : null));
+  let strip = [];
+  if (calendarBatch) {
+    const range = monthBounds(calendarMonth);
+    // The month's recorded marks and its class dates (the batch's sessions for this student's enrollment) are read together;
+    // if either cannot be read the panel says so - it never shows a guess.
+    const quiet = (error) => {
+      unstable_rethrow(error);
+      return null;
+    };
+    const [records, occurrences] = await Promise.all([
+      listStudentBatchAttendance(id, calendarBatch.id, range).catch(quiet),
+      listStudentBatchClassDates(calendarBatch.id, range, {
+        today,
+        enrollmentPeriods: calendarBatch.periods,
+        assignments: batchAssignments(enrollments, assignmentsByEnrollmentId, calendarBatch.id),
+      }).catch(quiet),
+    ]);
+    strip =
+      records === null || occurrences === null
+        ? null
+        : buildAttendanceStrip({
+            month: calendarMonth,
+            today,
+            records,
+            periods: calendarBatch.periods,
+            classDates: occurrences.map((occurrence) => occurrence.date),
+            instructors: instructorsByDate(occurrences, records),
+            sessions: sessionsByDate(occurrences, records),
+          });
+  }
+
 
   return (
     <>
@@ -187,355 +186,195 @@ export default async function StudentDetailsPage({ params, searchParams }) {
         description={`Profile, enrollments and membership for ${student.full_name}.`}
       />
       <Container className="flex flex-col gap-6">
-      <>
-        <EntityDetailHeader
-          decorative={false}
-          wash
-          className="mb-0"
-          avatar={<Avatar name={student.full_name} src={student.photo_url} size="lg" />}
-          title={student.full_name}
-          status={<Badge variant={studentStatus.variant}>{studentStatus.label}</Badge>}
-          subMeta={
-            <>
-              <span className="inline-flex items-center gap-1.5">
-                <Hash className="size-3.5 shrink-0" aria-hidden="true" />
-                Student ID: {student.student_code}
-              </span>
-              {student.gender ? (
-                <span className="inline-flex items-center gap-1.5 capitalize">
-                  <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
-                  {student.gender}
-                </span>
-              ) : null}
-              <span className="inline-flex items-center gap-1.5">
-                <CalendarDays className="size-3.5 shrink-0" aria-hidden="true" />
-                Joined {formatDate(student.join_date)}
-              </span>
-            </>
-          }
-          actions={
-            <>
-              <StudentStatusButton
-                studentId={student.id}
-                studentName={student.full_name}
-                status={student.status}
-                student={{ full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }}
-              />
-              <Button variant="outline" render={<Link href={`/students/${student.id}/edit`} />} nativeButton={false}>
-                <Pencil className="size-4" aria-hidden="true" />
-                Edit Student
-              </Button>
-              <StudentCardMenu
-                studentId={student.id}
-                membershipId={currentMembership?.id ?? null}
-                enrollmentId={enrollments.find((enrollment) => enrollment.status === "active")?.id ?? null}
-                triggerVariant="outline"
-                triggerSize="icon"
-                triggerClassName=""
-                triggerLabel={`More actions for ${student.full_name}`}
-              />
-            </>
-          }
+        <StudentHeader
+          student={student}
+          membershipId={currentMembership?.id ?? null}
+          enrollmentId={enrollments.find((enrollment) => enrollment.status === "active")?.id ?? null}
         />
 
-        <StatTileGroup ariaLabel="Student summary" columns={2} className="-mt-2 grid-cols-1 xl:grid-cols-4">
-          <StatTile
-            compact
-            icon={Layers}
-            label="Enrollments"
-            value={activeEnrollmentCount}
-            caption={`Active of ${enrollments.length} total`}
-            tone="brand"
-          />
-          <StatTile
-            compact
-            icon={CreditCard}
-            label="Membership"
-            value={membershipStatus ? membershipStatus.label : "None"}
-            caption={
-              currentMembership
-                ? currentMembership.end_date
-                  ? `Ends ${formatDate(currentMembership.end_date)}`
-                  : NO_EXPIRY_LABEL
-                : "No membership yet"
-            }
-            tone="info"
-          />
-          <StatTile
-            compact
-            icon={UserRound}
-            label="Status"
-            value={isActive ? "Active" : "Inactive"}
-            caption="Student record"
-            tone={isActive ? "success" : "danger"}
-          />
-          <StatTile compact icon={Calendar} label="Joined" value={formatDate(student.join_date)} caption="Join date" tone="neutral" />
-        </StatTileGroup>
-      </>
+        {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
+        <FlashToast message={message} />
 
-      {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
-      <FlashToast message={message} />
+        {/* Two columns from `xl` (the working column wider); below `xl` they stack, left column first, in the same order. */}
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+          <div className="flex min-w-0 flex-col gap-6">
+            <Panel>
+              <PanelHeader
+                icon={Layers}
+                tone="brand"
+                title="Batch Enrollments"
+                action={
+                  <Button size="sm" render={<Link href={`/students/${student.id}/enrollments/new`} />} nativeButton={false}>
+                    <Plus className="size-4" aria-hidden="true" />
+                    Add Enrollment
+                  </Button>
+                }
+              />
+              {enrollments.length === 0 ? (
+                <EmptyState
+                  size="sm"
+                  description="No batch enrollments yet. Add one to make this student eligible for attendance."
+                />
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {enrollments.map((enrollment) => (
+                    <EnrollmentCard
+                      key={enrollment.id}
+                      studentId={student.id}
+                      enrollment={enrollment}
+                      schedules={sortAssignmentsByWeek(
+                        (assignmentsByEnrollmentId.get(enrollment.id) ?? []).filter((assignment) =>
+                          isScheduleAssignmentActive(assignment, today)
+                        )
+                      )}
+                    />
+                  ))}
+                </ul>
+              )}
+            </Panel>
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start xl:grid-cols-[minmax(0,1fr)_22rem]">
-        {/* From `xl`: two columns, the working panels on the left (enrollments, then attendance) and the
-            reference panels on the right (membership, then profile). Below `xl` the wrappers dissolve
-            (`contents`) and the four panels are laid out by `order`: enrollments, membership, profile,
-            attendance - one column on a phone, and from `lg` enrollments and attendance full width with
-            membership and profile side by side between them. */}
-        <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
-        <Panel className="order-1 lg:col-span-2 xl:order-none xl:col-span-1">
-          <PanelHeader
-            icon={Layers}
-            title="Batch Enrollments"
-            className="flex-col items-start sm:flex-row sm:items-center"
-            action={
-              <Button size="sm" render={<Link href={`/students/${student.id}/enrollments/new`} />} nativeButton={false}>
-                <Plus className="size-4" aria-hidden="true" />
-                Add Enrollment
-              </Button>
-            }
-          />
-          {enrollments.length === 0 ? (
-            <EmptyState
-              size="sm"
-              description="No batch enrollments yet. Add one to make this student eligible for attendance."
+            <AttendanceCalendar
+              studentId={student.id}
+              studentName={student.full_name}
+              batches={batches}
+              selected={selectedTab}
+              month={calendarMonth}
+              today={today}
+              strip={strip}
+              classCount={classCount}
             />
-          ) : (
-            <ul className="flex flex-col divide-y divide-border">
-              {enrollments.map((enrollment) => {
-                const schedules = sortAssignmentsByWeek(
-                  (assignmentsByEnrollmentId.get(enrollment.id) ?? []).filter((assignment) =>
-                    isScheduleAssignmentActive(assignment, today)
-                  )
-                );
-                const batchName = enrollment.batches?.name ?? "Unknown batch";
-                const batchCode = enrollment.batches?.code ?? "—";
-                const enrollmentStatus = ENTITY_STATUS[enrollment.status] ?? ENTITY_STATUS.inactive;
 
-                return (
-                  <li key={enrollment.id} className="py-3 first:pt-0 last:pb-0">
-                    {/* One flat row per enrollment (no nested card): the batch tile, name with its status,
-                        code, and the edit control — then its schedule table. */}
-                    <div className="flex items-start gap-3">
-                      <BatchAvatar batch={{ ...enrollment.batches, name: batchName }} size="md" className="shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <p className="text-body font-semibold break-words text-text-primary">{batchName}</p>
-                          <Badge variant={enrollmentStatus.variant}>{enrollmentStatus.label}</Badge>
-                        </div>
-                        <p className="text-small text-text-secondary">
-                          Code: <span className="font-medium text-text-primary">{batchCode}</span>
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
-                        aria-label={`Edit enrollment in ${batchName}`}
-                        title="Edit Enrollment"
-                        render={<Link href={`/students/${student.id}/enrollments/${enrollment.id}/edit`} />}
-                        nativeButton={false}
-                      >
-                        <Pencil className="size-4" aria-hidden="true" />
-                      </Button>
-                    </div>
+            <ProfileContact student={student} />
 
-                    {schedules.length === 0 ? (
-                      <p className="text-small mt-2 font-medium text-danger">
-                        No schedule assigned — this enrollment is not eligible for attendance.
-                      </p>
-                    ) : (
-                      <div role="table" aria-label={`${batchName} schedules`} className="mt-2">
-                        <div role="row" className={`${SCHEDULE_COLUMNS} hidden border-b border-border pb-1.5 sm:grid`}>
-                          {["Day", "Time", "Instructor"].map((heading) => (
-                            <div
-                              key={heading}
-                              role="columnheader"
-                              className="text-small font-medium tracking-wide text-text-secondary uppercase"
-                            >
-                              {heading}
-                            </div>
-                          ))}
-                        </div>
-                        {schedules.map((assignment) => {
-                          const schedule = assignment.schedule;
-
-                          if (!schedule) {
-                            return (
-                              <div key={assignment.id} role="row" className="border-b border-border/60 py-1.5 last:border-b-0">
-                                <p role="cell" className="text-small font-medium text-danger">
-                                  Assigned schedule could not be found
-                                </p>
-                              </div>
-                            );
-                          }
-
-                          const instructor = schedule.instructors;
-
-                          return (
-                            <div
-                              key={assignment.id}
-                              role="row"
-                              className={`${SCHEDULE_COLUMNS} items-center gap-y-1 border-b border-border/60 py-1.5 last:border-b-0`}
-                            >
-                              <div role="cell" className="text-body font-medium text-text-primary">
-                                {(DAY_LABELS[schedule.day_of_week] ?? schedule.day_of_week).slice(0, 3)}
-                              </div>
-                              <div role="cell" className="text-body min-w-0 text-text-primary">
-                                {formatTimeRange(schedule.start_time, schedule.end_time)}
-                              </div>
-                              <div role="cell" className="col-span-2 flex min-w-0 items-center gap-2 sm:col-span-1">
-                                {instructor?.full_name ? (
-                                  <>
-                                    <Avatar name={instructor.full_name} src={instructor.photo_url} size="sm" className="size-6" />
-                                    <span className="text-body truncate text-text-primary">{instructor.full_name}</span>
-                                  </>
-                                ) : (
-                                  <span className="text-body text-text-secondary">—</span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Panel>
-
-      <Panel className="order-4 lg:col-span-2 xl:order-none xl:col-span-1">
-        <PanelHeader icon={ClipboardList} title="Recent Attendance" className="mb-2" />
-        {recentAttendance.unavailable ? (
-          <EmptyState
-            size="compact"
-            title="Recent attendance is not available right now"
-            description="Try refreshing the page."
-          />
-        ) : recentAttendance.items.length === 0 ? (
-          <EmptyState
-            size="compact"
-            title="No recent attendance yet"
-            description="Attendance for this student will appear here once classes are marked."
-          />
-        ) : (
-          <>
-            <RecentAttendanceTable items={recentAttendance.items} />
-            {recentAttendance.partial ? (
-              <p className="mt-2 text-small text-text-secondary">Some attendance could not be loaded. Try refreshing the page.</p>
-            ) : null}
-          </>
-        )}
-      </Panel>
-        </div>
-        <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
-        <Panel className="order-2 xl:order-none">
-          <PanelHeader
-            icon={CreditCard}
-            title="Current Membership"
-            action={
-              <Button
-                variant="outline"
-                size="icon-sm"
-                aria-label="Add Membership"
-                title="Add Membership"
-                render={<Link href={`/students/${student.id}/memberships/new`} />}
-                nativeButton={false}
-              >
-                <Plus className="size-4" aria-hidden="true" />
-              </Button>
-            }
-          />
-          {currentMembership ? (
-            <div>
-              {/* A summary and entry point — the full record lives on Membership Details. */}
-              <div className="flex items-start gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <p className="text-body font-semibold text-text-primary">
-                      {PLAN[currentMembership.plan] ?? currentMembership.plan} Membership
-                    </p>
-                    <Badge variant={membershipStatus.variant}>{membershipStatus.label}</Badge>
-                  </div>
-                  <div className="text-small flex flex-wrap items-center gap-x-3 gap-y-0.5 text-text-secondary">
-                    <span>ID: {currentMembership.membership_code}</span>
-                    <Link
-                      href={`/memberships/${currentMembership.id}`}
-                      className="inline-flex items-center gap-1 font-medium text-brand hover:underline"
-                    >
-                      View Membership
-                      <ArrowRight className="size-3.5" aria-hidden="true" />
-                    </Link>
-                  </div>
+            <Panel>
+              <PanelHeader icon={FileText} tone="brand" title="Additional Information" className="mb-2" />
+              {student.notes ? (
+                <div>
+                  <p className="text-small text-text-secondary">Notes</p>
+                  <p className="text-body mt-0.5 break-words whitespace-pre-line text-text-primary">{student.notes}</p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
-                  aria-label={`Edit membership ${currentMembership.membership_code}`}
-                  title="Edit Membership"
-                  render={<Link href={`/memberships/${currentMembership.id}/edit`} />}
-                  nativeButton={false}
-                >
-                  <Pencil className="size-4" aria-hidden="true" />
-                </Button>
-              </div>
+              ) : (
+                <EmptyState size="compact" title="No additional information yet" />
+              )}
+            </Panel>
 
-              <dl className="mt-3 flex flex-col divide-y divide-border border-t border-border pt-3">
-                <DetailRow label="Validity">{formatPeriod(currentMembership.start_date, currentMembership.end_date)}</DetailRow>
-                {currentMembership.class_count ? (
-                  <DetailRow label="Classes">{classCountText(currentMembership.class_count)}</DetailRow>
-                ) : null}
-                <DetailRow label="Amount">{formatCurrency(currentMembership.amount, currentMembership.currency)}</DetailRow>
-                <DetailRow label="Payment">
-                  <Badge variant={(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).variant}>
-                    {(PAYMENT_STATUS[currentMembership.payment_status] ?? PAYMENT_STATUS.pending).label}
-                  </Badge>
-                </DetailRow>
-              </dl>
-            </div>
-          ) : (
-            <EmptyState size="sm" description="No membership yet for this student." />
-          )}
-        </Panel>
-
-        <Panel className="order-3 xl:order-none">
-          <PanelHeader icon={UserRound} title="Profile & Contact" />
-          <dl className="flex flex-col divide-y divide-border">
-            <DetailRow label="Phone">{formatPhone(student.phone, student.phone_country_code)}</DetailRow>
-            <DetailRow label="Email" valueClassName="break-all">
-              {student.email || "—"}
-            </DetailRow>
-            <DetailRow label="Date of Birth">{student.date_of_birth ? formatDate(student.date_of_birth) : "—"}</DetailRow>
-            <DetailRow label="Gender" valueClassName="capitalize">
-              {student.gender || "—"}
-            </DetailRow>
-          </dl>
-        </Panel>
-        </div>
-      </div>
-
-      <CommunicationHistory
-        studentId={student.id}
-        student={{ full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }}
-        timeZone={timeZone}
-        communications={communications}
-      />
-
-      <Panel>
-        <PanelHeader icon={FileText} title="Additional Information" className="mb-2" />
-        {student.notes ? (
-          <div>
-            <p className="text-small text-text-secondary">Notes</p>
-            <p className="text-body mt-0.5 break-words whitespace-pre-line text-text-primary">{student.notes}</p>
+            <CommunicationHistory
+              studentId={student.id}
+              student={{ full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }}
+              timeZone={timeZone}
+              communications={communications}
+            />
           </div>
-        ) : (
-          <EmptyState size="compact" title="No additional information yet" />
-        )}
-      </Panel>
+
+          <div className="flex min-w-0 flex-col gap-6">
+            <Panel>
+              <PanelHeader
+                icon={CreditCard}
+                tone="brand"
+                title="Membership"
+                action={
+                  <Button size="sm" render={<Link href={`/students/${student.id}/memberships/new`} />} nativeButton={false}>
+                    <Plus className="size-4" aria-hidden="true" />
+                    Add Membership
+                  </Button>
+                }
+              />
+              {currentMembership ? (
+                <MembershipSummaryCard membership={currentMembership} centreName={centre?.name ?? ""} today={today} />
+              ) : (
+                <EmptyState size="sm" description="No membership yet for this student." />
+              )}
+            </Panel>
+
+            <MembershipHistory memberships={otherMemberships} />
+          </div>
+        </div>
       </Container>
     </>
+  );
+}
+
+/**
+ * One batch enrollment as a compact card: the batch mark, name, status and code with its edit action, then its current
+ * schedules (Day · Time · Instructor). An enrollment with no current schedule is flagged, as before.
+ */
+function EnrollmentCard({ studentId, enrollment, schedules }) {
+  const batchName = enrollment.batches?.name ?? "Unknown batch";
+  const batchCode = enrollment.batches?.code ?? "—";
+  const enrollmentStatus = ENTITY_STATUS[enrollment.status] ?? ENTITY_STATUS.inactive;
+
+  return (
+    <li className="overflow-hidden rounded-card border border-border">
+      <div className="flex items-start gap-3 bg-background/60 px-3 py-2.5">
+        <BatchAvatar batch={{ ...enrollment.batches, name: batchName }} size="md" className="shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-body font-semibold break-words text-text-primary">{batchName}</p>
+            <Badge variant={enrollmentStatus.variant}>{enrollmentStatus.label}</Badge>
+          </div>
+          <p className="text-small text-text-secondary">
+            Code: <span className="font-medium text-text-primary">{batchCode}</span>
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
+          aria-label={`Edit enrollment in ${batchName}`}
+          title="Edit Enrollment"
+          render={<Link href={`/students/${studentId}/enrollments/${enrollment.id}/edit`} />}
+          nativeButton={false}
+        >
+          <Pencil className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
+
+      {schedules.length === 0 ? (
+        <p className="text-small border-t border-border px-3 py-2 font-medium text-danger">
+          No schedule assigned — this enrollment is not eligible for attendance.
+        </p>
+      ) : (
+        <table aria-label={`${batchName} schedules`} className="w-full table-fixed border-t border-border">
+          <thead>
+            <tr className="text-small text-left text-text-secondary">
+              <th scope="col" className="w-16 px-3 py-1.5 font-medium sm:w-24">Day</th>
+              <th scope="col" className="px-2 py-1.5 font-medium">Time</th>
+              <th scope="col" className="px-2 py-1.5 font-medium">Instructor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {schedules.map((assignment) => {
+              const schedule = assignment.schedule;
+              if (!schedule) {
+                return (
+                  <tr key={assignment.id} className="border-t border-border/60">
+                    <td colSpan={3} className="text-small px-3 py-1.5 font-medium text-danger">
+                      Assigned schedule could not be found
+                    </td>
+                  </tr>
+                );
+              }
+              const instructor = schedule.instructors;
+              return (
+                <tr key={assignment.id} className="text-body border-t border-border/60 text-text-primary">
+                  <td className="px-3 py-1.5 font-medium">{(DAY_LABELS[schedule.day_of_week] ?? schedule.day_of_week).slice(0, 3)}</td>
+                  <td className="px-2 py-1.5">{formatTimeRange(schedule.start_time, schedule.end_time)}</td>
+                  <td className="px-2 py-1.5">
+                    {instructor?.full_name ? (
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Avatar name={instructor.full_name} src={instructor.photo_url} size="sm" className="size-6 shrink-0" />
+                        <span className="truncate">{instructor.full_name}</span>
+                      </span>
+                    ) : (
+                      <span className="text-text-secondary">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </li>
   );
 }
