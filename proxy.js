@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
+import { passwordChangeRedirect } from "@/lib/auth/password-change-required";
 
 /**
  * Refreshes the Supabase session and performs a coarse authentication check.
@@ -36,6 +37,16 @@ export async function proxy(request) {
   if (!user && !isPublicRoute(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // A user still on an Admin-generated temporary password goes to the change-password page and nowhere else (a typed URL or a refresh does
+  // not get past it). The Data Access Layer repeats this for every protected page and server action.
+  const mustChange = passwordChangeRedirect({ user, pathname, isPublicRoute: isPublicRoute(pathname) });
+  if (mustChange) {
+    const url = request.nextUrl.clone();
+    url.pathname = mustChange;
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

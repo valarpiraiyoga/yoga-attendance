@@ -1002,8 +1002,18 @@ Admin can:
 - Activate/deactivate instructor
 - Assign instructor to individual schedules
 - Provide instructor login access
+- Reset an instructor's password
 
 Instructor is an independent entity and is assigned at the schedule level.
+
+#### Instructor Login Access
+Login access is a deliberate, separate Admin action (never a side effect of saving an instructor), available for an **active** instructor. There are two ways to give it:
+- **Email invitation.** The instructor receives an email and chooses their own password. (Requires an email address.)
+- **Temporary password.** For when email is not practical, the Admin generates a **temporary password**: a random, cryptographically generated password that is created with the instructor's account (it uses the instructor's email as the sign-in name) and shown to the Admin **once**, with a copy action, to be handed to the instructor securely. It is never stored, logged or shown again; the Admin never sees an existing password.
+
+**Reset Password.** For an instructor who already has an account, an Admin can generate a new temporary password after a confirmation. The previous password stops working at once and the new one is shown once. Only the account linked to that instructor, and only an instructor's account, can be reset this way.
+
+**First sign-in.** An instructor on a temporary password must replace it before using anything else: every page and action sends them to a **Change your temporary password** page until they have chosen a new one (at least 8 characters, the same rule as every other password change, and different from the temporary one). Refreshing or typing another address does not get past it, and signing out is always possible. Choosing a password through an emailed link also ends the requirement. Only an Admin action can start it; a signed-in user cannot set or clear it themselves.
 
 ### Roles & Permissions
 
