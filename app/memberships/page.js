@@ -20,6 +20,8 @@ import MembershipFilters from "@/app/memberships/membership-filters";
 import { getPackages } from "@/lib/packages/data";
 import { parsePackageFilter } from "@/lib/memberships/list-filters";
 import MembershipList from "@/app/memberships/membership-list";
+import { getReminders } from "@/lib/reminders/data";
+import { remindersByMembership } from "@/lib/reminders/presentation";
 
 const PAGE_SIZE = 10;
 const PLANS = ["monthly", "quarterly", "half_yearly", "annual", "custom", "class_count"];
@@ -58,7 +60,7 @@ export default async function MembershipsPage({ searchParams }) {
     ? rawParams.sort
     : DEFAULT_MEMBERSHIP_SORT;
 
-  const [{ memberships, total }, counts, packages] = await Promise.all([
+  const [{ memberships, total }, counts, packages, reminderResult] = await Promise.all([
     listMemberships({
       q,
       plan,
@@ -73,7 +75,11 @@ export default async function MembershipsPage({ searchParams }) {
     }),
     getMembershipSummaryCounts(),
     getPackages(),
+    // The current reminders (01-product.md §5 "Reminders"), shown on each row and card. If they cannot be loaded the list still works - it
+    // just shows no reminder indicators.
+    getReminders().catch(() => null),
   ]);
+  const reminders = remindersByMembership(reminderResult?.reminders);
 
   // The same "today" `listMemberships` derived each row's status from, so a
   // card's status and its days-left always agree.
@@ -195,6 +201,7 @@ export default async function MembershipsPage({ searchParams }) {
         <>
           <MembershipList
             memberships={memberships}
+            reminders={reminders}
             view={view}
             total={total}
             today={today}

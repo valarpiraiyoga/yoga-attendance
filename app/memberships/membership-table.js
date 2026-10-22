@@ -16,6 +16,7 @@ import MembershipIssueInvoiceDialog from "@/app/memberships/membership-issue-inv
 import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/validity";
 import { cn } from "@/lib/utils";
 import MembershipCardMenu from "@/app/memberships/membership-card-menu";
+import ReminderIndicators from "@/app/memberships/reminder-indicators";
 
 // Responsive by the table's own width (container queries), not the viewport,
 // the same rule as the Attendance, Schedule, Batches and Students tables.
@@ -45,7 +46,7 @@ const HEAD = "h-10 px-2 text-small tracking-normal";
  */
 const DOCUMENT_ICON = { "due-notice": FileText, "receipt": Receipt, "issue-receipt": FilePlus, "payments": Wallet };
 
-function MembershipRow({ membership, today }) {
+function MembershipRow({ membership, today, reminders }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
 
@@ -95,7 +96,11 @@ function MembershipRow({ membership, today }) {
         <Badge variant={payment.variant}>{payment.label}</Badge>
       </TableCell>
       <TableCell className="px-2 py-3">
-        <Badge variant={status.variant}>{status.label}</Badge>
+        {/* The membership's reminders sit under its status, so the row gains no column (02-ux.md "Membership & payment reminders"). */}
+        <div className="flex flex-col items-start gap-1">
+          <Badge variant={status.variant}>{status.label}</Badge>
+          <ReminderIndicators reminders={reminders} className="max-w-48" />
+        </div>
       </TableCell>
       <TableCell className={cn("px-2 py-3 text-center tabular-nums text-text-secondary", DAYS_ONLY)}>
         {daysLeft.text}
@@ -121,6 +126,7 @@ function MembershipRow({ membership, today }) {
             paymentStatus={membership.payment_status}
             invoiceExists={membership.invoice_exists}
             hasPayments={membership.has_payments}
+            reminders={reminders}
             onIssueInvoice={() => setIssueOpen(true)}
             onOpenChange={setMenuOpen}
           />
@@ -134,7 +140,7 @@ function MembershipRow({ membership, today }) {
 }
 
 /** The Memberships table (finalized compact style): see `MembershipRow` for the columns. */
-export default function MembershipTable({ memberships, today }) {
+export default function MembershipTable({ memberships, today, reminders = {} }) {
   return (
     <div className="@container overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
       <Table aria-label="Memberships">
@@ -153,7 +159,7 @@ export default function MembershipTable({ memberships, today }) {
         </TableHeader>
         <TableBody>
           {memberships.map((membership) => (
-            <MembershipRow key={membership.id} membership={membership} today={today} />
+            <MembershipRow key={membership.id} membership={membership} today={today} reminders={reminders[membership.id]} />
           ))}
         </TableBody>
       </Table>

@@ -494,7 +494,8 @@ Membership  ── Amount, Currency, Payment Status (Paid / Pending)
 | Payment status | Paid / Pending on the membership; editable via Edit Membership. | DB, App |
 | Effect on eligibility | **None.** | Doc, App |
 | Online payment gateway | **Not supported.** | Doc |
-| Automatic billing / reminders | **Not supported.** | Doc |
+| Automatic billing | **Not supported.** | Doc |
+| Reminders | **Admin-only, in-app** membership expiry and payment reminders, calculated from current data (01-product.md §5 "Reminders"). Reminders delivered outside the application (email, WhatsApp, SMS) are **not supported**. Unrelated to Communication History follow-ups, which have no notification or reminder. | Doc |
 | Tax, discount, invoice numbering | **Baseline: not supported;** the membership ID acts as the receipt number. **Enhancement (§11A):** a stored Invoice / Receipt with its own sequential invoice number and configurable tax-inclusive tax. Discount remains not supported. | App, Enhancement |
 | Revenue reporting | **Not supported.** | Doc |
 | Filtering | Memberships list can be filtered by payment status. | App |
@@ -1213,7 +1214,7 @@ Recorded sessions are protected by their frozen list. *(DB)*
 | Admin creation from the UI | DB |
 | Revoking an instructor's login (other than deactivation) | App |
 | Assigned Classes screen | App |
-| Payment records, online payments, automatic billing, reminders | DB, Doc |
+| Payment records, online payments, automatic billing, reminders delivered outside the application (in-app Admin reminders are included - 01-product.md §5 "Reminders") | DB, Doc |
 | *Baseline only:* invoices and tax — **superseded by the V1 Invoice / Receipt Enhancement (§11A)**, which adds a stored invoice and tax-inclusive tax. Still not supported: partial payments, payment methods, refunds, credit notes, full or revenue accounting, a financial ledger, multi-center billing. | Doc, Enhancement |
 | Revenue, retention or advanced analytics; charts | Doc, App |
 | Batch capacity | Doc |

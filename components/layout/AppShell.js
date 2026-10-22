@@ -2,6 +2,8 @@ import Header from "@/components/global/Header";
 import Sidebar from "@/components/global/Sidebar";
 import { getCenterSettings } from "@/lib/center-profile/settings";
 import { DEFAULT_CENTER_SETTINGS } from "@/lib/center-profile/settings-core";
+import { ROLES } from "@/lib/auth/dal";
+import { getReminders } from "@/lib/reminders/data";
 
 /**
  * Reusable application-level layout.
@@ -35,16 +37,22 @@ import { DEFAULT_CENTER_SETTINGS } from "@/lib/center-profile/settings-core";
  * shell falls back to the default name and no logo.
  */
 export default async function AppShell({ role, user, mobileTitle, children }) {
-  const { logoUrl, centerName } = await getCenterSettings()
-    .then((settings) => ({ logoUrl: settings.logoUrl, centerName: settings.name }))
-    .catch(() => ({ logoUrl: null, centerName: DEFAULT_CENTER_SETTINGS.name }));
+  // The notification bell's count of current reminders (01-product.md §5 "Reminders"): Admin only - never read for an Instructor. If it
+  // cannot be loaded the bell simply shows no count. `getReminders` is cached per request, so a page that also lists reminders reads once;
+  // it is read alongside the centre settings, not after them.
+  const [{ logoUrl, centerName }, reminderCount] = await Promise.all([
+    getCenterSettings()
+      .then((settings) => ({ logoUrl: settings.logoUrl, centerName: settings.name }))
+      .catch(() => ({ logoUrl: null, centerName: DEFAULT_CENTER_SETTINGS.name })),
+    role === ROLES.ADMIN ? getReminders().then((result) => result.counts.total).catch(() => null) : Promise.resolve(null),
+  ]);
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background print:block print:h-auto print:overflow-visible">
-      <Sidebar role={role} user={user} logoUrl={logoUrl} centerName={centerName} />
+      <Sidebar role={role} user={user} logoUrl={logoUrl} centerName={centerName} reminderCount={reminderCount} />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <Header role={role} user={user} mobileTitle={mobileTitle} logoUrl={logoUrl} centerName={centerName} />
+        <Header role={role} user={user} mobileTitle={mobileTitle} logoUrl={logoUrl} centerName={centerName} reminderCount={reminderCount} />
         <main className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 print:overflow-visible print:p-0">
           {children}
         </main>

@@ -15,7 +15,7 @@ import NavList from "@/components/global/NavList";
 import UtilityRow from "@/components/global/UtilityRow";
 import CenterLogo from "@/components/global/CenterLogo";
 
-export default function MobileMenu({ role, user, logoUrl, centerName }) {
+export default function MobileMenu({ role, user, logoUrl, centerName, reminderCount = null }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -47,7 +47,7 @@ export default function MobileMenu({ role, user, logoUrl, centerName }) {
         </div>
 
         <div className="shrink-0 border-t border-border/60 px-3 py-3">
-          <UtilityRow role={role} name={user?.name} />
+          <UtilityRow role={role} name={user?.name} reminderCount={reminderCount} />
         </div>
       </SheetContent>
     </Sheet>

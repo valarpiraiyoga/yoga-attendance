@@ -19,7 +19,7 @@ import MembershipTable from "@/app/memberships/membership-table";
  * so a Cancelled membership's shorter card (no progress-bar footer) doesn't
  * stretch to match a taller sibling in the same grid row.
  */
-export default function MembershipList({ memberships, view = "", total, today, sort, sortOptions }) {
+export default function MembershipList({ memberships, reminders = {}, view = "", total, today, sort, sortOptions }) {
   return (
     <div className="mt-5">
       <ResultsHeader
@@ -40,14 +40,14 @@ export default function MembershipList({ memberships, view = "", total, today, s
       {view !== "table" ? (
         <CardGrid ariaLabel="Memberships" className={cn("items-start xl:grid-cols-3", view === "" && "lg:hidden")}>
           {memberships.map((membership) => (
-            <MembershipCardItem key={membership.id} membership={membership} today={today} />
+            <MembershipCardItem key={membership.id} membership={membership} today={today} reminders={reminders[membership.id]} />
           ))}
         </CardGrid>
       ) : null}
 
       {view !== "cards" ? (
         <div className={cn(view === "" && "hidden lg:block")}>
-          <MembershipTable memberships={memberships} today={today} />
+          <MembershipTable memberships={memberships} today={today} reminders={reminders} />
         </div>
       ) : null}
     </div>

@@ -70,6 +70,7 @@ Provide Admin and Instructor with a quick overview of today's activities and dir
 - Session status
 - Direct access to attendance
 - Upcoming classes
+- Reminders: current membership expiry and payment reminders (§5 "Reminders")
 
 Admin sees all today's classes.
 
@@ -338,6 +339,24 @@ Membership and batch enrollment are independent. One membership can cover multip
 
 ### Expiry
 When membership expires, the student remains in the system and historical records remain available, but the student is not normally eligible for attendance until a valid membership is active again.
+
+### Reminders
+*(V1 Reminders.)* The Admin is reminded, inside the application, of memberships that are about to expire or have expired, and of memberships with money still owed. Reminders are **Admin-only and in-app**: nothing is sent to a student or anyone else - no email, WhatsApp or SMS - and an Instructor never sees them.
+
+**Calculated, not stored.** A reminder is worked out from the current membership and payment data every time it is shown, on the centre's date (§5 "Membership Status", centre timezone). There is no reminder record, no scheduled job and no background process, so a reminder can never be duplicated, never lingers after its condition has gone, and never depends on a job having run. In V1 a reminder cannot be dismissed or snoozed; it disappears only when its condition no longer holds.
+
+**Membership expiry reminder.** A membership has an expiry reminder when, on the centre's date:
+- it has an end date - a membership with no end date (including a class-count membership with No expiry) never has one;
+- it is not cancelled - cancelling a membership ends its expiry reminder;
+- it is the student's **latest-ending membership**: among all the student's memberships that are not cancelled and have an end date - whatever their status or dates, future ones included - its end date is the latest. A cancelled membership, or one with no end date, never counts when finding the latest end date. If several share the latest end date, each of them qualifies. An older membership never has an expiry reminder, even after the latest-ending one has expired, so a student who renewed several times and then lapsed has one reminder, not one per past membership;
+- its end date is **7 days or fewer away, or has passed** - the same boundary the Memberships list already uses for "Expiring Soon": 7 days left counts the end date itself, so the reminder starts on **end date − 6 days** and continues every day after the membership expires; and
+- it is not **resolved by a renewal**: the same student has another, non-cancelled membership that **covers today** (it has started and has not ended). A membership that only starts in the future never resolves a reminder by covering today. But a renewal that ends later than the old membership is the student's latest-ending membership from the moment it is saved, so the old membership no longer has an expiry reminder even before the renewal starts; the renewal gets its own when its end date approaches.
+
+The student's own Active / Inactive status does not end the reminder. The reminder shows the days left (for example "Expires in 3 days", "Expires today") or, once expired, the days since ("Expired 5 days ago").
+
+**Payment reminder.** A membership has a payment reminder when its Payment Status is **Pending** or **Partially Paid** (§5 "Payment Status") **and** its outstanding balance - the membership amount less the payments recorded against it (§5 "Payments") - is greater than zero. It applies whatever the membership's dates, including a membership that has not started yet, and it shows the outstanding balance. It is shown every day until the balance reaches zero. A **Paid** membership never has one, and neither does a **cancelled** membership, even if a balance remains.
+
+A membership can have both reminders at once. There are no class-count reminders (for example for classes remaining) in V1.
 
 ---
 
@@ -1227,6 +1246,7 @@ Historical records must be protected when:
 - Basic settings
 - Stored Invoice / Receipt with invoice settings (V1 Invoice / Receipt Enhancement, §5A)
 - Central Documents register: a read-only, Admin-only list of every stored invoice and receipt, issued and cancelled, with search and filters (§5A; Phase 1)
+- Membership expiry and payment reminders, Admin-only and in-app, calculated from current data (§5 "Reminders")
 - Payments with installments and mixed payment methods; a tax invoice or payment receipt per payment; cancel-and-reissue corrections (V1 Tax Adjustment, §5, §5A)
 - Centre-configured packages with an effective-dated fee history, package discounts, individual discounts with a mandatory reason and an audit record, audited corrections, and class-count packages with an audited expiry edit with their separate, Admin-only Class Count Attendance workflow (a third Attendance tab): a chosen attendance date, confirmation before recording, and audited reversals (V1 Fee Structure, §5, §8, §11)
 
@@ -1234,7 +1254,7 @@ Historical records must be protected when:
 - Student login
 - Online payment gateway
 - Automatic billing
-- Payment reminders
+- Reminders sent outside the application (email, WhatsApp, SMS) - V1 reminders are in-app only (§5 "Reminders")
 - Refunds, credit notes, full accounting
 - Discount approval workflow
 - WhatsApp/SMS/email integrations (a plain WhatsApp click-to-chat / share workflow for the Invoice / Receipt is not an integration)
@@ -1256,7 +1276,7 @@ Potential future features:
 - Student login and self-service profile
 - Online payment integration
 - Automated membership renewal
-- Payment reminders
+- Reminders delivered to students or staff by email, WhatsApp or SMS, and dismissing or snoozing reminders
 - Online/offline attendance reporting
 - Notifications
 - QR-based attendance

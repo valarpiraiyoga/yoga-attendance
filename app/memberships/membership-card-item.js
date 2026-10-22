@@ -18,6 +18,7 @@ import { MEMBERSHIP_STATUS, PAYMENT_STATUS } from "@/lib/status";
 import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/validity";
 import { cn } from "@/lib/utils";
 import MembershipCardMenu from "@/app/memberships/membership-card-menu";
+import ReminderIndicators from "@/app/memberships/reminder-indicators";
 
 /** Validity bar colour: red once Expired, otherwise the brand teal. */
 function validityTone(validity) {
@@ -41,7 +42,7 @@ function validityTone(validity) {
  */
 const DOCUMENT_ICON = { "due-notice": FileText, "receipt": Receipt, "issue-receipt": FilePlus, "payments": Wallet };
 
-export default function MembershipCardItem({ membership, today }) {
+export default function MembershipCardItem({ membership, today, reminders }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
 
@@ -90,6 +91,7 @@ export default function MembershipCardItem({ membership, today }) {
             paymentStatus={membership.payment_status}
             invoiceExists={membership.invoice_exists}
             hasPayments={membership.has_payments}
+            reminders={reminders}
             onIssueInvoice={() => setIssueOpen(true)}
             onOpenChange={setMenuOpen}
           />
@@ -112,6 +114,8 @@ export default function MembershipCardItem({ membership, today }) {
         },
       ]}
     >
+      {/* The membership's reminders, the same indicators as the table row (02-ux.md "Membership & payment reminders"). */}
+      <ReminderIndicators reminders={reminders} className="mb-1" />
       {/* Validity footer: the label (and, while it runs, "N / total days") over
           the progress bar; an Expired membership gets a red-tinted block. */}
       <div className={cn("mt-auto flex flex-col gap-1.5", isExpired && "rounded-lg bg-danger/10 px-3 py-2")}>

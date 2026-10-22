@@ -21,6 +21,8 @@ import DashboardTodaysClasses from "@/app/dashboard-todays-classes";
 import DashboardUpcomingClasses from "@/app/dashboard-upcoming-classes";
 import DashboardSystemUsage from "@/app/dashboard-system-usage";
 import { DashboardCalendar, DashboardQuickActions, DashboardRecentActivity } from "@/app/dashboard-side-panels";
+import DashboardReminders from "@/app/dashboard-reminders";
+import { getReminders } from "@/lib/reminders/data";
 
 // How many days ahead Upcoming Classes looks, and how many rows it shows —
 // a short preview (approved wireframes p.2, p.8 show 1–3 rows), not a
@@ -203,7 +205,7 @@ async function DashboardContent({ isAdmin, today, timeZone, month }) {
   const upcomingFrom = addDaysUTC(today, 1);
   const upcomingTo = addDaysUTC(today, UPCOMING_WINDOW_DAYS);
 
-  const [todaysSessions, upcoming, activeStudentCount, activeBatchCount, dateNavigation, recentActivity] = await Promise.all([
+  const [todaysSessions, upcoming, activeStudentCount, activeBatchCount, dateNavigation, recentActivity, reminders] = await Promise.all([
     listSessionsForDate(today).then(withAttendanceSummaries),
     listSessions({ dateFrom: upcomingFrom, dateTo: upcomingTo, page: 1, pageSize: UPCOMING_LIMIT }).then(
       async (result) => ({
@@ -217,6 +219,9 @@ async function DashboardContent({ isAdmin, today, timeZone, month }) {
     // for an Admin, what has happened lately - both real records, nothing invented.
     getSessionDateNavigation(month),
     isAdmin ? getRecentActivity() : Promise.resolve(null),
+    // Membership expiry and payment reminders (01-product.md §5 "Reminders"): Admin only, never read for an Instructor. A failure is the
+    // panel's own error state, not a broken Dashboard.
+    isAdmin ? getReminders().catch(() => null) : Promise.resolve(null),
   ]);
 
   const totalToday = todaysSessions.length;
@@ -297,6 +302,8 @@ async function DashboardContent({ isAdmin, today, timeZone, month }) {
         timeZone={timeZone}
         description={isAdmin ? "All classes scheduled for today." : "Your assigned yoga classes for today."}
       />
+
+      {isAdmin ? <DashboardReminders result={reminders} /> : null}
 
       <DashboardSection className="sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
