@@ -45,7 +45,7 @@ export default async function AppShell({ role, user, mobileTitle, children }) {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Header role={role} user={user} mobileTitle={mobileTitle} logoUrl={logoUrl} centerName={centerName} />
-        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 print:overflow-visible print:p-0">
+        <main className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 print:overflow-visible print:p-0">
           {children}
         </main>
       </div>
