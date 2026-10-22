@@ -9,11 +9,13 @@ import { formatDate, formatDateWithWeekday, formatDuration, formatTime, formatTi
 import { ENTITY_STATUS } from "@/lib/status";
 import { DAY_LABELS } from "@/lib/schedules/validation";
 import DeactivateSchedule from "@/app/schedule/[id]/deactivate-schedule";
+import ActivateSchedule from "@/app/schedule/[id]/activate-schedule";
 import { scheduleContextOf } from "@/app/schedule/schedule-context";
 
 function describe(schedule) {
   return {
     isActive: schedule.status === "active",
+    isInactive: schedule.status === "inactive",
     status: ENTITY_STATUS[schedule.status] ?? ENTITY_STATUS.inactive,
     batchName: schedule.batches?.name ?? "Schedule",
     batchCode: schedule.batches?.code || null,
@@ -28,11 +30,11 @@ function describe(schedule) {
  * start-time tile, and as the heading WHEN it happens - "Every Sunday · 6:00 AM - 7:00 AM",
  * the day and start time large, the end time small - with the batch's code as a small mark and
  * the schedule's status beside it. Under it, which batch and who teaches it. Edit Schedule and
- * Deactivate Schedule sit at the right. The parent stacks this with the summary cards
+ * Deactivate Schedule (Activate Schedule instead, for an inactive one) sit at the right. The parent stacks this with the summary cards
  * (`ScheduleSummary`) and the page's content (`gap-6`).
  */
 export default function ScheduleHeader({ schedule, today }) {
-  const { isActive, status, batchName, batchCode, dayLabel, timeLabel, instructorName } = describe(schedule);
+  const { isActive, isInactive, status, batchName, batchCode, dayLabel, timeLabel, instructorName } = describe(schedule);
 
   return (
     <EntityDetailHeader
@@ -78,6 +80,12 @@ export default function ScheduleHeader({ schedule, today }) {
           <DeactivateSchedule
             scheduleId={schedule.id}
             isActive={isActive}
+            today={today}
+            scheduleContext={scheduleContextOf(schedule)}
+          />
+          <ActivateSchedule
+            scheduleId={schedule.id}
+            isInactive={isInactive}
             today={today}
             scheduleContext={scheduleContextOf(schedule)}
           />

@@ -12,7 +12,7 @@ import {
   describeBlockReason,
   describeUnrecordedPastOccurrences,
 } from "@/lib/schedules/usage";
-import { formatTimeRange } from "@/lib/format";
+import { formatDate, formatTimeRange } from "@/lib/format";
 
 /**
  * Delete Schedule (01-product.md §7 "Deleting and correcting an unused
@@ -23,9 +23,13 @@ import { formatTimeRange } from "@/lib/format";
  *   - students affected — unstarted schedule assignments will be withdrawn;
  *   - unrecorded past occurrences — elapsed dates that were never recorded
  *     as sessions and will no longer appear (never claims attendance existed);
- *   - blocked — the schedule has session history, earlier versions, or a
- *     started student assignment: no delete is offered, only a way to
- *     Deactivate it from Schedule Details.
+ *   - latest of several versions (0063) — only this version is deleted; the
+ *     earlier versions and the students' assignments stay, and the class does
+ *     not continue past the previous version's end date;
+ *   - blocked — the version has session history of its own, a later version
+ *     exists (only the latest can be deleted), or - for a class's only
+ *     version - a student assignment has started: no delete is offered, only
+ *     a way to Deactivate it from Schedule Details.
  *
  * The preview is advisory. `deleteSchedule` re-checks under locks in the
  * database, so a session that appeared after this dialog opened turns the
@@ -55,6 +59,8 @@ export default function DeleteScheduleDialog({ scheduleId, scheduleContext, open
 
   const isChecking = open && preview === null;
   const impact = preview?.impact ?? null;
+  const deletion = impact?.deletion ?? null;
+  const seriesContinues = Boolean(deletion?.seriesContinues);
   const context = <ScheduleContext context={scheduleContext} />;
 
   function runDelete() {
@@ -108,7 +114,9 @@ export default function DeleteScheduleDialog({ scheduleId, scheduleContext, open
         onConfirm={viewSchedule}
       >
         <p className="text-body text-center text-text-secondary">
-          Use Deactivate Schedule to stop future classes. Past sessions and attendance stay available.
+          {blockReason === "later_version"
+            ? "Delete the later version first, or use Deactivate Schedule to stop future classes. Past sessions and attendance stay available."
+            : "Use Deactivate Schedule to stop future classes. Past sessions and attendance stay available."}
         </p>
       </ConfirmDialog>
     );
@@ -135,9 +143,22 @@ export default function DeleteScheduleDialog({ scheduleId, scheduleContext, open
       {impact ? (
         <div className="flex flex-col gap-3">
           <p className="text-body text-center text-text-secondary">
-            This schedule has no recorded sessions or attendance and can be safely deleted.
+            {seriesContinues
+              ? "This version has no recorded sessions or attendance and can be safely deleted."
+              : "This schedule has no recorded sessions or attendance and can be safely deleted."}
           </p>
-          {impact.affectedStudentCount > 0 ? (
+          {seriesContinues ? (
+            <Alert variant="info" title="Only the latest version is deleted">
+              {deletion.versionsRemaining === 1 ? "The earlier version" : `The ${deletion.versionsRemaining} earlier versions`} and the students assigned to this class
+              will remain.
+            </Alert>
+          ) : null}
+          {seriesContinues && deletion.previousEndDate ? (
+            <Alert variant="warning" title="The class will end earlier">
+              After deleting this version the class will not continue beyond {formatDate(deletion.previousEndDate)}, when the previous version ends.
+            </Alert>
+          ) : null}
+          {!seriesContinues && impact.affectedStudentCount > 0 ? (
             <Alert variant="warning" title={describeAffectedStudents(impact.affectedStudentCount)}>
               Deleting it will remove those unstarted schedule assignments.
             </Alert>

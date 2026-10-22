@@ -13,6 +13,7 @@ import UpcomingSessionsPanel from "@/app/schedule/[id]/upcoming-sessions-panel";
 const SUCCESS_MESSAGES = {
   created: "Schedule created successfully.",
   updated: "Schedule updated successfully.",
+  activated: "Schedule activated successfully.",
 };
 
 /**

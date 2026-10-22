@@ -633,7 +633,11 @@ Occurrences that were only ever projected (§7A) — including past dates nobody
 
 **Direct edit.** An unused schedule is edited in place — day, time, instructor and effective dates — with no new version and no need to choose an effective date. The days work as when adding: unticking the schedule's own day and ticking another moves it; any other ticked day creates a new schedule. If students hold unstarted assignments on it, changing its day moves those assignments with it, and Review says so. Every other schedule keeps the versioned edit above.
 
-**Delete.** An unused schedule can be deleted. Its unstarted schedule assignments are withdrawn with it (§4), and its now-empty schedule series is removed. Before confirming, Admin is told how many students are affected, and how many past occurrences were never recorded and will no longer appear. A schedule that is not unused cannot be deleted; Deactivate is how it stops.
+**Delete.** *(Revised, migration 0063.)* A schedule **version** can be deleted when it has no class session of its own and:
+- it is the **only** version of its series and no schedule assignment on the series has started (the rules above, unchanged): its unstarted assignments are withdrawn with it (§4) and its now-empty schedule series is removed; or
+- it is the **latest** version of a series that has other versions (the latest by effective from, then by creation): only that version is deleted. The series, its capacity, every student assignment and the earlier versions stay exactly as they were. The class does not continue past the previous version's effective end date, and Admin is told so before confirming; the earlier version's dates are never reopened or changed.
+
+An **earlier or middle version cannot be deleted** while a later one exists (it would leave a gap in the version chain). A version with a class session of its own cannot be deleted, whatever its status; sessions of other versions do not matter. Status plays no part: an inactive schedule follows the same rules as an active one. Before confirming, Admin is told what will remain, how many students are affected when the series goes with it, and how many past occurrences were never recorded and will no longer appear. A schedule that cannot be deleted shows the actual reason; Deactivate is how a used schedule stops. Direct Edit keeps the stricter "unused" test above (one version, no session, no started assignment).
 
 Both are decided by the database in the same transaction as the change, not from what the screen last showed: a session materialized after the confirmation opened blocks the change instead of being lost. Deleting does not create, cancel or alter any session.
 
@@ -662,10 +666,26 @@ A class session still records the specific version it was generated from (§7A),
 - **Eligibility and history are unchanged.** Capacity only decides whether an assignment can be saved. It never changes who is eligible for a class session (§8), and past sessions, attendance and assignments are never altered by it.
 
 ### Conflicts
-V1 does not prevent overlapping schedules. A batch may hold more than one schedule covering the same day and time, and an instructor may be assigned to more than one schedule at the same day and time. These situations are visible to the Admin in both Schedule views — listed in the List View, and shown side by side in the Weekly Schedule grid — and are treated as an operational judgement, not a system-enforced constraint.
+*(V1 Final Improvements — Instructor Schedule Conflicts.)* An instructor cannot teach two classes at the same time. Two schedules **conflict** when all of the following hold:
+
+- they have the same instructor;
+- they are on the same day of the week;
+- their times overlap — each starts before the other ends. Back-to-back classes do not conflict: 6:00–7:00 AM and 7:00–8:00 AM may have the same instructor;
+- their effective periods overlap — each from its effective from to its effective until, inclusive. A schedule with no effective until has no end date.
+
+Nothing else decides it: a schedule's Active or Inactive status does not, since a deactivated schedule's effective period already ends on its effective until.
+
+- **A save that would create a conflict is blocked.** This applies to every way a schedule is saved: Add Schedule (each day and time slot it creates, including two slots of the same Add), editing a schedule (a new version or an in-place edit, including a direct edit of an unused schedule), and each schedule an edit also creates on another ticked day. No schedule from that save is stored, and the Admin is told which schedule it conflicts with, so the time, day, instructor or dates can be changed. There is no override.
+- **Ending a conflict is never blocked.** Deactivating a schedule or setting an earlier effective until only shortens its effective period.
+- **Existing conflicts are kept.** Conflicting schedules saved before this rule stay exactly as stored — nothing is changed, ended or removed automatically, and past sessions and attendance are never altered. They are reviewed and resolved separately. A later save of either schedule is checked like any other.
+
+Other overlaps remain allowed and are treated as an operational judgement, not a system-enforced constraint: a batch may hold more than one schedule covering the same day and time when they have different instructors, and a student's own schedule assignments may overlap in time (§4). Overlapping schedules are visible to the Admin in both Schedule views — listed in the List View, and shown side by side in the Weekly Schedule grid.
 
 ### Elapsed Effective Period
 A schedule whose effective until date has passed remains stored as Active or Inactive exactly as the Admin left it. Status is never rewritten automatically. Where it is useful, the interface may additionally indicate that the schedule's effective period has ended, derived from the dates rather than stored.
+
+### Activation
+*(V1.)* An inactive schedule is brought back only by an explicit **Activate** action - never as a side effect of editing its dates. The Admin confirms a new **Effective From** (it defaults to today on the centre's clock and can be changed; it cannot be in the past, and must be after the date the inactive schedule ended). The inactive schedule is history: it keeps its status, its dates, its sessions and their attendance exactly as they were. Activation starts a **new version of the same class** - the same batch, instructor, day and times, in the same series, so its capacity and its students' assignments carry over - active from that date with no end date. A class that already has an active version covering that date cannot be activated again. The new version is checked like any other schedule write (§7 "Conflicts"): activation is refused, with the same explanation, if it would give the instructor two classes at overlapping times. Editing an inactive schedule's day, time, instructor or dates with an effective date is not offered; its capacity can still be changed.
 
 ### Specific Future Session Changes
 Admin can change one specific future session without changing the recurring schedule.
@@ -1097,7 +1117,8 @@ Short code uniqueness protects identification. The Weekly Schedule identifies a 
 - Deactivating a schedule does not end its students' assignments.
 - A schedule that has not started yet is edited in place instead, since it has no elapsed period to preserve.
 - An edit cannot take effect before today.
-- Overlapping schedules are not blocked in V1, for either a batch or an instructor.
+- An instructor cannot have two schedules on the same day with overlapping times during overlapping effective periods; back-to-back classes are allowed. A save that would create such a conflict is blocked, with an explanation and no override; conflicts saved before this rule are kept as stored (§7 "Conflicts").
+- A batch's schedules with different instructors may overlap, and a student's own assignments may overlap in time.
 - An elapsed effective period does not change a schedule's stored status.
 - Individual future sessions can have exceptions.
 - Cancelled/Holiday sessions do not require attendance.

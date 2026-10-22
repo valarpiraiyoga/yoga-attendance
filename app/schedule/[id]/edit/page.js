@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getSchedule, getScheduleDeleteImpact } from "@/lib/schedules/data";
@@ -53,6 +54,16 @@ export default async function EditSchedulePage({ params }) {
       />
       <div className="mx-auto w-full max-w-3xl">
         <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
+          {/* An inactive schedule is not edited with an effective date (that would reactivate it): Activate is its own action. */}
+          {schedule.status === "inactive" && usage.editMode !== "direct" ? (
+            <p role="note" className="text-body mb-5 rounded-input border border-border bg-background/60 px-3 py-2 text-text-secondary">
+              This schedule is inactive. To change its day, time, instructor or dates,{" "}
+              <Link href={`/schedule/${id}`} className="font-medium text-brand hover:underline">
+                activate it first
+              </Link>
+              . Its capacity can still be changed here.
+            </p>
+          ) : null}
           <ScheduleForm
             action={updateScheduleById}
             batch={schedule.batches}
