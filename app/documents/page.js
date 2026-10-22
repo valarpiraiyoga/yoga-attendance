@@ -7,9 +7,10 @@ import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
 import Pagination from "@/components/ui/pagination";
 import { requireRole, ROLES } from "@/lib/auth/dal";
-import { getCenterCurrency } from "@/lib/center-profile/settings";
+import { getCenterCurrency, getCenterTimezone } from "@/lib/center-profile/settings";
 import { getDocumentSummary, listDocuments } from "@/lib/documents/data";
 import { DOCUMENTS_PAGE_SIZE, DOCUMENT_SORT_OPTIONS, parseDocumentListParams } from "@/lib/documents/list-core";
+import { currentFinancialYear } from "@/lib/financial-year";
 import { buildListHref } from "@/lib/url-params";
 import DocumentFilters from "@/app/documents/document-filters";
 import DocumentList from "@/app/documents/document-list";
@@ -31,7 +32,7 @@ export default async function DocumentsPage({ searchParams }) {
   const params = parseDocumentListParams(rawParams);
   const { q, series, status, fromDate, toDate, page, view, sort } = params;
 
-  const [{ documents, total }, summary, currency] = await Promise.all([
+  const [{ documents, total }, summary, currency, timeZone] = await Promise.all([
     listDocuments(params),
     // The tiles must never take the list down: on a failure they show a dash and the register below still works.
     // (A Next.js redirect or not-found from the role check is re-thrown, never swallowed.)
@@ -40,7 +41,10 @@ export default async function DocumentsPage({ searchParams }) {
       return null;
     }),
     getCenterCurrency(),
+    getCenterTimezone(),
   ]);
+  // The Financial Year choices end at the centre's current financial year, read from the centre's own day.
+  const financialYear = currentFinancialYear(new Date(), timeZone);
   const totalPages = Math.max(1, Math.ceil(total / DOCUMENTS_PAGE_SIZE));
 
   // A page past the last one (a stale link, or a filter that shrank the list): go to the last page.
@@ -70,6 +74,7 @@ export default async function DocumentsPage({ searchParams }) {
           defaultFromDate={fromDate}
           defaultToDate={toDate}
           view={view}
+          currentFinancialYear={financialYear}
         />
 
         {documents.length === 0 ? (

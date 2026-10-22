@@ -509,7 +509,7 @@ Once an invoice has been issued for a membership, the issued invoice is preserve
 - **Search** matches the document number (typed with or without its prefix, for example INV-837 or 837), the **snapshot** customer name and the customer code. It does **not** search the student's current name.
 - **Document series** — all, invoice series (tax invoices and legacy membership-level receipts) or payment receipt series.
 - **Status** — all, Issued or Cancelled.
-- **Document date** — from and to (inclusive).
+- **Document date** — from and to (inclusive). *(V1 Final Improvements.)* A **Financial Year** preset fills both with one financial year — 1 April to 31 March inclusive, labelled for example **FY 2026–27**, with the current financial year judged by the centre's date in its time zone. It filters on the same document date and changes nothing else.
 
 **Order and paging.** Newest document date first (Oldest first is selectable), then the highest number, then a stable tie-break, in pages of 10, exactly like the Memberships list.
 

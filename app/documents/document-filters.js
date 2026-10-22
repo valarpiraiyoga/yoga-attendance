@@ -12,7 +12,15 @@ import ViewSwitcher from "@/components/ui/view-switcher";
 import { FilterBar, FilterChips, FilterSheet, FilterSection } from "@/components/ui/filter-bar";
 import { ListToolbar } from "@/components/layout/list-page";
 import { buildListHref } from "@/lib/url-params";
-import { SERIES_OPTIONS, STATUS_OPTIONS } from "@/lib/documents/list-core";
+import {
+  FINANCIAL_YEAR_ALL,
+  SERIES_OPTIONS,
+  STATUS_OPTIONS,
+  documentDateChips,
+  financialYearFilterValue,
+  financialYearOptions,
+} from "@/lib/documents/list-core";
+import { financialYearRange } from "@/lib/financial-year";
 
 const VIEWS = [
   { key: "cards", label: "Cards", icon: LayoutGrid },
@@ -38,9 +46,11 @@ function optionLabel(options, value) {
  * Search + Filters + Cards/Table toggle in one toolbar row - the Memberships toolbar, for documents. Search is live: every
  * keystroke writes the `q` URL param (replacing the history entry) and the server re-runs the same query, so searching, filtering,
  * sorting and paging stay server-side and in the URL. The filter sheet writes `series`, `status`, `from` and `to` (the document
- * date, inclusive); changing any of them returns to page 1. View switching is a plain URL change.
+ * date, inclusive); changing any of them returns to page 1. View switching is a plain URL change. The Financial Year select is
+ * only a shortcut that fills From and To with a financial year's range - it has no URL param of its own, and the dates can still
+ * be edited by hand. `currentFinancialYear` is the centre's current financial year, worked out on the server.
  */
-export default function DocumentFilters({ defaultQuery, defaultSeries, defaultStatus, defaultFromDate, defaultToDate, view }) {
+export default function DocumentFilters({ defaultQuery, defaultSeries, defaultStatus, defaultFromDate, defaultToDate, view, currentFinancialYear }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -52,7 +62,8 @@ export default function DocumentFilters({ defaultQuery, defaultSeries, defaultSt
   const [filtersOpen, setFiltersOpen] = useState(false);
   const isNarrow = useSyncExternalStore(subscribeNarrow, getNarrow, getNarrowServer);
 
-  const activeFilterCount = [defaultSeries !== "all", defaultStatus !== "all", Boolean(defaultFromDate), Boolean(defaultToDate)].filter(Boolean).length;
+  const financialYear = financialYearFilterValue(fromDate, toDate);
+  const financialYearItems = financialYearOptions(currentFinancialYear, financialYear);
 
   const viewItems = VIEWS.map((item) => ({
     ...item,
@@ -113,19 +124,36 @@ export default function DocumentFilters({ defaultQuery, defaultSeries, defaultSt
     setFiltersOpen(false);
   }
 
+  function selectFinancialYear(value) {
+    // "Custom Range" only describes hand-edited dates; choosing it changes nothing.
+    if (value === FINANCIAL_YEAR_ALL) {
+      setFromDate("");
+      setToDate("");
+      return;
+    }
+    const range = financialYearRange(Number(value));
+    if (!range) return;
+    setFromDate(range.from);
+    setToDate(range.to);
+  }
+
   function removeAppliedFilter(key) {
     if (key === "series") setSeries("all");
     if (key === "status") setStatus("all");
-    if (key === "from") setFromDate("");
-    if (key === "to") setToDate("");
-    pushParams((params) => params.delete(key));
+    if (key === "from" || key === "fy") setFromDate("");
+    if (key === "to" || key === "fy") setToDate("");
+    // The Financial Year chip stands for both dates.
+    pushParams((params) => {
+      for (const param of key === "fy" ? ["from", "to"] : [key]) params.delete(param);
+    });
   }
 
   const chips = [];
   if (defaultSeries !== "all") chips.push({ key: "series", label: `Series: ${optionLabel(SERIES_OPTIONS, defaultSeries)}` });
   if (defaultStatus !== "all") chips.push({ key: "status", label: `Status: ${optionLabel(STATUS_OPTIONS, defaultStatus)}` });
-  if (defaultFromDate) chips.push({ key: "from", label: `From: ${defaultFromDate}` });
-  if (defaultToDate) chips.push({ key: "to", label: `To: ${defaultToDate}` });
+  chips.push(...documentDateChips(defaultFromDate, defaultToDate));
+  // One per applied chip, so a financial year counts as one filter, not two.
+  const activeFilterCount = chips.length;
 
   return (
     <>
@@ -187,6 +215,21 @@ export default function DocumentFilters({ defaultQuery, defaultSeries, defaultSt
             </SelectTrigger>
             <SelectContent>
               {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterSection>
+
+        <FilterSection id="document-financial-year" label="Financial Year">
+          <Select items={financialYearItems} value={financialYear} onValueChange={selectFinancialYear}>
+            <SelectTrigger aria-labelledby="document-financial-year-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {financialYearItems.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
