@@ -571,6 +571,9 @@ A batch is not tied to one fixed time. The same batch can have multiple schedule
 
 Each of those schedules produces its own class sessions, and students enrolled in the batch attend only the ones they are assigned to (§4 "Schedule Assignment").
 
+### Active Students
+A batch's **Active Students** are the students with an **active enrollment** in it (§4 "Multiple Batch Enrollment"). Wherever a screen states how many students a batch has - Batch Details' summary tile and its Students section - it uses this one count, labelled **Active Students**, so the two never disagree. An inactive enrollment is not counted, but it stays listed in the batch's student list, marked Inactive, because enrollments are history and are never deleted for it. Filtering or searching that list never changes the count.
+
 ### Instructor Relationship
 Instructors are assigned at the schedule level, allowing different instructors for different schedules of the same batch.
 
