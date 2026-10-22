@@ -15,6 +15,7 @@ import { DAY_LABELS } from "@/lib/schedules/validation";
 import { cn } from "@/lib/utils";
 import ScheduleCardMenu from "@/app/schedule/schedule-card-menu";
 import { scheduleContextOf } from "@/app/schedule/schedule-context";
+import SchedulePlaces from "@/app/schedule/schedule-places";
 
 // How many schedule rows a batch group shows on mobile before "+N more
 // schedules" (an in-place reveal, not pagination). The desktop table lists
@@ -81,6 +82,9 @@ function ScheduleTableRow({ schedule, batchId, batchName }) {
       <TableCell className="px-2 py-3">
         <InstructorCell name={instructor} photoUrl={schedule.instructors?.photo_url} />
       </TableCell>
+      <TableCell className="px-2 py-3">
+        <SchedulePlaces places={schedule.places} />
+      </TableCell>
       <TableCell className="px-2 py-3 whitespace-nowrap text-text-secondary">{formatDate(schedule.effective_from)}</TableCell>
       <TableCell className="px-2 py-3 whitespace-nowrap text-text-secondary">{formatDate(schedule.effective_until)}</TableCell>
       <TableCell className="px-2 py-3">
@@ -133,6 +137,10 @@ function ScheduleMobileRow({ schedule, batchId, batchName }) {
             />
           </span>
         </div>
+        <p className="mt-1.5 flex items-center gap-1.5 text-small text-text-secondary">
+          Places
+          <SchedulePlaces places={schedule.places} />
+        </p>
       </div>
     </li>
   );
@@ -202,6 +210,7 @@ export default function ScheduleBatchAccordion({ batch, batchId, schedules, defa
                     <TableHead className="h-10 pr-2 pl-4 text-small tracking-normal">Day</TableHead>
                     <TableHead className="h-10 px-2 text-small tracking-normal">Time</TableHead>
                     <TableHead className="h-10 px-2 text-small tracking-normal">Instructor</TableHead>
+                    <TableHead className="h-10 px-2 text-small tracking-normal">Places</TableHead>
                     <TableHead className="h-10 px-2 text-small tracking-normal">Effective From</TableHead>
                     <TableHead className="h-10 px-2 text-small tracking-normal">Effective Until</TableHead>
                     <TableHead className="h-10 px-2 text-small tracking-normal">Status</TableHead>

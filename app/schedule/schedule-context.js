@@ -3,13 +3,15 @@ import BatchAvatar from "@/components/ui/batch-avatar";
 import ContextCard from "@/components/ui/context-card";
 import { formatTimeRange } from "@/lib/format";
 import { DAY_LABELS } from "@/lib/schedules/validation";
+import SchedulePlaces from "@/app/schedule/schedule-places";
 
 /**
  * What a schedule popup needs to say which schedule it is about, as plain data a server
  * page or a client component can hand on. `schedule` may be empty (a schedule being
  * created has no day or time yet); the batch is then all there is to show.
  *
- * @param {object} [schedule] - a schedule row (`day_of_week`, `start_time`, `end_time`, `instructors`, `batches`).
+ * @param {object} [schedule] - a schedule row (`day_of_week`, `start_time`, `end_time`, `instructors`, `batches`, and `places` -
+ *   the series' capacity and places taken, null when they could not be loaded; absent on a row that was not given them).
  * @param {object} [batch] - the batch, when the schedule row does not carry it.
  */
 export function scheduleContextOf(schedule, batch) {
@@ -26,6 +28,8 @@ export function scheduleContextOf(schedule, batch) {
     startTime: schedule?.start_time ?? null,
     endTime: schedule?.end_time ?? null,
     instructor: schedule?.instructors?.full_name ?? null,
+    // undefined = this popup was not given the places (nothing is shown); null = they could not be loaded (a dash is shown).
+    places: schedule?.places,
   };
 }
 
@@ -58,10 +62,21 @@ export default function ScheduleContext({ context }) {
       }
       detail={when}
       meta={
-        context.instructor ? (
+        context.instructor || context.places !== undefined ? (
           <>
-            <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
-            {context.instructor}
+            {context.instructor ? (
+              <>
+                <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
+                {context.instructor}
+              </>
+            ) : null}
+            {context.places !== undefined ? (
+              <>
+                {context.instructor ? <span aria-hidden="true">·</span> : null}
+                Places
+                <SchedulePlaces places={context.places} />
+              </>
+            ) : null}
           </>
         ) : null
       }

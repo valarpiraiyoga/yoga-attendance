@@ -3,8 +3,10 @@ import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listCurrentSchedules } from "@/lib/schedules/data";
+import { getScheduleCapacitiesForPicker } from "@/lib/schedules/capacity-data";
 import { getCentreToday } from "@/lib/center-profile/settings";
-import { getEnrollment, listScheduleAssignmentsForEnrollment, isScheduleAssignmentActive } from "@/lib/enrollments/data";
+import { getEnrollment, listScheduleAssignmentsForEnrollment } from "@/lib/enrollments/data";
+import { isScheduleAssignmentCurrent } from "@/lib/enrollments/schedule-availability";
 import { updateEnrollment } from "@/lib/enrollments/actions";
 import EnrollmentForm from "@/app/students/[id]/enrollments/enrollment-form";
 import StudentIdentityHeader from "@/components/ui/student-identity-header";
@@ -33,11 +35,21 @@ export default async function EditEnrollmentPage({ params }) {
 
   const today = await getCentreToday();
   const allAssignments = await listScheduleAssignmentsForEnrollment(enrollmentId);
-  // The form pre-checks and diffs against currently-active assignments
-  // only — a historical, already-ended one is not part of "what this
-  // enrollment currently attends" and must not be re-offered as if it
-  // still applied.
-  const activeAssignments = allAssignments.filter((assignment) => isScheduleAssignmentActive(assignment, today));
+  // The form pre-checks and diffs against the enrollment's CURRENT assignments - the ones not ended before today, whether they have
+  // started or not: exactly what updateEnrollment reads as "currently assigned" and what takes a place against a schedule's
+  // capacity (0060). A historical, already-ended one is not part of "what this enrollment currently attends" and must not be
+  // re-offered as if it still applied. (Filtering on "has started" as well left a future-dated assignment out of the form: it
+  // showed unticked, the server saw it as dropped, and a full schedule it holds looked unavailable.)
+  const activeAssignments = allAssignments.filter((assignment) => isScheduleAssignmentCurrent(assignment, today));
+
+  // The places taken against each schedule's capacity, for every schedule the picker can show - including one this enrollment
+  // still attends but that is no longer "currently available". Null when they cannot be read: the picker then shows and locks nothing.
+  const scheduleCapacities = await getScheduleCapacitiesForPicker([
+    ...new Set([
+      ...currentSchedules.map((schedule) => schedule.series_id),
+      ...activeAssignments.map((assignment) => assignment.schedule_series_id),
+    ]),
+  ]);
 
   const updateEnrollmentById = updateEnrollment.bind(null, enrollmentId, id);
 
@@ -60,6 +72,7 @@ export default async function EditEnrollmentPage({ params }) {
             batchOptions={batchOptions}
             currentSchedules={currentSchedules}
             assignedSchedules={activeAssignments}
+            scheduleCapacities={scheduleCapacities}
             todayDate={today}
             submitLabel="Save Changes"
             pendingLabel="Saving…"

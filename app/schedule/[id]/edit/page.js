@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getSchedule, getScheduleDeleteImpact } from "@/lib/schedules/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
+import { getScheduleCapacitiesForPicker } from "@/lib/schedules/capacity-data";
 import { updateSchedule } from "@/lib/schedules/actions";
 import ScheduleForm from "@/app/schedule/schedule-form";
 import PageHeader from "@/components/layout/PageHeader";
@@ -35,6 +36,11 @@ export default async function EditSchedulePage({ params }) {
     notFound();
   }
 
+  // The schedule's series' capacity and the places taken now (null when they cannot be read: the form then leaves the capacity
+  // alone rather than showing - and saving - a blank that would mean "unlimited").
+  const capacities = await getScheduleCapacitiesForPicker([schedule.series_id]);
+  const places = capacities?.[schedule.series_id] ?? null;
+
   const updateScheduleById = updateSchedule.bind(null, id);
 
   return (
@@ -54,6 +60,7 @@ export default async function EditSchedulePage({ params }) {
             schedule={schedule}
             editMode={usage.editMode}
             affectedStudentCount={usage.affectedStudentCount}
+            places={places}
             requireConfirmation
             submitLabel="Save Changes"
             pendingLabel="Saving…"

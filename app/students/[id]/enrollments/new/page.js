@@ -4,6 +4,7 @@ import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getStudent } from "@/lib/students/data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listCurrentSchedules } from "@/lib/schedules/data";
+import { getScheduleCapacitiesForPicker } from "@/lib/schedules/capacity-data";
 import { getCentreToday } from "@/lib/center-profile/settings";
 import { createEnrollment } from "@/lib/enrollments/actions";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
@@ -67,6 +68,8 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
     listCurrentSchedules(),
     isGuided ? getCurrentMembershipForStudent(id) : Promise.resolve(null),
   ]);
+  // The places taken against each schedule's capacity (null when they cannot be read: the picker then shows and locks nothing).
+  const scheduleCapacities = await getScheduleCapacitiesForPicker(currentSchedules.map((schedule) => schedule.series_id));
   const createEnrollmentForStudent = createEnrollment.bind(null, id);
 
   return (
@@ -130,6 +133,7 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
             student={{ full_name: student.full_name, student_code: student.student_code, photo_url: student.photo_url }}
             batchOptions={batchOptions}
             currentSchedules={currentSchedules}
+            scheduleCapacities={scheduleCapacities}
             todayDate={await getCentreToday()}
             guided={isGuided}
             submitLabel="Save Enrollment"

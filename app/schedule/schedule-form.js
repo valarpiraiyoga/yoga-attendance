@@ -26,6 +26,7 @@ import {
   DAY_LABELS,
 } from "@/lib/schedules/validation";
 import { describeAffectedStudents } from "@/lib/schedules/usage";
+import { scheduleEditChangesOnlyCapacity, validateScheduleCapacity } from "@/lib/schedules/capacity-input";
 
 const DAY_OPTIONS = DAYS_OF_WEEK.map((value) => ({ value, label: DAY_LABELS[value] }));
 
@@ -37,7 +38,11 @@ const BLUR_VALIDATED_FIELDS = new Set([
   "end_time",
   "effective_from",
   "effective_until",
+  "capacity",
 ]);
+
+// "No limit" for a null capacity, else the number (the Review step's wording).
+const capacityLabel = (value) => (value === null || value === undefined ? "No limit" : String(value));
 
 function formatTime(value) {
   if (!value) return "—";
@@ -99,6 +104,15 @@ function formatTime(value) {
  * assignment on it: a day change moves those assignments, so Review says so.
  * The action re-checks in the database and refuses a schedule that has since
  * gained history.
+ *
+ * Capacity (V1 Final Improvements, S5; 01-product.md §7 "Schedule Capacity"): one optional field - blank is unlimited,
+ * otherwise a whole number from 1 to 1000. On Add it applies to every schedule the form creates (one per day x time slot); on
+ * Edit it is the capacity of this schedule's series and also starts any schedule created on an extra day. `places` (the capacity
+ * and places taken now, null when they could not be loaded) fills the field on Edit: without it the field is disabled and not
+ * submitted, so the stored capacity is left alone instead of a blank being read as "unlimited". A capacity change takes effect as
+ * soon as it is saved - it is not tied to Effective From and creates no version - so an edit that changes nothing else needs no
+ * Effective From, and Review states the capacity apart from the dated changes. The database refuses a value below the places
+ * taken; the action returns that on the capacity field with everything else kept.
  */
 export default function ScheduleForm({
   action,
@@ -108,6 +122,7 @@ export default function ScheduleForm({
   schedule,
   editMode = "versioned",
   affectedStudentCount = 0,
+  places = null,
   requireConfirmation = false,
   submitLabel,
   pendingLabel,
@@ -132,6 +147,8 @@ export default function ScheduleForm({
   const [startTime, setStartTime] = useState(state?.values?.start_time ?? schedule?.start_time ?? "");
   const [endTime, setEndTime] = useState(state?.values?.end_time ?? schedule?.end_time ?? "");
   const isAddMode = !schedule;
+  // Capacity is always offered on Add; on Edit only when the stored capacity could be loaded (see the component doc comment).
+  const capacityEditable = isAddMode || Boolean(places);
   // Time Slots (Add Schedule only — see the component doc comment). Seeded
   // from a failed submission's full arrays when present, else one empty slot.
   const [timeSlots, setTimeSlots] = useState(() => {
@@ -237,6 +254,24 @@ export default function ScheduleForm({
     };
   }
 
+  // True when this Edit changes nothing about the schedule but its capacity (see `scheduleEditChangesOnlyCapacity`): no effective date
+  // is needed then, and no new version is created.
+  function changesOnlyCapacity(formData) {
+    if (!schedule || !capacityEditable) return false;
+    return scheduleEditChangesOnlyCapacity({
+      existing: { ...schedule, instructor_id: schedule.instructors?.id },
+      submitted: {
+        days: formData.getAll("day_of_week"),
+        instructor_id: formData.get("instructor_id"),
+        start_time: formData.get("start_time"),
+        end_time: formData.get("end_time"),
+        effective_from: formData.get("effective_from"),
+        effective_until: formData.get("effective_until"),
+      },
+      direct: directEdit,
+    });
+  }
+
   function validateForm(formData) {
     const input = readInput(formData);
     const result = validateScheduleInput(input);
@@ -246,6 +281,12 @@ export default function ScheduleForm({
     } else {
       delete errors.day_of_week;
     }
+    if (capacityEditable) {
+      const capacity = validateScheduleCapacity(formData.get("capacity"));
+      if (!capacity.success) errors.capacity = capacity.errors.capacity;
+    }
+    // A capacity-only edit starts nothing on a date, so a missing Effective From is not an error.
+    if (changesOnlyCapacity(formData)) delete errors.effective_from;
     return { input, errors, success: Object.keys(errors).length === 0 };
   }
 
@@ -282,13 +323,20 @@ export default function ScheduleForm({
   function openReview(event) {
     event.preventDefault();
 
-    const { input, success, errors } = validateForm(new FormData(formRef.current));
+    const formData = new FormData(formRef.current);
+    const { input, success, errors } = validateForm(formData);
     if (!success) {
       setFieldErrors(errors);
       return;
     }
 
-    const chosenDays = new FormData(formRef.current).getAll("day_of_week");
+    // Capacity is judged apart from the dated changes: it applies as soon as it is saved. `capacity` is null when the form cannot
+    // change it (Edit without a loaded capacity).
+    const enteredCapacity = capacityEditable ? validateScheduleCapacity(formData.get("capacity")).data.value : undefined;
+    const capacity =
+      enteredCapacity === undefined ? null : { from: places?.capacity ?? null, to: enteredCapacity, changed: (places?.capacity ?? null) !== enteredCapacity };
+
+    const chosenDays = formData.getAll("day_of_week");
     // Direct edit: this schedule keeps its own day while it is still ticked,
     // otherwise it moves to the first ticked day (as `updateSchedule` does).
     const ownDay = directEdit
@@ -306,6 +354,8 @@ export default function ScheduleForm({
         instructorOptions.find((instructor) => instructor.id === input.instructor_id)?.full_name ?? "—",
       effectiveFrom: input.effective_from,
       effectiveUntil: input.effective_until,
+      capacity,
+      capacityOnly: changesOnlyCapacity(formData),
     });
     setConfirmOpen(true);
   }
@@ -314,6 +364,43 @@ export default function ScheduleForm({
     setConfirmOpen(false);
     formRef.current?.requestSubmit();
   }
+
+  // The Capacity field: beside End Time on Edit; on Add (which repeats time slots) once, below them - one capacity for every
+  // schedule the form creates.
+  const extraDayCount = isAddMode ? 0 : days.filter((day) => day !== schedule.day_of_week).length;
+  const takenNow = places ? (places.occupied === 1 ? "1 place is" : `${places.occupied} places are`) : null;
+  const capacityHint = isAddMode
+    ? "Optional — leave blank for no limit. Every schedule created here starts with it."
+    : places
+      ? `Leave blank for no limit. Takes effect as soon as you save. ${takenNow} taken now, so it cannot go lower than that.${
+          extraDayCount > 0 ? " Schedules created on the extra days start with it too." : ""
+        }`
+      : "The current capacity could not be loaded, so it is left unchanged.";
+  const capacityField = (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor="capacity">Capacity</Label>
+      <Input
+        id="capacity"
+        name="capacity"
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="No limit"
+        disabled={isPending || !capacityEditable}
+        defaultValue={state?.values?.capacity ?? (places && !places.isUnlimited ? String(places.capacity) : "")}
+        aria-invalid={Boolean(fieldErrors.capacity)}
+        aria-describedby={fieldErrors.capacity ? "capacity-error capacity-hint" : "capacity-hint"}
+      />
+      <p id="capacity-hint" className="text-small text-text-secondary">
+        {capacityHint}
+      </p>
+      {fieldErrors.capacity ? (
+        <p id="capacity-error" role="alert" className="text-small text-danger">
+          {fieldErrors.capacity}
+        </p>
+      ) : null}
+    </div>
+  );
 
   return (
     <>
@@ -540,7 +627,7 @@ export default function ScheduleForm({
             </div>
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-3">
             <div className="flex flex-col gap-2">
               <Label htmlFor="start_time">Start Time</Label>
               <TimeSelect
@@ -579,8 +666,12 @@ export default function ScheduleForm({
                 </p>
               ) : null}
             </div>
+
+            {capacityField}
           </div>
         )}
+
+        {isAddMode ? <div className="sm:max-w-xs">{capacityField}</div> : null}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
@@ -597,7 +688,7 @@ export default function ScheduleForm({
             />
             <p className="text-small text-text-secondary">
               {schedule && !directEdit
-                ? "The date this change takes effect. The current schedule is unaffected before this date."
+                ? "The date this change takes effect. The current schedule is unaffected before this date. Not needed when only the capacity changes."
                 : "When this schedule begins."}
             </p>
             {fieldErrors.effective_from ? (
@@ -660,9 +751,11 @@ export default function ScheduleForm({
             />
           }
           description={
-            directEdit
-              ? "Confirm these details before saving. This schedule has no sessions, attendance or student history yet, so the changes are applied to it directly — no new version is created."
-              : "Confirm these details before saving. This starts a new version of the schedule from the effective date below — the current schedule is preserved as history."
+            reviewData?.capacityOnly
+              ? "Confirm the new capacity before saving. Only the capacity changes: it takes effect as soon as you save, and no new version of the schedule is created."
+              : directEdit
+                ? "Confirm these details before saving. This schedule has no sessions, attendance or student history yet, so the changes are applied to it directly — no new version is created."
+                : "Confirm these details before saving. This starts a new version of the schedule from the effective date below — the current schedule is preserved as history."
           }
           tone={directEdit && reviewData?.movedFrom && affectedStudentCount > 0 ? "warning" : undefined}
           note={
@@ -706,14 +799,33 @@ export default function ScheduleForm({
                 <dt className="text-body text-text-secondary">Instructor</dt>
                 <dd className="text-body font-medium text-text-primary">{reviewData.instructorName}</dd>
               </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-body text-text-secondary">Effective From</dt>
-                <dd className="text-body font-medium text-text-primary">{reviewData.effectiveFrom}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-body text-text-secondary">Effective Until</dt>
-                <dd className="text-body font-medium text-text-primary">{reviewData.effectiveUntil || "Open-ended"}</dd>
-              </div>
+              {reviewData.capacityOnly ? null : (
+                <>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-body text-text-secondary">Effective From</dt>
+                    <dd className="text-body font-medium text-text-primary">{reviewData.effectiveFrom}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-body text-text-secondary">Effective Until</dt>
+                    <dd className="text-body font-medium text-text-primary">{reviewData.effectiveUntil || "Open-ended"}</dd>
+                  </div>
+                </>
+              )}
+              {/* Capacity is stated apart from the dated changes above: it takes effect as soon as it is saved, whatever the
+                  Effective From says, and any schedule created on an extra day starts with it. */}
+              {reviewData.capacity ? (
+                <div className="flex justify-between gap-4 border-t border-border pt-3">
+                  <dt className="text-body text-text-secondary">Capacity</dt>
+                  <dd className="text-body text-right font-medium text-text-primary">
+                    {reviewData.capacity.changed
+                      ? `${capacityLabel(reviewData.capacity.from)} → ${capacityLabel(reviewData.capacity.to)}`
+                      : `${capacityLabel(reviewData.capacity.to)} (unchanged)`}
+                    {reviewData.capacity.changed ? (
+                      <span className="text-small block font-normal text-text-secondary">Takes effect as soon as you save</span>
+                    ) : null}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
           ) : null}
         </ConfirmDialog>

@@ -63,10 +63,11 @@ export default async function BatchSchedulesPage({ params }) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="sm:w-[10%]">Day</TableHead>
-                  <TableHead className="sm:w-[16%]">Time</TableHead>
-                  <TableHead className="sm:w-[20%]">Instructor</TableHead>
-                  <TableHead className="sm:w-[14%]">Effective From</TableHead>
-                  <TableHead className="sm:w-[14%]">Effective Until</TableHead>
+                  <TableHead className="sm:w-[15%]">Time</TableHead>
+                  <TableHead className="sm:w-[18%]">Instructor</TableHead>
+                  <TableHead className="sm:w-[12%]">Places</TableHead>
+                  <TableHead className="sm:w-[13%]">Effective From</TableHead>
+                  <TableHead className="sm:w-[13%]">Effective Until</TableHead>
                   <TableHead className="sm:w-[10%]">Status</TableHead>
                   <TableHead className="w-px px-3 whitespace-nowrap sm:px-4">Action</TableHead>
                 </TableRow>

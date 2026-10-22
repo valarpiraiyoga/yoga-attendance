@@ -138,6 +138,7 @@ A batch may run several recurring schedules, including more than one on the same
 - A batch enrollment should have at least one schedule assignment. An enrollment with none makes the student eligible for nothing, which is a configuration mistake rather than a meaningful state.
 - Assignments are assigned to a schedule's stable identity (§7 "Schedule Series"), not to one particular version of it, so an admin editing a schedule's time or instructor never detaches the students who attend it.
 - Overlapping times across a student's own assignments are not blocked, consistent with §7 "Conflicts".
+- *(V1 Final Improvements — Schedule Capacity.)* Each assignment takes one place in its own schedule's capacity (§7 "Schedule Capacity"). An enrollment with several assignments takes one place in each of those schedules. A full schedule cannot accept another assignment.
 
 ### Schedule Assignment Effective Dates
 Each schedule assignment carries an effective start date and an optional effective end date. There is no separate active/inactive flag: an assignment applies to exactly the dates its period covers.
@@ -560,7 +561,7 @@ These are initial data only and are not hard-coded limitations.
 - Category — optional
 - Status: Active / Inactive
 
-Batch capacity is not required in V1.
+Batch capacity is not required in V1. A batch has no capacity of its own: capacity belongs to each of its recurring schedules (§7 "Schedule Capacity").
 
 ### Management
 Admin can create, edit, activate, and deactivate batches.
@@ -594,6 +595,7 @@ The current Yoga Center timetable is initial schedule data, not a fixed applicat
 - Status: Active / Inactive
 - Effective from
 - Effective until — optional
+- Capacity — optional; the most students the class can hold (see "Schedule Capacity")
 
 ### Recurring Weekly Schedule
 The system supports recurring weekly schedules. The same batch can appear multiple times across different days and times.
@@ -645,6 +647,20 @@ The series is what everything outside the Schedule area refers to when it means 
 
 A class session still records the specific version it was generated from (§7A), so what the class actually looked like on a given date remains exact. The series answers "which class is this?"; the version answers "what were its details then?".
 
+### Schedule Capacity
+*(V1 Final Improvements — Schedule Capacity.)* Each recurring class can have a maximum number of students. Capacity belongs to the class's **schedule series**, not to the batch and not to one schedule version, so each class of a batch has its own limit — for example, Hatha Yoga's Monday 6:00 AM and Monday 5:00 PM classes can each hold 20 students.
+
+- **Value.** A whole number from 1 to 1000, or no limit (unlimited). A schedule without a capacity is unlimited, which is what every existing schedule keeps until a capacity is set.
+- **Preserved across edits.** Editing a schedule's day, time or instructor creates a new version within the same series (above) and keeps the series' capacity.
+- **New schedules.** Each schedule created by Add Schedule — one per ticked day — gets the capacity entered in that form. Each schedule an edit also creates on another ticked day (an ordinary edit's "Also creates", or a direct edit of an unused schedule) gets the capacity being saved by that same form.
+- **What takes a place.** A schedule assignment (§4) takes one place in its schedule when the assignment has no end date or ends today or later, and its enrollment is active and has no end date or ends today or later — "today" being the centre's date (§7A "Centre Timezone"). An assignment that starts in the future already takes its place. An assignment that has ended, or whose enrollment is inactive or has ended, takes none. The student's own status, memberships, payments and attendance do not change the count: an inactive student whose enrollment and assignment are still current keeps the place until the enrollment or assignment is ended.
+- **A full schedule** — one whose places taken have reached its capacity — cannot accept another assignment: not a new enrollment's assignment, not an added schedule on an existing enrollment, not an enrollment that is reactivated or extended so that its assignment would take a place again, and not an assignment whose own end date is cleared or moved to today or later so that it would take a place again. Ending or deactivating an enrollment, or ending an assignment, is never refused because of capacity.
+- **Changing a student's schedule** follows §4 "Schedule Assignment Effective Dates": the old assignment is closed the day before the change takes effect and the new one starts from that date. Because the new assignment takes its place as soon as it is saved, and the old one keeps its place until its end date has passed, a change effective on a future date counts toward **both** schedules until then. If the new schedule is full meanwhile, the change cannot be saved; the Admin can raise that schedule's capacity, or choose a change date once a place has become free.
+- **Changing the capacity.** The Admin can raise or lower a schedule's capacity, or remove the limit, at any time. A capacity change takes effect as soon as it is saved: it is not an effective-dated schedule change, needs no effective date and creates no new schedule version — even when the same save also changes the schedule's time or instructor from a future date. A capacity cannot be lowered below the places taken now; nothing is removed, ended or deactivated to make room, and the Admin is told how many places are taken. There is no override that lets a schedule exceed its capacity. To add a student to a full schedule, the Admin raises its capacity first.
+- **Enforced by the database.** Capacity is checked when the change is saved, by the database, for every way an assignment is written — including two Admins saving at the same moment, so the last place can never be given twice. A save that would overfill any one of its selected schedules saves nothing: the enrollment, its other schedules and any assignment it would have ended all stay as they were. What a screen shows about available places is a guide only.
+- **Deactivating a schedule** does not end the assignments of the students who attend it (§7 "Deactivation"), so they keep counting against its capacity; a deactivated schedule is no longer offered for new assignments. Whether deactivation should end those assignments automatically is a separate decision for the future.
+- **Eligibility and history are unchanged.** Capacity only decides whether an assignment can be saved. It never changes who is eligible for a class session (§8), and past sessions, attendance and assignments are never altered by it.
+
 ### Conflicts
 V1 does not prevent overlapping schedules. A batch may hold more than one schedule covering the same day and time, and an instructor may be assigned to more than one schedule at the same day and time. These situations are visible to the Admin in both Schedule views — listed in the List View, and shown side by side in the Weekly Schedule grid — and are treated as an operational judgement, not a system-enforced constraint.
 
@@ -659,6 +675,8 @@ A specific session can be marked Cancelled or Holiday. Such sessions do not requ
 
 ### Deactivation
 A schedule that has been used is deactivated rather than deleted — it is closed with an effective until date and marked inactive. Historical sessions and attendance remain available. Only an unused schedule (see "Unused Schedules") can be permanently deleted; a schedule with a class session, an earlier version, or a started student assignment never can.
+
+Deactivating a schedule does not end the students' assignments to it; they keep their end dates as they were (and keep counting against its capacity, "Schedule Capacity"). Ending them automatically on deactivation is a possible future decision, not V1 behaviour.
 
 ### Online / Offline
 Online/offline is not a required property of the recurring schedule. Students may attend online or offline based on their circumstances. V1 attendance records only Present or Absent.
@@ -1049,7 +1067,7 @@ Deriving status from dates, rather than storing it, prevents a membership from s
 - A batch can have more than one schedule on the same weekday, at different times.
 - A batch does not have a fixed time.
 - Enrolling in a batch does not by itself mean attending every one of its schedules.
-- Batch capacity is not required in V1.
+- Batch capacity is not required in V1. A batch has no capacity of its own; capacity is set per recurring schedule (§7 "Schedule Capacity").
 - Short code is required.
 - Short code must be unique, compared case-insensitively.
 - Short codes are normalized to uppercase.
@@ -1073,6 +1091,10 @@ Short code uniqueness protects identification. The Weekly Schedule identifies a 
 - Effective until, when set, cannot be earlier than effective from.
 - Future schedule changes must not modify past sessions.
 - Editing a schedule's day, time or instructor closes the current version and creates a new one effective from the chosen date.
+- A schedule's capacity is optional (1–1000, or unlimited) and belongs to its schedule series, so a new version keeps it. A capacity change takes effect immediately and creates no version.
+- Each current schedule assignment takes one place in its schedule; a full schedule cannot accept another assignment, and the database enforces this for every write, including simultaneous ones.
+- A capacity cannot be lowered below the places taken now, and nothing is ended or removed to make room; there is no override.
+- Deactivating a schedule does not end its students' assignments.
 - A schedule that has not started yet is edited in place instead, since it has no elapsed period to preserve.
 - An edit cannot take effect before today.
 - Overlapping schedules are not blocked in V1, for either a batch or an instructor.
@@ -1155,6 +1177,7 @@ Historical records must be protected when:
 - Membership management
 - Batch management
 - Recurring schedule management
+- Schedule capacity: an optional maximum number of students per recurring class, enforced by the database (§7 "Schedule Capacity")
 - Instructor assignment
 - Schedule changes and exceptions
 - Class sessions

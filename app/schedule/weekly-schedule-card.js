@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import ScheduleContext, { scheduleContextOf } from "@/app/schedule/schedule-context";
 import { getBatchColor } from "@/lib/batches/identity";
+import { placesDisplay } from "@/lib/schedules/capacity";
 import { cn } from "@/lib/utils";
 
 /**
@@ -46,6 +47,9 @@ export default function WeeklyScheduleCard({ schedule, style, dayLabel, timeRang
   const photoUrl = schedule.instructors?.photo_url ?? null;
   const color = getBatchColor(schedule.batches?.batch_color);
   const batchImage = schedule.batches?.batch_image_url ?? null;
+  // This class's own places (capacity belongs to the schedule, not the batch): the card only flags Full - the popup has the rest.
+  const places = placesDisplay(schedule.places);
+  const placesLabel = places.unavailable ? "" : places.isFull ? ", full" : `, places ${places.text}`;
 
   return (
     <>
@@ -59,7 +63,7 @@ export default function WeeklyScheduleCard({ schedule, style, dayLabel, timeRang
           color.wash
         )}
         style={style}
-        aria-label={`${batchName}, ${dayLabel} ${timeRange}, ${instructor}`}
+        aria-label={`${batchName}, ${dayLabel} ${timeRange}, ${instructor}${placesLabel}`}
       >
         <span className="flex min-w-0 items-center gap-1">
           {batchImage ? (
@@ -68,6 +72,11 @@ export default function WeeklyScheduleCard({ schedule, style, dayLabel, timeRang
             <Avatar name={instructor} src={photoUrl} className="size-4 shrink-0" />
           )}
           <span className="truncate font-semibold text-text-primary">{code}</span>
+          {places.isFull ? (
+            <span className="hidden shrink-0 rounded-sm bg-danger/10 px-1 font-semibold text-danger sm:inline" aria-hidden="true">
+              Full
+            </span>
+          ) : null}
         </span>
         {showShortTime && shortTimeParts?.length ? (
           <span className="mt-0.5 min-w-0 text-small leading-tight text-text-secondary sm:hidden">

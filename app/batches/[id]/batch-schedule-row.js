@@ -12,6 +12,7 @@ import { DAY_LABELS } from "@/lib/schedules/validation";
 import { cn } from "@/lib/utils";
 import ScheduleCardMenu from "@/app/schedule/schedule-card-menu";
 import { scheduleContextOf } from "@/app/schedule/schedule-context";
+import SchedulePlaces from "@/app/schedule/schedule-places";
 
 /**
  * One row of Batch Details' Schedules tab: day, time, instructor, effective
@@ -44,6 +45,9 @@ export default function BatchScheduleRow({ schedule }) {
         ) : (
           "—"
         )}
+      </TableCell>
+      <TableCell className="py-3 whitespace-nowrap">
+        <SchedulePlaces places={schedule.places} />
       </TableCell>
       <TableCell className="py-3 text-small whitespace-nowrap text-text-secondary">
         {formatDate(schedule.effective_from)}

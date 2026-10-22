@@ -1,22 +1,22 @@
 import Link from "next/link";
 import { ArrowRight, Calendar, Plus } from "lucide-react";
-import Avatar from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { formatTimeRange } from "@/lib/format";
 import { DAY_LABELS, DAYS_OF_WEEK } from "@/lib/schedules/validation";
+import { TIME_RANGE_CHIPS, timeRangeKey, timeRangeSlots } from "@/lib/enrollments/schedule-picker-core";
+import { cn } from "@/lib/utils";
+import SchedulePlaces from "@/app/schedule/schedule-places";
 
 /**
- * Batch Details' Overview schedule, as a week instead of a table: one row per weekday,
- * Monday to Sunday, with that day's class times as small pills (a day with no class says so).
- * It shows the batch's CURRENT schedules only - the same set the summary cards and the Batches list
- * read (`currentSchedulesOf`) - and answers "when does this batch meet?" at a glance in a fraction of
- * the height of a table. The Schedules tab still lists every schedule row with its dates and actions.
+ * Batch Details' Overview schedule, as a week: seven weekday columns, Monday to Sunday, each with that day's class times as small
+ * chips (a day with no class says "No class"). It shows the batch's CURRENT schedules only - the same set the summary cards and
+ * the Batches list read (`currentSchedulesOf`). The Schedules tab still lists every schedule row with its dates and actions.
  *
- * Each pill carries its instructor's photo when the batch's classes are not all taught by the same
- * person (with one instructor the photo would only repeat itself). Read-only apart from the two
- * links in the header.
+ * A chip's colour groups identical time ranges (the same deterministic mapping the enrollment schedule picker uses): the same
+ * time range has the same colour on every day. The time is always written out. When the batch's classes are not all taught by the
+ * same person each chip carries its instructor's name (with one instructor it would only repeat itself).
  *
  * @param {object} props
  * @param {string} props.batchId
@@ -29,13 +29,15 @@ export default function WeeklyScheduleOverview({ batchId, schedules, upcomingSch
 
   const instructorNames = new Set(schedules.map((schedule) => schedule.instructors?.full_name ?? ""));
   const showInstructor = instructorNames.size > 1;
+  const slots = timeRangeSlots(schedules, TIME_RANGE_CHIPS.length);
 
   return (
     <Panel className="min-w-0">
       <PanelHeader
         icon={Calendar}
+        tone="brand"
         title="Weekly Schedule"
-        description="When this batch meets each week."
+        description="Classes for each day of the week."
         className="mb-4 min-h-8 flex-col items-start sm:flex-row sm:items-center"
         action={
           <div className="flex flex-wrap items-center gap-2">
@@ -43,13 +45,7 @@ export default function WeeklyScheduleOverview({ batchId, schedules, upcomingSch
               <Plus className="size-4" aria-hidden="true" />
               Add Schedule
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="bg-brand/10 text-brand hover:bg-brand/15"
-              render={<Link href={`/batches/${batchId}/schedules`} />}
-              nativeButton={false}
-            >
+            <Button size="sm" variant="secondary" render={<Link href={`/batches/${batchId}/schedules`} />} nativeButton={false}>
               View Full Schedule
               <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
@@ -68,38 +64,36 @@ export default function WeeklyScheduleOverview({ batchId, schedules, upcomingSch
           }
         />
       ) : (
-        <ul aria-label="Weekly schedule" className="flex flex-col divide-y divide-border">
+        <ul aria-label="Weekly schedule" className="grid grid-cols-[repeat(auto-fit,minmax(9.75rem,1fr))] gap-2">
           {DAYS_OF_WEEK.map((day) => {
-            const slots = byDay.get(day) ?? [];
+            const daySlots = byDay.get(day) ?? [];
             const dayName = DAY_LABELS[day] ?? day;
 
             return (
-              <li key={day} className="grid grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-3 py-2.5 first:pt-0 last:pb-0">
+              <li key={day} className="flex min-w-0 flex-col gap-2 rounded-card border border-border bg-background/60 p-3">
                 <span className="text-body font-semibold text-text-primary">
                   <span aria-hidden="true">{dayName.slice(0, 3)}</span>
                   <span className="sr-only">{dayName}</span>
                 </span>
-                {slots.length === 0 ? (
+                {daySlots.length === 0 ? (
                   <span className="text-small text-text-secondary">No class</span>
                 ) : (
-                  <ul className="flex flex-wrap gap-2">
-                    {slots.map((schedule) => (
-                      <li
-                        key={schedule.id}
-                        className="text-small inline-flex items-center gap-2 rounded-lg bg-brand/10 px-2.5 py-1 font-medium text-brand"
-                      >
-                        {showInstructor ? (
-                          <Avatar
-                            name={schedule.instructors?.full_name}
-                            src={schedule.instructors?.photo_url}
-                            size="sm"
-                            className="size-5"
-                          />
-                        ) : null}
-                        {formatTimeRange(schedule.start_time, schedule.end_time)}
+                  <ul className="flex flex-col gap-1.5">
+                    {daySlots.map((schedule) => (
+                      <li key={schedule.id} className="flex min-w-0 flex-col gap-0.5">
+                        <span
+                          className={cn(
+                            "text-small w-fit max-w-full rounded-md px-2 py-0.5 font-medium whitespace-nowrap tabular-nums",
+                            TIME_RANGE_CHIPS[slots.get(timeRangeKey(schedule)) ?? 0],
+                          )}
+                        >
+                          {formatTimeRange(schedule.start_time, schedule.end_time)}
+                        </span>
                         {showInstructor && schedule.instructors?.full_name ? (
-                          <span className="font-normal text-text-secondary">· {schedule.instructors.full_name}</span>
+                          <span className="text-small truncate text-text-secondary">{schedule.instructors.full_name}</span>
                         ) : null}
+                        {/* This class's own places (capacity belongs to each schedule, never to the batch). */}
+                        <SchedulePlaces places={schedule.places} className="text-small" />
                       </li>
                     ))}
                   </ul>

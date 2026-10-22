@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import HelpTip from "@/components/ui/help-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -13,9 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import SchedulePicker from "@/app/students/[id]/enrollments/schedule-picker";
 import EnrollmentReviewDialog from "@/app/students/[id]/enrollments/enrollment-review-dialog";
 import { DAY_LABELS } from "@/lib/schedules/validation";
 import { joinDateLabel } from "@/lib/students/join-date";
+import { enrollmentWillTakePlaces, everyScheduleFull, heldSeriesIdsOf } from "@/lib/enrollments/schedule-availability";
 import {
   validateEnrollmentInput,
   validateScheduleSelection,
@@ -67,6 +70,15 @@ function scheduleLabel(schedule) {
  * Status is edit-only, mirroring Instructor/Batch forms: `enrollment`
  * being present signals edit mode and gates both the Status field and the
  * schedule-change-date field.
+ *
+ * Schedule capacity (V1 Final Improvements, S4; 01-product.md §7): `scheduleCapacities` - the places taken against each
+ * schedule's capacity, keyed by schedule series id, or null when they could not be read - is shown in the picker, and a full
+ * schedule cannot be newly ticked. The places this enrollment already holds (`heldSeriesIds`: its current assignments - started
+ * or not yet started - while the stored enrollment is active and current) stay selectable even if now full; an enrollment that is
+ * inactive or ended holds none, so reactivating or extending it treats a full schedule like a new one. Nothing is locked when the
+ * enrollment, as the form would save it, takes no place at all (inactive, or ended before today): the database counts only
+ * active, current enrollments, so that save cannot be refused for capacity. The database stays authoritative: if a schedule fills
+ * up meanwhile, the save is refused with a message on the schedule field, and everything entered here stays as it was.
  */
 export default function EnrollmentForm({
   action,
@@ -76,6 +88,7 @@ export default function EnrollmentForm({
   batchOptions,
   currentSchedules,
   assignedSchedules,
+  scheduleCapacities = null,
   todayDate,
   guided = false,
   submitLabel,
@@ -101,6 +114,14 @@ export default function EnrollmentForm({
     [assignedSchedules]
   );
   const [selectedSeriesIds, setSelectedSeriesIds] = useState(() => new Set(originalSeriesIds));
+  const heldSeriesIds = useMemo(
+    () => heldSeriesIdsOf(enrollment, assignedSchedules, todayDate),
+    [enrollment, assignedSchedules, todayDate]
+  );
+  // The end date as typed (the input itself stays uncontrolled): whether the enrollment will take places decides if a full
+  // schedule is locked at all. A new enrollment is created active.
+  const [endDate, setEndDate] = useState(state?.values?.effective_end_date ?? enrollment?.effective_end_date ?? "");
+  const restricted = enrollmentWillTakePlaces({ active: enrollment ? isActive : true, endDate }, todayDate);
 
   function toggleSeries(seriesId) {
     setSelectedSeriesIds((current) => {
@@ -248,7 +269,9 @@ export default function EnrollmentForm({
         ) : null}
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="batch_id">Batch</Label>
+          <Label htmlFor="batch_id">
+            Batch<span className="text-danger" aria-hidden="true"> *</span>
+          </Label>
           <Select
             name="batch_id"
             items={batchSelectOptions}
@@ -256,7 +279,7 @@ export default function EnrollmentForm({
             onValueChange={setBatchId}
             disabled={isPending}
           >
-            <SelectTrigger id="batch_id" aria-invalid={Boolean(fieldErrors.batch_id)}>
+            <SelectTrigger id="batch_id" aria-invalid={Boolean(fieldErrors.batch_id)} className="w-full">
               <SelectValue placeholder="Select a batch…" />
             </SelectTrigger>
             <SelectContent>
@@ -274,8 +297,22 @@ export default function EnrollmentForm({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label id="schedules-label">Schedules</Label>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Label id="schedules-label">
+                Select Schedule(s)<span className="text-danger" aria-hidden="true"> *</span>
+              </Label>
+              <HelpTip label="About selecting schedules">
+                Choose the days and time slots for this student. You can select multiple schedules. At least one is required.
+              </HelpTip>
+            </div>
+            {batchId && pickerOptions.length > 0 ? (
+              <span aria-live="polite" className="text-small rounded-full bg-brand/10 px-2.5 py-0.5 font-medium text-brand">
+                {selectedSeriesIds.size} selected
+              </span>
+            ) : null}
+          </div>
           {!batchId ? (
             <p className="text-body text-text-secondary">Select a batch to see its available schedules.</p>
           ) : pickerOptions.length === 0 ? (
@@ -285,31 +322,26 @@ export default function EnrollmentForm({
               </p>
             </div>
           ) : (
-            <div
-              role="group"
-              aria-labelledby="schedules-label"
-              className="flex flex-col gap-1 rounded-lg border border-border bg-background/60 p-2"
-            >
-              {pickerOptions.map((schedule) => (
-                <label
-                  key={schedule.series_id}
-                  className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-surface"
-                >
-                  <input
-                    type="checkbox"
-                    name="schedule_series_ids"
-                    value={schedule.series_id}
-                    checked={selectedSeriesIds.has(schedule.series_id)}
-                    onChange={() => toggleSeries(schedule.series_id)}
-                    disabled={isPending}
-                    className="size-4 rounded border-border accent-brand"
-                  />
-                  <span className="text-body text-text-primary">{scheduleLabel(schedule)}</span>
-                </label>
-              ))}
-            </div>
+            <>
+              {everyScheduleFull(pickerOptions, scheduleCapacities, heldSeriesIds, restricted) ? (
+                <div role="status" className="rounded-lg border border-dashed border-border bg-background/60 p-4">
+                  <p className="text-body text-text-secondary">
+                    Every schedule of this batch is full. Raise a schedule&rsquo;s capacity first, then enrol the student.
+                  </p>
+                </div>
+              ) : null}
+              <SchedulePicker
+                schedules={pickerOptions}
+                selectedSeriesIds={selectedSeriesIds}
+                onToggle={toggleSeries}
+                disabled={isPending}
+                labelledBy="schedules-label"
+                capacities={scheduleCapacities}
+                heldSeriesIds={heldSeriesIds}
+                restricted={restricted}
+              />
+            </>
           )}
-          <p className="text-small text-text-secondary">Select at least one schedule this student attends.</p>
           {fieldErrors.schedule_series_ids ? (
             <p role="alert" className="text-small text-danger">
               {fieldErrors.schedule_series_ids}
@@ -319,7 +351,14 @@ export default function EnrollmentForm({
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="effective_start_date">Enrollment Start Date</Label>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="effective_start_date">
+                Enrollment Start Date<span className="text-danger" aria-hidden="true"> *</span>
+              </Label>
+              {joinDate ? (
+                <HelpTip label="About the start date">Cannot be before the student&rsquo;s join date ({joinDateLabel(joinDate)}).</HelpTip>
+              ) : null}
+            </div>
             <Input
               id="effective_start_date"
               name="effective_start_date"
@@ -334,9 +373,6 @@ export default function EnrollmentForm({
                 fieldErrors.effective_start_date ? "effective_start_date-error" : undefined
               }
             />
-            {joinDate ? (
-              <p className="text-small text-text-secondary">Cannot be before the student&rsquo;s join date ({joinDateLabel(joinDate)}).</p>
-            ) : null}
             {fieldErrors.effective_start_date ? (
               <p id="effective_start_date-error" role="alert" className="text-small text-danger">
                 {fieldErrors.effective_start_date}
@@ -345,19 +381,20 @@ export default function EnrollmentForm({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="effective_end_date">Enrollment End Date</Label>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="effective_end_date">Enrollment End Date</Label>
+              <HelpTip label="About the end date">Optional — leave blank if the enrollment has no planned end date.</HelpTip>
+            </div>
             <Input
               id="effective_end_date"
               name="effective_end_date"
               type="date"
               disabled={isPending}
               defaultValue={state?.values?.effective_end_date ?? enrollment?.effective_end_date ?? ""}
+              onChange={(event) => setEndDate(event.target.value)}
               aria-invalid={Boolean(fieldErrors.effective_end_date)}
               aria-describedby={fieldErrors.effective_end_date ? "effective_end_date-error" : undefined}
             />
-            <p className="text-small text-text-secondary">
-              Optional — leave blank if the enrollment has no planned end date.
-            </p>
             {fieldErrors.effective_end_date ? (
               <p id="effective_end_date-error" role="alert" className="text-small text-danger">
                 {fieldErrors.effective_end_date}
@@ -368,7 +405,12 @@ export default function EnrollmentForm({
 
         {enrollment && selectionChanged ? (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="schedule_effective_date">Schedule Change Effective Date</Label>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="schedule_effective_date">Schedule Change Effective Date</Label>
+              <HelpTip label="About the effective date">
+                The date this schedule change takes effect. Past sessions are unaffected; it cannot be back-dated.
+              </HelpTip>
+            </div>
             <Input
               id="schedule_effective_date"
               name="schedule_effective_date"
@@ -381,10 +423,6 @@ export default function EnrollmentForm({
                 fieldErrors.schedule_effective_date ? "schedule_effective_date-error" : undefined
               }
             />
-            <p className="text-small text-text-secondary">
-              The date this schedule change takes effect. Past sessions are unaffected; it cannot be
-              back-dated.
-            </p>
             {fieldErrors.schedule_effective_date ? (
               <p id="schedule_effective_date-error" role="alert" className="text-small text-danger">
                 {fieldErrors.schedule_effective_date}

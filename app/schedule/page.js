@@ -13,6 +13,7 @@ import {
   listSchedulesForWeek,
 } from "@/lib/schedules/data";
 import { getCentreToday } from "@/lib/center-profile/settings";
+import { attachSchedulePlaces } from "@/lib/schedules/capacity-data";
 import { listBatchOptions } from "@/lib/batches/data";
 import { listInstructorOptions } from "@/lib/instructors/data";
 import {
@@ -94,7 +95,9 @@ export default async function SchedulePage({ searchParams }) {
     const weekStart = getMondayOfWeek(requestedDate);
     const weekEnd = addDaysUTC(weekStart, 6);
 
-    const schedules = await listSchedulesForWeek(weekStart, weekEnd);
+    // Each schedule's places (capacity and places taken) for its details popup. `listSchedulesForWeek` also feeds attendance, so the
+    // places are attached here, on this Admin-only page.
+    const schedules = await attachSchedulePlaces(await listSchedulesForWeek(weekStart, weekEnd));
 
     return (
       <>
