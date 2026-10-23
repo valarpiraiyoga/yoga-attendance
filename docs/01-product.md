@@ -341,7 +341,7 @@ Membership and batch enrollment are independent. One membership can cover multip
 When membership expires, the student remains in the system and historical records remain available, but the student is not normally eligible for attendance until a valid membership is active again.
 
 ### Reminders
-*(V1 Reminders.)* The Admin is reminded, inside the application, of memberships that are about to expire or have expired, and of memberships with money still owed. Reminders are **Admin-only and in-app**: nothing is sent to a student or anyone else - no email, WhatsApp or SMS - and an Instructor never sees them.
+*(V1 Reminders.)* The Admin is reminded, inside the application, of memberships that are about to expire or have expired, and of memberships with money still owed. Reminders are **Admin-only and in-app**: the application sends nothing to a student or anyone else - no email, WhatsApp or SMS - and an Instructor never sees them. For a membership with a reminder the Admin can prepare a **reminder message** from an approved template, edit it, and send it themselves: copy it, or open it in WhatsApp (a plain click-to-chat link, as for the Invoice / Receipt) or in their own email app. This is not a messaging integration; nothing is sent, stored or logged by the application, and recording the contact in the student's Communication History stays the Admin's choice.
 
 **Calculated, not stored.** A reminder is worked out from the current membership and payment data every time it is shown, on the centre's date (§5 "Membership Status", centre timezone). There is no reminder record, no scheduled job and no background process, so a reminder can never be duplicated, never lingers after its condition has gone, and never depends on a job having run. In V1 a reminder cannot be dismissed or snoozed; it disappears only when its condition no longer holds.
 
@@ -1254,7 +1254,7 @@ Historical records must be protected when:
 - Student login
 - Online payment gateway
 - Automatic billing
-- Reminders sent outside the application (email, WhatsApp, SMS) - V1 reminders are in-app only (§5 "Reminders")
+- Reminders sent by the application (email, WhatsApp, SMS) - V1 reminders are in-app only; the Admin may open a prepared reminder message in WhatsApp or their own email app and send it themselves (§5 "Reminders")
 - Refunds, credit notes, full accounting
 - Discount approval workflow
 - WhatsApp/SMS/email integrations (a plain WhatsApp click-to-chat / share workflow for the Invoice / Receipt is not an integration)

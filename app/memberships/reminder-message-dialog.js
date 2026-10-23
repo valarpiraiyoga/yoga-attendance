@@ -1,0 +1,231 @@
+"use client";
+
+import { useId, useState } from "react";
+import { BellRing, Copy, History, Mail, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import StudentContext from "@/components/ui/student-context";
+import { communicationHistoryHref } from "@/lib/communications/core";
+import {
+  REMINDER_MESSAGE_LABELS,
+  REMINDER_UNAVAILABLE,
+  buildReminderMessage,
+  initialReminderMessageType,
+  reminderEmailSubject,
+  reminderMailtoUrl,
+  reminderMessageTypes,
+  reminderWhatsAppUrl,
+} from "@/lib/reminders/message";
+import { cn } from "@/lib/utils";
+
+const COPY_STATUS = {
+  copied: "Message copied.",
+  failed: "The message could not be copied. Select the text and copy it yourself.",
+};
+
+/**
+ * The reminder message popup (02-ux.md "Membership & payment reminders" -> "Reminder message"): ONE dialog per membership row or card, opened by
+ * the row's reminder (bell) button and by Reminder Message in its More (⋮) menu - both set the same `open`. It says which student and membership
+ * it is about, lets the Admin choose the expiry or the payment reminder when both apply, and prepares the approved message, which they can edit.
+ *
+ * Then the Admin sends it themselves: Copy, Open WhatsApp (a `wa.me` click-to-chat link with the message prefilled, as the membership receipt
+ * does) or Open Email (a `mailto:` link to their own email app). Nothing is sent, stored or logged by the application, so no wording says the
+ * message was sent. View Communication History opens the student's existing Communication History (Student Details) in a new tab, so the draft
+ * here is kept; recording the conversation there stays the Admin's choice.
+ *
+ * The drafts live in this component (one per reminder type), so switching the type or closing and reopening the popup keeps what was edited.
+ *
+ * @param {object} props
+ * @param {{ expiry?: { daysUntilEnd: number, endDate: string, text: string }, payment?: { balancePaise: number, currency: string|null, text: string } }} props.reminders
+ * @param {{ id: string, full_name: string, student_code?: string, photo_url?: string|null, phone?: string|null, phone_country_code?: string|null, email?: string|null }|null} props.student
+ * @param {{ code: string, planLabel?: string, period?: string }} props.membership
+ * @param {string} props.centreName
+ * @param {"expiry"|"payment"} [props.initialType] - the reminder the popup opens on (the Dashboard row's own); expiry first by default.
+ */
+export default function ReminderMessageDialog({ open, onOpenChange, reminders, student, membership, centreName, initialType }) {
+  const types = reminderMessageTypes(reminders);
+  const [selected, setSelected] = useState(() => initialReminderMessageType(reminders, initialType));
+  const [drafts, setDrafts] = useState({});
+  const [copyStatus, setCopyStatus] = useState(null);
+  const ids = useId();
+
+  // The reminders can change after a refresh (a payment recorded elsewhere): fall back to one the membership still has.
+  const type = types.includes(selected) ? selected : initialReminderMessageType(reminders);
+  if (!type) return null;
+
+  const generated = buildReminderMessage(type, {
+    studentName: student?.full_name,
+    membershipCode: membership?.code,
+    centreName,
+    expiry: reminders.expiry,
+    payment: reminders.payment,
+  });
+  const message = drafts[type] ?? generated;
+  const hasMessage = message.trim().length > 0;
+  const whatsAppUrl = hasMessage ? reminderWhatsAppUrl({ phone: student?.phone, phoneCountryCode: student?.phone_country_code }, message) : null;
+  const mailtoUrl = hasMessage ? reminderMailtoUrl(student?.email, reminderEmailSubject(type, membership?.code), message) : null;
+  const noWhatsApp = !reminderWhatsAppUrl({ phone: student?.phone, phoneCountryCode: student?.phone_country_code }, "");
+  const noEmail = !reminderMailtoUrl(student?.email, "", "");
+
+  const messageId = `${ids}-message`;
+  const whatsAppNoteId = `${ids}-whatsapp-note`;
+  const emailNoteId = `${ids}-email-note`;
+  const emptyNoteId = `${ids}-empty-note`;
+
+  function editMessage(value) {
+    setDrafts((current) => ({ ...current, [type]: value }));
+    setCopyStatus(null);
+  }
+
+  async function copyMessage() {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("failed");
+    }
+  }
+
+  const unavailableNote = (id, text) => (
+    <p id={id} className="text-small text-text-secondary">
+      {text}
+    </p>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>Reminder message</DialogTitle>
+          <DialogDescription>Prepare the message, then send it yourself. Nothing is sent from the application.</DialogDescription>
+        </DialogHeader>
+
+        <DialogBody className="flex flex-col gap-4">
+          <StudentContext student={student} membership={membership} />
+
+          {types.length > 1 ? (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="text-small mb-2 font-medium text-text-primary">Reminder</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {types.map((option) => (
+                  <label
+                    key={option}
+                    className={cn(
+                      "flex cursor-pointer items-start gap-2.5 rounded-card border px-3 py-2.5 transition-colors has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
+                      option === type ? "border-brand bg-brand/5" : "border-border hover:bg-background"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name={`${ids}-type`}
+                      value={option}
+                      checked={option === type}
+                      onChange={() => {
+                        setSelected(option);
+                        setCopyStatus(null);
+                      }}
+                      className="mt-0.5 accent-brand"
+                    />
+                    <span className="min-w-0">
+                      <span className="text-body block font-medium text-text-primary">{REMINDER_MESSAGE_LABELS[option]}</span>
+                      <span className="text-small block font-medium text-danger">{reminders[option].text}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : (
+            <p className="text-body flex items-center gap-2 font-medium text-danger">
+              <BellRing className="size-4 shrink-0" aria-hidden="true" />
+              <span>
+                <span className="sr-only">{REMINDER_MESSAGE_LABELS[type]}: </span>
+                {reminders[type].text}
+              </span>
+            </p>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={messageId}>Message</Label>
+            <Textarea
+              id={messageId}
+              value={message}
+              onChange={(event) => editMessage(event.target.value)}
+              rows={11}
+              className="min-h-48 resize-y"
+              aria-describedby={hasMessage ? undefined : emptyNoteId}
+            />
+            {hasMessage ? null : unavailableNote(emptyNoteId, "Write a message to copy or send it.")}
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button type="button" variant="outline" onClick={copyMessage} disabled={!hasMessage} aria-describedby={hasMessage ? undefined : emptyNoteId}>
+              <Copy className="size-4" aria-hidden="true" />
+              Copy Message
+            </Button>
+            {whatsAppUrl ? (
+              <Button variant="outline" render={<a href={whatsAppUrl} target="_blank" rel="noopener noreferrer" />} nativeButton={false}>
+                <MessageCircle className="size-4" aria-hidden="true" />
+                Open WhatsApp
+                <span className="sr-only"> (opens in a new tab)</span>
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" disabled aria-describedby={noWhatsApp ? whatsAppNoteId : emptyNoteId}>
+                <MessageCircle className="size-4" aria-hidden="true" />
+                Open WhatsApp
+              </Button>
+            )}
+            {mailtoUrl ? (
+              <Button variant="outline" render={<a href={mailtoUrl} />} nativeButton={false}>
+                <Mail className="size-4" aria-hidden="true" />
+                Open Email
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" disabled aria-describedby={noEmail ? emailNoteId : emptyNoteId}>
+                <Mail className="size-4" aria-hidden="true" />
+                Open Email
+              </Button>
+            )}
+            {student?.id ? (
+              <Button
+                variant="outline"
+                render={<a href={communicationHistoryHref(student.id)} target="_blank" rel="noopener noreferrer" />}
+                nativeButton={false}
+              >
+                <History className="size-4" aria-hidden="true" />
+                View Communication History
+                <span className="sr-only"> (opens in a new tab)</span>
+              </Button>
+            ) : null}
+          </div>
+
+          {noWhatsApp || noEmail ? (
+            <div className="flex flex-col gap-1">
+              {noWhatsApp ? unavailableNote(whatsAppNoteId, REMINDER_UNAVAILABLE.whatsApp) : null}
+              {noEmail ? unavailableNote(emailNoteId, REMINDER_UNAVAILABLE.email) : null}
+            </div>
+          ) : null}
+
+          <p role="status" className={cn("text-small", copyStatus === "failed" ? "text-danger" : "text-success", !copyStatus && "sr-only")}>
+            {copyStatus ? COPY_STATUS[copyStatus] : ""}
+          </p>
+        </DialogBody>
+
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

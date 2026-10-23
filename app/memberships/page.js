@@ -22,6 +22,8 @@ import { parsePackageFilter } from "@/lib/memberships/list-filters";
 import MembershipList from "@/app/memberships/membership-list";
 import { getReminders } from "@/lib/reminders/data";
 import { remindersByMembership } from "@/lib/reminders/presentation";
+import { getCenterSettings } from "@/lib/center-profile/settings";
+import { DEFAULT_CENTER_SETTINGS } from "@/lib/center-profile/settings-core";
 
 const PAGE_SIZE = 10;
 const PLANS = ["monthly", "quarterly", "half_yearly", "annual", "custom", "class_count"];
@@ -60,7 +62,7 @@ export default async function MembershipsPage({ searchParams }) {
     ? rawParams.sort
     : DEFAULT_MEMBERSHIP_SORT;
 
-  const [{ memberships, total }, counts, packages, reminderResult] = await Promise.all([
+  const [{ memberships, total }, counts, packages, reminderResult, centreName] = await Promise.all([
     listMemberships({
       q,
       plan,
@@ -78,6 +80,10 @@ export default async function MembershipsPage({ searchParams }) {
     // The current reminders (01-product.md §5 "Reminders"), shown on each row and card. If they cannot be loaded the list still works - it
     // just shows no reminder indicators.
     getReminders().catch(() => null),
+    // The centre's name signs the reminder message popup's message (cached per request - the shell reads it too).
+    getCenterSettings()
+      .then((settings) => settings.name)
+      .catch(() => DEFAULT_CENTER_SETTINGS.name),
   ]);
   const reminders = remindersByMembership(reminderResult?.reminders);
 
@@ -202,6 +208,7 @@ export default async function MembershipsPage({ searchParams }) {
           <MembershipList
             memberships={memberships}
             reminders={reminders}
+            centreName={centreName}
             view={view}
             total={total}
             today={today}

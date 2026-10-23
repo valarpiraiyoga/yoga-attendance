@@ -23,7 +23,7 @@ export default function ReminderIndicators({ reminders, className }) {
         </Badge>
       ) : null}
       {reminders.payment ? (
-        <Badge variant="warning" title={`Payment pending: ${reminders.payment.text}`}>
+        <Badge variant="danger" title={`Payment pending: ${reminders.payment.text}`}>
           <Wallet className="size-3" aria-hidden="true" />
           <span className="sr-only">Payment pending: </span>
           {reminders.payment.text}

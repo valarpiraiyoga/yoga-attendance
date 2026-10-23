@@ -17,6 +17,7 @@ import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/valid
 import { cn } from "@/lib/utils";
 import MembershipCardMenu from "@/app/memberships/membership-card-menu";
 import ReminderIndicators from "@/app/memberships/reminder-indicators";
+import MembershipReminderMessage, { ReminderMessageButton, hasReminder } from "@/app/memberships/membership-reminder-message";
 
 // Responsive by the table's own width (container queries), not the viewport,
 // the same rule as the Attendance, Schedule, Batches and Students tables.
@@ -46,9 +47,11 @@ const HEAD = "h-10 px-2 text-small tracking-normal";
  */
 const DOCUMENT_ICON = { "due-notice": FileText, "receipt": Receipt, "issue-receipt": FilePlus, "payments": Wallet };
 
-function MembershipRow({ membership, today, reminders }) {
+function MembershipRow({ membership, today, reminders, centreName }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
+  // The reminder message popup - opened by the red bell button and by the menu's Reminder Message alike.
+  const [reminderOpen, setReminderOpen] = useState(false);
 
   const student = membership.students;
   const status = MEMBERSHIP_STATUS[membership.status] ?? MEMBERSHIP_STATUS.expired;
@@ -107,19 +110,24 @@ function MembershipRow({ membership, today, reminders }) {
       </TableCell>
       <TableCell className="w-px py-3 pr-3 pl-1 whitespace-nowrap">
         <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`${documentAction.label} for membership ${membership.membership_code}`}
-            title={documentAction.label}
-            {...(documentAction.href
-              ? { render: <Link href={documentAction.href} />, nativeButton: false }
-              : { onClick: () => setIssueOpen(true) })}
-          >
-            <DocumentIcon className="size-4" aria-hidden="true" />
-          </Button>
+          {/* One primary action: the red reminder bell while a reminder applies (its document action stays in the More menu), otherwise the document icon. */}
+          {hasReminder(reminders) ? (
+            <ReminderMessageButton reminders={reminders} studentName={student?.full_name} onClick={() => setReminderOpen(true)} />
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="text-brand hover:bg-brand/10 hover:text-brand"
+              aria-label={`${documentAction.label} for membership ${membership.membership_code}`}
+              title={documentAction.label}
+              {...(documentAction.href
+                ? { render: <Link href={documentAction.href} />, nativeButton: false }
+                : { onClick: () => setIssueOpen(true) })}
+            >
+              <DocumentIcon className="size-4" aria-hidden="true" />
+            </Button>
+          )}
           <MembershipCardMenu
             membershipId={membership.id}
             studentId={student?.id}
@@ -127,12 +135,20 @@ function MembershipRow({ membership, today, reminders }) {
             invoiceExists={membership.invoice_exists}
             hasPayments={membership.has_payments}
             reminders={reminders}
+            onOpenReminderMessage={() => setReminderOpen(true)}
             onIssueInvoice={() => setIssueOpen(true)}
             onOpenChange={setMenuOpen}
           />
           {documentAction.kind === "issue-receipt" ? (
             <MembershipIssueInvoiceDialog membership={membership} student={student} open={issueOpen} onOpenChange={setIssueOpen} />
           ) : null}
+          <MembershipReminderMessage
+            membership={membership}
+            reminders={reminders}
+            centreName={centreName}
+            open={reminderOpen}
+            onOpenChange={setReminderOpen}
+          />
         </div>
       </TableCell>
     </TableRow>
@@ -140,7 +156,7 @@ function MembershipRow({ membership, today, reminders }) {
 }
 
 /** The Memberships table (finalized compact style): see `MembershipRow` for the columns. */
-export default function MembershipTable({ memberships, today, reminders = {} }) {
+export default function MembershipTable({ memberships, today, reminders = {}, centreName }) {
   return (
     <div className="@container overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
       <Table aria-label="Memberships">
@@ -159,7 +175,7 @@ export default function MembershipTable({ memberships, today, reminders = {} }) 
         </TableHeader>
         <TableBody>
           {memberships.map((membership) => (
-            <MembershipRow key={membership.id} membership={membership} today={today} reminders={reminders[membership.id]} />
+            <MembershipRow key={membership.id} membership={membership} today={today} reminders={reminders[membership.id]} centreName={centreName} />
           ))}
         </TableBody>
       </Table>

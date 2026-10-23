@@ -2,7 +2,7 @@ import { CalendarClock, MessagesSquare, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import EmptyState from "@/components/ui/empty-state";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
-import { FOLLOW_UP_STATUS } from "@/lib/communications/core";
+import { COMMUNICATION_HISTORY_ANCHOR, FOLLOW_UP_STATUS } from "@/lib/communications/core";
 import AddCommunication, { EditCommunication } from "@/app/students/[id]/communications/add-communication";
 import CommunicationAccordion from "@/app/students/[id]/communications/communication-accordion";
 import CompleteFollowUp from "@/app/students/[id]/communications/complete-follow-up";
@@ -15,10 +15,12 @@ import CompleteFollowUp from "@/app/students/[id]/communications/complete-follow
  * with its current values (migration 0058). Add Communication sits in the panel header and in the empty state.
  *
  * `communications` is null when the history could not be loaded: the panel says so and the rest of the page still works.
+ *
+ * The panel carries `COMMUNICATION_HISTORY_ANCHOR`, so the reminder message popup's View Communication History opens this same panel.
  */
 export default function CommunicationHistory({ studentId, student, timeZone, communications }) {
   return (
-    <Panel>
+    <Panel id={COMMUNICATION_HISTORY_ANCHOR} className="scroll-mt-6">
       <PanelHeader
         icon={MessagesSquare}
         title="Communication History"

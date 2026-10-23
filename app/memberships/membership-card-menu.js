@@ -33,6 +33,12 @@ import {
  * of the menu ("Expires in 3 days", "Balance ₹1,500.00"), and a payment reminder adds Record Payment, which opens Membership Details where
  * payments are recorded - there is no payment form in the list. Renew Membership is already in the menu. These are in-app actions only; nothing
  * is sent to anyone.
+ *
+ * Reminder Message (with `onOpenReminderMessage`) opens the row's reminder message popup - the same popup as the row's red bell button; the host
+ * owns it. Both reminder texts are red (`text-danger`), as on the popup.
+ *
+ * `hideDocumentAction` (the Dashboard's reminder rows): the document item needs the invoice and payment facts only the Memberships list reads,
+ * so the Dashboard leaves it out; View Membership is one step from the same documents.
  */
 export default function MembershipCardMenu({
   membershipId,
@@ -49,6 +55,8 @@ export default function MembershipCardMenu({
   triggerDisabled = false,
   extraItems = null,
   reminders = null,
+  onOpenReminderMessage,
+  hideDocumentAction = false,
 }) {
   const documentAction = membershipDocumentAction(membershipId, paymentStatus, invoiceExists, hasPayments);
 
@@ -74,8 +82,9 @@ export default function MembershipCardMenu({
             <DropdownMenuGroup>
               <DropdownMenuLabel>Reminders</DropdownMenuLabel>
               {reminders.expiry ? <p className="text-small px-1.5 pb-1 font-medium text-danger">{reminders.expiry.text}</p> : null}
-              {reminders.payment ? <p className="text-small px-1.5 pb-1 font-medium text-warning">{reminders.payment.text}</p> : null}
+              {reminders.payment ? <p className="text-small px-1.5 pb-1 font-medium text-danger">{reminders.payment.text}</p> : null}
             </DropdownMenuGroup>
+            {onOpenReminderMessage ? <DropdownMenuItem onClick={onOpenReminderMessage}>Reminder Message</DropdownMenuItem> : null}
             {reminders.payment ? (
               <DropdownMenuItem render={<Link href={`/memberships/${membershipId}`} />} nativeButton={false}>
                 Record Payment
@@ -93,7 +102,7 @@ export default function MembershipCardMenu({
         <DropdownMenuItem render={<Link href={`/memberships/${membershipId}/renew`} />} nativeButton={false}>
           Renew Membership
         </DropdownMenuItem>
-        {documentAction.href ? (
+        {hideDocumentAction ? null : documentAction.href ? (
           <DropdownMenuItem render={<Link href={documentAction.href} />} nativeButton={false}>
             {documentAction.label}
           </DropdownMenuItem>

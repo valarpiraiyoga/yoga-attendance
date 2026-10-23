@@ -19,6 +19,7 @@ import { getMembershipValidity, getValidityLabel } from "@/lib/memberships/valid
 import { cn } from "@/lib/utils";
 import MembershipCardMenu from "@/app/memberships/membership-card-menu";
 import ReminderIndicators from "@/app/memberships/reminder-indicators";
+import MembershipReminderMessage, { ReminderMessageButton, hasReminder } from "@/app/memberships/membership-reminder-message";
 
 /** Validity bar colour: red once Expired, otherwise the brand teal. */
 function validityTone(validity) {
@@ -42,9 +43,11 @@ function validityTone(validity) {
  */
 const DOCUMENT_ICON = { "due-notice": FileText, "receipt": Receipt, "issue-receipt": FilePlus, "payments": Wallet };
 
-export default function MembershipCardItem({ membership, today, reminders }) {
+export default function MembershipCardItem({ membership, today, reminders, centreName }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
+  // The reminder message popup - opened by the red bell button and by the menu's Reminder Message alike.
+  const [reminderOpen, setReminderOpen] = useState(false);
 
   const student = membership.students;
   const status = MEMBERSHIP_STATUS[membership.status] ?? MEMBERSHIP_STATUS.expired;
@@ -72,19 +75,24 @@ export default function MembershipCardItem({ membership, today, reminders }) {
       statusPlacement="actions"
       actions={
         <div className="flex items-center">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label={`${documentAction.label} for ${student?.full_name ?? membership.membership_code}`}
-            title={documentAction.label}
-            {...(documentAction.href
-              ? { render: <Link href={documentAction.href} />, nativeButton: false }
-              : { onClick: () => setIssueOpen(true) })}
-          >
-            <DocumentIcon className="size-4" aria-hidden="true" />
-          </Button>
+          {/* One primary action: the red reminder bell while a reminder applies (its document action stays in the More menu), otherwise the document icon. */}
+          {hasReminder(reminders) ? (
+            <ReminderMessageButton reminders={reminders} studentName={student?.full_name} onClick={() => setReminderOpen(true)} />
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="text-brand hover:bg-brand/10 hover:text-brand"
+              aria-label={`${documentAction.label} for ${student?.full_name ?? membership.membership_code}`}
+              title={documentAction.label}
+              {...(documentAction.href
+                ? { render: <Link href={documentAction.href} />, nativeButton: false }
+                : { onClick: () => setIssueOpen(true) })}
+            >
+              <DocumentIcon className="size-4" aria-hidden="true" />
+            </Button>
+          )}
           <MembershipCardMenu
             membershipId={membership.id}
             studentId={student?.id}
@@ -92,12 +100,20 @@ export default function MembershipCardItem({ membership, today, reminders }) {
             invoiceExists={membership.invoice_exists}
             hasPayments={membership.has_payments}
             reminders={reminders}
+            onOpenReminderMessage={() => setReminderOpen(true)}
             onIssueInvoice={() => setIssueOpen(true)}
             onOpenChange={setMenuOpen}
           />
           {documentAction.kind === "issue-receipt" ? (
             <MembershipIssueInvoiceDialog membership={membership} student={student} open={issueOpen} onOpenChange={setIssueOpen} />
           ) : null}
+          <MembershipReminderMessage
+            membership={membership}
+            reminders={reminders}
+            centreName={centreName}
+            open={reminderOpen}
+            onOpenChange={setReminderOpen}
+          />
         </div>
       }
       meta={[
