@@ -272,7 +272,7 @@ export default function MembershipFilters({
             active={view || undefined}
             ariaLabel="Membership list views"
             separate
-            className="flex-[2] sm:flex-none [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none"
+            iconOnly
           />
         </div>
       </ListToolbar>

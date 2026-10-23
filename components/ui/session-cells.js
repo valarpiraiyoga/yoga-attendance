@@ -1,6 +1,7 @@
 import { Clock } from "lucide-react";
 import Avatar from "@/components/ui/avatar";
 import { formatTime } from "@/lib/format";
+import { getBatchColor } from "@/lib/batches/identity";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,13 +15,22 @@ import { cn } from "@/lib/utils";
  * may wrap between the start and end time, never inside either. The batch name
  * may wrap too. Sized for a table's own width via container-query
  * variants (`@xl:`), so the enclosing wrapper must be an `@container`.
+ *
+ * `batchColor` (optional; the Attendance session table passes it): the batch's identity colour key (`batches.batch_color`). The clock tile and
+ * the batch code pill then both wear that colour (`getBatchColor`), so a batch reads the same everywhere. Without it the cell is as it always
+ * was (brand tile, plain code).
  */
-export function SessionCell({ startTime, endTime, batchName, batchCode }) {
+export function SessionCell({ startTime, endTime, batchName, batchCode, batchColor }) {
+  const color = batchColor === undefined ? null : getBatchColor(batchColor);
+
   return (
     <div className="flex items-center gap-2 @xl:gap-2.5">
       <span
         aria-hidden="true"
-        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand @xl:size-8"
+        className={cn(
+          "flex size-7 shrink-0 items-center justify-center @xl:size-8",
+          color ? cn("rounded-lg border", color.tile, color.border) : "rounded-full bg-brand/10 text-brand"
+        )}
       >
         <Clock className="size-4" />
       </span>
@@ -33,7 +43,13 @@ export function SessionCell({ startTime, endTime, batchName, batchCode }) {
         </p>
         <p className="leading-snug">
           <span className="text-body font-semibold text-text-primary">{batchName}</span>
-          {batchCode ? <span className="text-small whitespace-nowrap text-text-secondary"> · {batchCode}</span> : null}
+          {batchCode ? (
+            color ? (
+              <span className={cn("text-small ml-2 inline-block rounded-md border px-1.5 py-px font-semibold whitespace-nowrap", color.tile, color.border)}>{batchCode}</span>
+            ) : (
+              <span className="text-small whitespace-nowrap text-text-secondary"> · {batchCode}</span>
+            )
+          ) : null}
         </p>
       </div>
     </div>

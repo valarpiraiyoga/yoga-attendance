@@ -46,20 +46,6 @@ function Row({ label, value, strong = false }) {
   );
 }
 
-function Section({ id, title, description, children }) {
-  return (
-    <section aria-labelledby={id} className="flex flex-col gap-4 border-t border-border pt-5 first:border-t-0 first:pt-0">
-      <div>
-        <h2 id={id} className="text-section-title font-semibold text-text-primary">
-          {title}
-        </h2>
-        {description ? <p className="text-small text-text-secondary">{description}</p> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 /**
  * Edit Membership of a PACKAGE-LINKED membership (02-ux.md "Membership Details (package-linked)"): one workflow, three sections -
  * Membership (package, duration, start date, end date), Pricing (standard package pricing or a Custom Fee Plan, the custom fee, the
@@ -315,7 +301,7 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
   }
 
   return (
-    <form onSubmit={saveChanges} className="flex flex-col gap-6" noValidate>
+    <form onSubmit={saveChanges} className="flex flex-col gap-5" noValidate>
       {submitError ? (
         <p role="alert" className="text-body rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-danger">
           {submitError}
@@ -330,7 +316,8 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
         </p>
       ) : null}
 
-      <Section id="edit-membership" title="Membership" description="The package, how long it runs and when it starts.">
+      {/* The same two-column grid as Add Membership: Package | Duration, then Start date | End date. */}
+      <div className="grid gap-5 sm:grid-cols-2">
         <FormField id="edit-package" label="Package" required error={errors.package_id}>
           {(field) => (
             <Select
@@ -377,7 +364,8 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
               )}
             </FormField>
             {values.duration_option === "custom" ? (
-              <FormField id="edit-months" label="Months" required error={errors.custom_months} help="A whole number of calendar months, 1 to 120.">
+              <div className="sm:col-span-2 sm:w-[calc(50%-0.625rem)]">
+              <FormField id="edit-months" label="Months" required error={errors.custom_months} helpTip="A whole number of calendar months, 1 to 120.">
                 {(field) => (
                   <Input
                     {...field}
@@ -391,10 +379,11 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
                   />
                 )}
               </FormField>
+              </div>
             ) : null}
           </>
         ) : (
-          <p className="text-small text-text-secondary">
+          <p className="text-small text-text-secondary sm:col-span-2">
             {pkg?.total_classes ? `${pkg.total_classes} classes. ` : ""}Expiry: {endDate ? formatDate(endDate) : NO_EXPIRY_LABEL}. The expiry is changed only with Edit
             expiry on Membership Details.
           </p>
@@ -407,15 +396,22 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
         </FormField>
 
         {kind === "duration" ? (
-          <FormField id="edit-end" label="End date" help="Calculated from the duration and the start date. It cannot be edited.">
+          <FormField id="edit-end" label="End date" helpTip="Calculated from the duration and the start date. It cannot be edited.">
             {(field) => <Input {...field} readOnly value={calculatedEnd?.success ? formatDate(calculatedEnd.data) : endDate ? formatDate(endDate) : ""} placeholder="Calculated" />}
           </FormField>
         ) : null}
-      </Section>
+      </div>
 
-      <Section id="edit-pricing" title="Pricing" description="The final agreed fee is calculated for you and shown for confirmation before anything is saved.">
+      <hr className="border-border" />
+
+      {/* Pricing: the pricing type, then the fields in pairs. The final agreed fee is calculated for you and shown for confirmation before anything is saved. */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        {/* As Add Membership: the pricing type as radios in one row, with the individual discount beside it. */}
         <fieldset className="flex flex-col gap-2" disabled={isPending || locked}>
-          <legend className="mb-1 text-body font-medium text-text-primary">Pricing type</legend>
+          <legend className="mb-1 text-body font-medium text-text-primary">
+            Pricing<span className="text-danger" aria-hidden="true"> *</span>
+          </legend>
+          <div className="flex h-9 flex-wrap items-center gap-x-6 gap-y-2">
           {MODES.map((mode) => (
             <label key={mode.value} htmlFor={`edit-mode-${mode.value}`} className="text-body flex items-center gap-2 text-text-primary">
               <input
@@ -429,6 +425,7 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
               {mode.label}
             </label>
           ))}
+          </div>
           {errors.pricing_mode ? (
             <p role="alert" className="text-small text-danger">
               {errors.pricing_mode}
@@ -438,7 +435,7 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
 
         {isCustomPlan ? (
           <>
-            <FormField id="edit-custom-fee" label="Custom agreed fee" required error={errors.custom_fee ?? errors.customFee} help="The final agreed fee. No discount is applied on top of it.">
+            <FormField id="edit-custom-fee" label="Custom agreed fee" required error={errors.custom_fee ?? errors.customFee} helpTip="The final agreed fee. No discount is applied on top of it.">
               {(field) => (
                 <Input {...field} inputMode="decimal" disabled={isPending || locked} value={values.custom_fee} onChange={(event) => set("custom_fee")(event.target.value)} />
               )}
@@ -457,7 +454,12 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
           </>
         ) : (
           <>
-            <FormField id="edit-discount-type" label="Individual discount" error={discountType === "none" ? errors.discount : undefined}>
+            <FormField
+              id="edit-discount-type"
+              label="Individual discount"
+              error={discountType === "none" ? errors.discount : undefined}
+              helpTip="An optional discount for this student, taken from the fee after the package discount. A reason is required."
+            >
               {(field) => (
                 <Select items={DISCOUNT_TYPES} value={discountType} onValueChange={set("individual_discount_type")} disabled={isPending || locked}>
                   <SelectTrigger {...field}>
@@ -480,7 +482,7 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
                   label={discountType === "percent" ? "Percentage" : "Amount"}
                   required
                   error={errors.discount}
-                  help="Taken from the fee after the package discount."
+                  helpTip="Taken from the fee after the package discount."
                 >
                   {(field) => (
                     <Input
@@ -530,13 +532,15 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
             ) : null}
           </>
         )}
-        <p className="text-small text-text-secondary">
+        <p className="text-small rounded-card bg-background px-4 py-3 text-text-secondary sm:col-span-2">
           Current final agreed fee: <span className="font-medium text-text-primary">{money(membership.amount)}</span>. Changing the package, duration, start date or price
           asks you to review the revised fee and give a reason. Payments and issued receipts are never changed.
         </p>
-      </Section>
+      </div>
 
-      <Section id="edit-notes" title="Notes">
+      <hr className="border-border" />
+
+      <div>
         <FormField id="edit-notes-field" label="Notes" error={errors.notes}>
           {(field) => (
             <Textarea
@@ -552,9 +556,9 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
             />
           )}
         </FormField>
-      </Section>
+      </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-5">
         <Button type="button" variant="secondary" render={<Link href={cancelHref} />} nativeButton={false} disabled={isPending}>
           Cancel
         </Button>

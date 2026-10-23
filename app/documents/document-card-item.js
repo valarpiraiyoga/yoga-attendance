@@ -15,9 +15,20 @@ import { DOCUMENT_STATUS } from "@/lib/documents/status";
 export default function DocumentCardItem({ document }) {
   const status = DOCUMENT_STATUS[document.status];
   const customer = [document.customerName, document.customerCode].filter(Boolean).join(" · ");
+  const customerLabel = document.studentHref ? (
+    <>
+      <Link href={document.studentHref} className="rounded-sm text-brand hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+        {document.customerName}
+      </Link>
+      {document.customerCode ? ` · ${document.customerCode}` : ""}
+    </>
+  ) : (
+    customer
+  );
 
   return (
     <EntityCard
+      animatedBorder
       className="h-auto"
       iconClassName="text-brand"
       avatar={
@@ -47,7 +58,7 @@ export default function DocumentCardItem({ document }) {
         </Button>
       }
       meta={[
-        { icon: User, label: customer, title: customer },
+        { icon: User, label: customerLabel, title: customer },
         {
           icon: CreditCard,
           label: document.membershipCode ? (

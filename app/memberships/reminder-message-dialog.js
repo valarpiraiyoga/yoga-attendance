@@ -1,8 +1,10 @@
 "use client";
 
 import { useId, useState } from "react";
-import { BellRing, Copy, History, Mail, MessageCircle } from "lucide-react";
+import { BellRing, ChevronDown, CreditCard, Copy, ExternalLink, FileText, History, Info, Mail, MessageCircle, Send } from "lucide-react";
+import Avatar from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogBody,
@@ -14,19 +16,21 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import StudentContext from "@/components/ui/student-context";
 import { communicationHistoryHref } from "@/lib/communications/core";
 import {
   REMINDER_MESSAGE_LABELS,
   REMINDER_UNAVAILABLE,
   buildReminderMessage,
   initialReminderMessageType,
+  outstandingBalanceText,
   reminderEmailSubject,
   reminderMailtoUrl,
   reminderMessageTypes,
   reminderWhatsAppUrl,
 } from "@/lib/reminders/message";
 import { cn } from "@/lib/utils";
+
+const MESSAGE_MAX = 1000;
 
 const COPY_STATUS = {
   copied: "Message copied.",
@@ -97,22 +101,64 @@ export default function ReminderMessageDialog({ open, onOpenChange, reminders, s
   }
 
   const unavailableNote = (id, text) => (
-    <p id={id} className="text-small text-text-secondary">
+    <p id={id} className="text-small text-info">
       {text}
     </p>
   );
 
+  // Use Template: put the approved template back (dropping this reminder's edits), choosing which reminder's template when the membership has both.
+  function applyTemplate(option) {
+    setSelected(option);
+    setDrafts((current) => {
+      const next = { ...current };
+      delete next[option];
+      return next;
+    });
+    setCopyStatus(null);
+  }
+
+  const isPayment = type === "payment";
+  const reminderLabel = isPayment ? "Outstanding Balance" : "Membership Expiry";
+  const reminderValue = isPayment ? outstandingBalanceText(reminders.payment.balancePaise, reminders.payment.currency) : reminders.expiry.text;
+  const membershipId = membership?.id;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Reminder message</DialogTitle>
-          <DialogDescription>Prepare the message, then send it yourself. Nothing is sent from the application.</DialogDescription>
+      <DialogContent className="max-w-xl overflow-hidden">
+        <DialogHeader className="flex-row items-center gap-3">
+          <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info">
+            <Send className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <DialogTitle>Reminder message</DialogTitle>
+            <DialogDescription className="text-small">Prepare the message, then send it yourself. Nothing is sent from the application.</DialogDescription>
+          </div>
         </DialogHeader>
 
         <DialogBody className="flex flex-col gap-4">
-          <StudentContext student={student} membership={membership} />
+          {/* Who and which membership. */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-info/20 bg-info/5 p-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Avatar name={student?.full_name} src={student?.photo_url} size="lg" className="shrink-0" />
+              <div className="min-w-0">
+                <p className="text-body font-semibold break-words text-text-primary">{student?.full_name ?? "—"}</p>
+                {student?.student_code ? <p className="text-small text-text-secondary">Student ID: {student.student_code}</p> : null}
+                <p className="text-small flex items-center gap-1.5 text-text-secondary">
+                  <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span className="break-words">{[membership?.code, membership?.planLabel, membership?.period].filter(Boolean).join(" · ")}</span>
+                </p>
+              </div>
+            </div>
+            {student?.id ? (
+              <Button variant="outline" size="sm" className="text-info" render={<a href={`/students/${student.id}`} target="_blank" rel="noopener noreferrer" />} nativeButton={false}>
+                <ExternalLink className="size-4" aria-hidden="true" />
+                View Details
+                <span className="sr-only"> (opens in a new tab)</span>
+              </Button>
+            ) : null}
+          </div>
 
+          {/* The reminder itself, in red. With both reminders the Admin chooses which one to prepare. */}
           {types.length > 1 ? (
             <fieldset className="flex flex-col gap-2">
               <legend className="text-small mb-2 font-medium text-text-primary">Reminder</legend>
@@ -122,7 +168,7 @@ export default function ReminderMessageDialog({ open, onOpenChange, reminders, s
                     key={option}
                     className={cn(
                       "flex cursor-pointer items-start gap-2.5 rounded-card border px-3 py-2.5 transition-colors has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
-                      option === type ? "border-brand bg-brand/5" : "border-border hover:bg-background"
+                      option === type ? "border-danger/40 bg-danger/5" : "border-border hover:bg-background"
                     )}
                   >
                     <input
@@ -134,7 +180,7 @@ export default function ReminderMessageDialog({ open, onOpenChange, reminders, s
                         setSelected(option);
                         setCopyStatus(null);
                       }}
-                      className="mt-0.5 accent-brand"
+                      className="mt-0.5 accent-danger"
                     />
                     <span className="min-w-0">
                       <span className="text-body block font-medium text-text-primary">{REMINDER_MESSAGE_LABELS[option]}</span>
@@ -144,80 +190,120 @@ export default function ReminderMessageDialog({ open, onOpenChange, reminders, s
                 ))}
               </div>
             </fieldset>
-          ) : (
-            <p className="text-body flex items-center gap-2 font-medium text-danger">
-              <BellRing className="size-4 shrink-0" aria-hidden="true" />
-              <span>
-                <span className="sr-only">{REMINDER_MESSAGE_LABELS[type]}: </span>
-                {reminders[type].text}
+          ) : null}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-danger/20 bg-danger/5 p-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-danger/10 text-danger">
+                <BellRing className="size-5" />
               </span>
-            </p>
-          )}
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={messageId}>Message</Label>
-            <Textarea
-              id={messageId}
-              value={message}
-              onChange={(event) => editMessage(event.target.value)}
-              rows={11}
-              className="min-h-48 resize-y"
-              aria-describedby={hasMessage ? undefined : emptyNoteId}
-            />
-            {hasMessage ? null : unavailableNote(emptyNoteId, "Write a message to copy or send it.")}
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button type="button" variant="outline" onClick={copyMessage} disabled={!hasMessage} aria-describedby={hasMessage ? undefined : emptyNoteId}>
-              <Copy className="size-4" aria-hidden="true" />
-              Copy Message
-            </Button>
-            {whatsAppUrl ? (
-              <Button variant="outline" render={<a href={whatsAppUrl} target="_blank" rel="noopener noreferrer" />} nativeButton={false}>
-                <MessageCircle className="size-4" aria-hidden="true" />
-                Open WhatsApp
-                <span className="sr-only"> (opens in a new tab)</span>
-              </Button>
-            ) : (
-              <Button type="button" variant="outline" disabled aria-describedby={noWhatsApp ? whatsAppNoteId : emptyNoteId}>
-                <MessageCircle className="size-4" aria-hidden="true" />
-                Open WhatsApp
-              </Button>
-            )}
-            {mailtoUrl ? (
-              <Button variant="outline" render={<a href={mailtoUrl} />} nativeButton={false}>
-                <Mail className="size-4" aria-hidden="true" />
-                Open Email
-              </Button>
-            ) : (
-              <Button type="button" variant="outline" disabled aria-describedby={noEmail ? emailNoteId : emptyNoteId}>
-                <Mail className="size-4" aria-hidden="true" />
-                Open Email
-              </Button>
-            )}
-            {student?.id ? (
-              <Button
-                variant="outline"
-                render={<a href={communicationHistoryHref(student.id)} target="_blank" rel="noopener noreferrer" />}
-                nativeButton={false}
-              >
-                <History className="size-4" aria-hidden="true" />
-                View Communication History
+              <div className="min-w-0">
+                <p className="text-small text-danger">
+                  <span className="sr-only">{REMINDER_MESSAGE_LABELS[type]}: </span>
+                  {reminderLabel}
+                </p>
+                <p className="text-section-title font-semibold break-words text-danger tabular-nums">{reminderValue}</p>
+              </div>
+            </div>
+            {membershipId ? (
+              <Button variant="outline" size="sm" className="border-danger/30 text-danger hover:bg-danger/10 hover:text-danger" render={<a href={`/memberships/${membershipId}`} target="_blank" rel="noopener noreferrer" />} nativeButton={false}>
+                <CreditCard className="size-4" aria-hidden="true" />
+                {isPayment ? "View Payments" : "View Membership"}
                 <span className="sr-only"> (opens in a new tab)</span>
               </Button>
             ) : null}
           </div>
 
-          {noWhatsApp || noEmail ? (
-            <div className="flex flex-col gap-1">
-              {noWhatsApp ? unavailableNote(whatsAppNoteId, REMINDER_UNAVAILABLE.whatsApp) : null}
-              {noEmail ? unavailableNote(emailNoteId, REMINDER_UNAVAILABLE.email) : null}
+          {/* The message, editable, with the approved template one click away. */}
+          <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor={messageId} className="text-body font-semibold">Message</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button type="button" variant="outline" size="sm" className="text-info" />}>
+                  <FileText className="size-4" aria-hidden="true" />
+                  Use Template
+                  <ChevronDown className="size-4" aria-hidden="true" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-48">
+                  {types.map((option) => (
+                    <DropdownMenuItem key={option} onClick={() => applyTemplate(option)}>
+                      {REMINDER_MESSAGE_LABELS[option]} template
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          ) : null}
+            <div className="flex flex-col gap-1">
+              <Textarea
+                id={messageId}
+                value={message}
+                onChange={(event) => editMessage(event.target.value)}
+                rows={10}
+                maxLength={MESSAGE_MAX}
+                className="min-h-44 resize-y"
+                aria-describedby={hasMessage ? undefined : emptyNoteId}
+              />
+              <p className="text-small text-right text-text-secondary tabular-nums" aria-live="polite">
+                {message.length}/{MESSAGE_MAX}
+              </p>
+              {hasMessage ? null : unavailableNote(emptyNoteId, "Write a message to copy or send it.")}
+            </div>
 
-          <p role="status" className={cn("text-small", copyStatus === "failed" ? "text-danger" : "text-success", !copyStatus && "sr-only")}>
-            {copyStatus ? COPY_STATUS[copyStatus] : ""}
-          </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button type="button" variant="secondary" onClick={copyMessage} disabled={!hasMessage} aria-describedby={hasMessage ? undefined : emptyNoteId}>
+                <Copy className="size-4" aria-hidden="true" />
+                Copy Message
+              </Button>
+              {whatsAppUrl ? (
+                <Button variant="outline" className="border-success/30 bg-success/10 text-success hover:bg-success/15 hover:text-success" render={<a href={whatsAppUrl} target="_blank" rel="noopener noreferrer" />} nativeButton={false}>
+                  <MessageCircle className="size-4" aria-hidden="true" />
+                  Open WhatsApp
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" disabled aria-describedby={noWhatsApp ? whatsAppNoteId : emptyNoteId}>
+                  <MessageCircle className="size-4" aria-hidden="true" />
+                  Open WhatsApp
+                </Button>
+              )}
+              {mailtoUrl ? (
+                <Button variant="outline" render={<a href={mailtoUrl} />} nativeButton={false}>
+                  <Mail className="size-4" aria-hidden="true" />
+                  Open Email
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" disabled aria-describedby={noEmail ? emailNoteId : emptyNoteId}>
+                  <Mail className="size-4" aria-hidden="true" />
+                  Open Email
+                </Button>
+              )}
+              {student?.id ? (
+                <Button
+                  variant="outline"
+                  render={<a href={communicationHistoryHref(student.id)} target="_blank" rel="noopener noreferrer" />}
+                  nativeButton={false}
+                >
+                  <History className="size-4" aria-hidden="true" />
+                  View Communication History
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </Button>
+              ) : null}
+            </div>
+
+            {noWhatsApp || noEmail ? (
+              <div className="flex items-start gap-2.5 rounded-card border border-info/20 bg-info/5 px-3 py-2.5">
+                <Info className="mt-0.5 size-4 shrink-0 text-info" aria-hidden="true" />
+                <div className="flex flex-col gap-1">
+                  {noWhatsApp ? unavailableNote(whatsAppNoteId, REMINDER_UNAVAILABLE.whatsApp) : null}
+                  {noEmail ? unavailableNote(emailNoteId, REMINDER_UNAVAILABLE.email) : null}
+                </div>
+              </div>
+            ) : null}
+
+            <p role="status" className={cn("text-small", copyStatus === "failed" ? "text-danger" : "text-success", !copyStatus && "sr-only")}>
+              {copyStatus ? COPY_STATUS[copyStatus] : ""}
+            </p>
+          </section>
         </DialogBody>
 
         <DialogFooter>

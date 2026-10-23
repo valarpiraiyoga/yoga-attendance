@@ -18,7 +18,14 @@ export default function DocumentList({ documents, view = "", total, sort, sortOp
         count={total}
         label={total === 1 ? "Document" : "Documents"}
         className="mb-3 flex-row items-center justify-between"
-        aside={<SortSelect id="document-sort" options={sortOptions} value={sort} defaultValue={DEFAULT_DOCUMENT_SORT} compactOnMobile />}
+        aside={<SortSelect
+            id="document-sort"
+            options={sortOptions}
+            value={sort}
+            defaultValue={DEFAULT_DOCUMENT_SORT}
+            triggerClassName="w-56"
+            compactOnMobile
+          />}
       />
 
       {view !== "table" ? (

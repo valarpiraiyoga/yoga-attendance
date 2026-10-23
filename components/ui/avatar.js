@@ -15,16 +15,17 @@ const TONE_CLASSES = {
 /**
  * The one initials/photo avatar (06-ui-implementation-rules.md §21),
  * replacing 17 duplicated `getInitials` + inline-markup copies. Renders a
- * photo when `src` is given, otherwise a tinted initials circle from
+ * photo when `src` is given, otherwise a tinted initials rounded square from
  * `lib/format.js`'s `getInitials`.
  *
  * `bordered` adds the subtle ring `student-card-item.js` uses on its list
  * avatar (`border-surface/80` + `shadow-xs`) for a card sitting on a tinted
  * surface; plain (unbordered) is the default used everywhere else.
  */
-export default function Avatar({ name, src, alt = "", size = "md", tone = "brand", shape = "circle", bordered = false, className }) {
+export default function Avatar({ name, src, alt = "", size = "md", tone = "brand", shape = "square", bordered = false, className }) {
   const dimension = SIZE_CLASSES[size] ?? SIZE_CLASSES.md;
-  const shapeClass = shape === "square" ? "rounded-lg" : "rounded-full";
+  // Rounded square by default everywhere (the app's avatar look); `shape="circle"` is still available. The smallest size gets a tighter radius so it stays a square.
+  const shapeClass = shape === "circle" ? "rounded-full" : size === "sm" ? "rounded-md" : "rounded-lg";
 
   if (src) {
     // Same `<img>` tradeoff as the existing photo renders this consolidates

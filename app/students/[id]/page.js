@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
 import { getCenterSettings, getCenterTimezone, getCentreToday } from "@/lib/center-profile/settings";
-import { CreditCard, FileText, Layers, Pencil, Plus } from "lucide-react";
+import { CalendarDays, CreditCard, FileText, Hash, Layers, Pencil, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -27,6 +27,7 @@ import {
 import { DAY_LABELS, DAYS_OF_WEEK } from "@/lib/schedules/validation";
 import { listMembershipsForStudent, pickCurrentMembership } from "@/lib/memberships/data";
 import { formatDate, formatTimeRange } from "@/lib/format";
+import { groupSchedulesByTimeSlot, instructorCountLabel } from "@/lib/students/enrollment-schedule-groups";
 import { ENTITY_STATUS } from "@/lib/status";
 import StudentHeader from "@/app/students/[id]/student-header";
 import GuidedComplete from "@/app/students/guided-complete";
@@ -295,25 +296,42 @@ export default async function StudentDetailsPage({ params, searchParams }) {
 }
 
 /**
- * One batch enrollment as a compact card: the batch mark, name, status and code with its edit action, then its current
- * schedules (Day · Time · Instructor). An enrollment with no current schedule is flagged, as before.
+ * One batch enrollment as a card: the batch mark, name and status, its code and enrollment date, and the edit action; then its current schedules grouped by time slot
+ * (`groupSchedulesByTimeSlot`, presentation only) as a Time | Instructor | Days table. Each distinct time slot is one tinted block in the Time
+ * column - the time and "N instructors" - spanning that slot's instructor rows; each instructor is a row with their photo and name and the days
+ * they teach that slot as chips. Slot colours cycle through a restrained set, one per slot. An enrollment with no current schedule is flagged, as
+ * before. The table scrolls sideways inside the card on a narrow screen rather than overflowing it.
  */
+const SLOT_TONES = ["bg-info/10 text-info", "bg-success/10 text-success", "bg-warning/10 text-warning", "bg-brand-accent/10 text-brand-accent"];
+
 function EnrollmentCard({ studentId, enrollment, schedules }) {
   const batchName = enrollment.batches?.name ?? "Unknown batch";
   const batchCode = enrollment.batches?.code ?? "—";
   const enrollmentStatus = ENTITY_STATUS[enrollment.status] ?? ENTITY_STATUS.inactive;
+  const groups = groupSchedulesByTimeSlot(schedules);
+  const missingSchedules = schedules.filter((assignment) => !assignment.schedule);
 
   return (
-    <li className="overflow-hidden rounded-card border border-border">
-      <div className="flex items-start gap-3 bg-background/60 px-3 py-2.5">
+    <li className="overflow-hidden rounded-card border border-border bg-surface">
+      <div className="flex items-start gap-3 px-4 py-3">
         <BatchAvatar batch={{ ...enrollment.batches, name: batchName }} size="md" className="shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <p className="text-body font-semibold break-words text-text-primary">{batchName}</p>
             <Badge variant={enrollmentStatus.variant}>{enrollmentStatus.label}</Badge>
           </div>
-          <p className="text-small text-text-secondary">
-            Code: <span className="font-medium text-text-primary">{batchCode}</span>
+          <p className="text-small mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-text-secondary">
+            <span className="inline-flex items-center gap-1">
+              <Hash className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="sr-only">Code: </span>
+              {batchCode}
+            </span>
+            {enrollment.effective_start_date ? (
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="size-3.5 shrink-0" aria-hidden="true" />
+                Enrolled on {formatDate(enrollment.effective_start_date)}
+              </span>
+            ) : null}
           </p>
         </div>
         <Button
@@ -330,50 +348,65 @@ function EnrollmentCard({ studentId, enrollment, schedules }) {
       </div>
 
       {schedules.length === 0 ? (
-        <p className="text-small border-t border-border px-3 py-2 font-medium text-danger">
+        <p className="text-small border-t border-border px-4 py-2.5 font-medium text-danger">
           No schedule assigned — this enrollment is not eligible for attendance.
         </p>
       ) : (
-        <table aria-label={`${batchName} schedules`} className="w-full table-fixed border-t border-border">
-          <thead>
-            <tr className="text-small text-left text-text-secondary">
-              <th scope="col" className="w-16 px-3 py-1.5 font-medium sm:w-24">Day</th>
-              <th scope="col" className="px-2 py-1.5 font-medium">Time</th>
-              <th scope="col" className="px-2 py-1.5 font-medium">Instructor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {schedules.map((assignment) => {
-              const schedule = assignment.schedule;
-              if (!schedule) {
-                return (
-                  <tr key={assignment.id} className="border-t border-border/60">
-                    <td colSpan={3} className="text-small px-3 py-1.5 font-medium text-danger">
-                      Assigned schedule could not be found
+        <div className="overflow-x-auto border-t border-border">
+          <table aria-label={`${batchName} schedules`} className="w-full min-w-[28rem]">
+            <thead>
+              <tr className="text-small bg-brand/5 text-left text-text-secondary">
+                <th scope="col" className="w-44 px-4 py-2 font-medium sm:w-52">Time</th>
+                <th scope="col" className="px-2 py-2 font-medium">Instructor</th>
+                <th scope="col" className="px-2 py-2 font-medium">Days</th>
+              </tr>
+            </thead>
+            {groups.map((group, groupIndex) => (
+              <tbody key={group.key} className="border-t border-border first:border-t-0">
+                {group.rows.map((row, rowIndex) => (
+                  <tr key={row.key} className={rowIndex === 0 ? "" : "border-t border-border/60"}>
+                    {rowIndex === 0 ? (
+                      <td rowSpan={group.rows.length} className="p-1.5 align-middle">
+                        <div className={`flex h-full min-h-14 flex-col items-center justify-center rounded-lg px-3 py-2 text-center ${SLOT_TONES[groupIndex % SLOT_TONES.length]}`}>
+                          <span className="text-[0.8125rem] leading-5 font-semibold whitespace-nowrap">{formatTimeRange(group.startTime, group.endTime)}</span>
+                          <span className="text-small opacity-80">{instructorCountLabel(group.instructorCount)}</span>
+                        </div>
+                      </td>
+                    ) : null}
+                    <td className="text-body px-2 py-2.5 text-text-primary">
+                      {row.instructor ? (
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <Avatar name={row.instructor.full_name} src={row.instructor.photo_url} size="md" className="shrink-0" />
+                          <span className="truncate">{row.instructor.full_name}</span>
+                        </span>
+                      ) : (
+                        <span className="text-text-secondary">—</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <ul className="flex flex-wrap gap-1.5">
+                        {row.days.map((day) => (
+                          <li key={day} className="text-small rounded-md border border-border bg-brand/5 px-2.5 py-1 font-medium text-text-primary">
+                            {(DAY_LABELS[day] ?? day).slice(0, 3)}
+                          </li>
+                        ))}
+                      </ul>
                     </td>
                   </tr>
-                );
-              }
-              const instructor = schedule.instructors;
-              return (
-                <tr key={assignment.id} className="text-body border-t border-border/60 text-text-primary">
-                  <td className="px-3 py-1.5 font-medium">{(DAY_LABELS[schedule.day_of_week] ?? schedule.day_of_week).slice(0, 3)}</td>
-                  <td className="px-2 py-1.5">{formatTimeRange(schedule.start_time, schedule.end_time)}</td>
-                  <td className="px-2 py-1.5">
-                    {instructor?.full_name ? (
-                      <span className="flex min-w-0 items-center gap-2">
-                        <Avatar name={instructor.full_name} src={instructor.photo_url} size="sm" className="size-6 shrink-0" />
-                        <span className="truncate">{instructor.full_name}</span>
-                      </span>
-                    ) : (
-                      <span className="text-text-secondary">—</span>
-                    )}
+                ))}
+              </tbody>
+            ))}
+            {missingSchedules.map((assignment) => (
+              <tbody key={assignment.id} className="border-t border-border/60">
+                <tr>
+                  <td colSpan={3} className="text-small px-4 py-2.5 font-medium text-danger">
+                    Assigned schedule could not be found
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </tbody>
+            ))}
+          </table>
+        </div>
       )}
     </li>
   );

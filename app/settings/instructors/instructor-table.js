@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import AnimatedBorder from "@/components/ui/animated-border";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import Avatar from "@/components/ui/avatar";
@@ -15,7 +17,11 @@ import InstructorRowMenu from "@/app/settings/instructors/instructor-row-menu";
 const PHONE_ONLY = "hidden @[36rem]:table-cell";
 const EMAIL_ONLY = "hidden @[48rem]:table-cell";
 
-const HEAD = "h-10 px-2 text-small tracking-normal";
+// Each instructor is its own rounded row card on the page background, as on the Students and Batches lists: a pale header strip, the cells
+// carrying the surface and the pale border, and the shared hover border (`.card-border-animated-row`, drawn by `AnimatedBorder`).
+const HEAD = "h-10 border-y border-border/60 bg-brand/5 px-2 text-small tracking-normal first:rounded-l-lg first:border-l last:rounded-r-lg last:border-r";
+const CELL = "border-y border-border px-2 py-3 first:rounded-l-card first:border-l last:rounded-r-card last:border-r";
+const LINK = "rounded-sm text-brand hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none";
 
 /**
  * One Instructor table row (wireframe p39; `18 Settings instructor.png`):
@@ -30,21 +36,31 @@ function InstructorRow({ instructor, isUpdating, disabled, onToggleStatus }) {
   const status = ENTITY_STATUS[instructor.status] ?? ENTITY_STATUS.inactive;
 
   return (
-    <TableRow className={cn((menuOpen || isUpdating) && "bg-brand/10 hover:bg-brand/10")}>
-      <TableCell className="py-3 pr-2 pl-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <Avatar name={instructor.full_name} src={instructor.photo_url} />
-          <p className="min-w-0 text-body font-semibold text-text-primary">{instructor.full_name}</p>
+    <TableRow
+      className={cn(
+        "card-border-animated-row border-0 [--card-border-inset:0px] [--card-border-radius:var(--radius-card)] hover:bg-transparent",
+        menuOpen || isUpdating ? "[&>td]:bg-brand/10" : "[&>td]:bg-surface"
+      )}
+    >
+      <TableCell className={cn(CELL, "py-3 pr-2 pl-3")}>
+        <AnimatedBorder />
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={instructor.full_name} src={instructor.photo_url} size="lg" />
+          <p className="min-w-0 text-body font-semibold">
+            <Link href={`/settings/instructors/${instructor.id}/edit`} className={LINK}>
+              {instructor.full_name}
+            </Link>
+          </p>
         </div>
       </TableCell>
-      <TableCell className={cn("px-2 py-3 whitespace-nowrap text-text-secondary", PHONE_ONLY)}>
+      <TableCell className={cn(CELL, "whitespace-nowrap text-text-secondary", PHONE_ONLY)}>
         {formatPhone(instructor.phone, instructor.phone_country_code)}
       </TableCell>
-      <TableCell className={cn("px-2 py-3 text-text-secondary", EMAIL_ONLY)}>{instructor.email || "\u2014"}</TableCell>
-      <TableCell className="px-2 py-3">
+      <TableCell className={cn(CELL, "text-text-secondary", EMAIL_ONLY)}>{instructor.email || "\u2014"}</TableCell>
+      <TableCell className={CELL}>
         <Badge variant={status.variant}>{status.label}</Badge>
       </TableCell>
-      <TableCell className="w-px py-3 pr-3 pl-1 whitespace-nowrap">
+      <TableCell className={cn(CELL, "w-px py-3 pr-3 pl-1 whitespace-nowrap")}>
         <InstructorRowMenu
           instructorId={instructor.id}
           instructorName={instructor.full_name}
@@ -66,15 +82,15 @@ function InstructorRow({ instructor, isUpdating, disabled, onToggleStatus }) {
  */
 export default function InstructorTable({ instructors, renderRowProps }) {
   return (
-    <div className="@container overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
-      <Table aria-label="Instructors">
+    <div className="@container">
+      <Table aria-label="Instructors" className="border-separate border-spacing-y-2">
         <TableHeader>
-          <TableRow className="hover:bg-transparent">
+          <TableRow className="border-0 hover:bg-transparent">
             <TableHead className={cn(HEAD, "pl-3")}>Instructor</TableHead>
             <TableHead className={cn(HEAD, PHONE_ONLY)}>Phone</TableHead>
             <TableHead className={cn(HEAD, EMAIL_ONLY)}>Email</TableHead>
             <TableHead className={HEAD}>Status</TableHead>
-            <TableHead className="h-10 w-px pr-3 pl-1 text-small tracking-normal whitespace-nowrap">Action</TableHead>
+            <TableHead className={cn(HEAD, "w-px pr-3 pl-1 whitespace-nowrap")}>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

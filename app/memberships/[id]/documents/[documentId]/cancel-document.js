@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, Receipt } from "lucide-react";
+import { Ban, Info, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import ContextCard from "@/components/ui/context-card";
@@ -87,20 +87,32 @@ export default function CancelDocument({ membershipId, documentId, title, number
         open={open}
         onOpenChange={handleOpenChange}
         tone="warning"
+        destructive
         title={`Cancel ${title} ${number}`}
         context={
           <ContextCard
+            className="border-info/20 bg-info/5 p-4"
             mark={
-              <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
-                <Receipt className="size-5" aria-hidden="true" />
+              <span aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info">
+                <Receipt className="size-6" aria-hidden="true" />
               </span>
             }
-            title={`${title} ${number}`}
+            title={
+              <>
+                <span className="text-small block font-normal text-text-secondary">{title}</span>
+                <span className="text-section-title block">{number}</span>
+              </>
+            }
             detail="It keeps its number and every detail."
           />
         }
         description={`${title} ${number} will be cancelled. It stays viewable, marked Cancelled with your reason, and keeps its number and every detail. No replacement is issued, and the payment and the membership are not changed. To correct details or the amount instead, use Correct Document. This cannot be undone.`}
-        confirmLabel="Cancel Document"
+        confirmLabel={
+          <span className="inline-flex items-center gap-2">
+            <Ban className="size-4" aria-hidden="true" />
+            Cancel Document
+          </span>
+        }
         pendingLabel="Cancelling…"
         isPending={isPending}
         onConfirm={runCancel}
@@ -117,7 +129,14 @@ export default function CancelDocument({ membershipId, documentId, title, number
             label="Reason for the cancellation"
             required
             error={fieldError}
-            help={`Shown on the cancelled document. Up to ${REASON_MAX} characters.`}
+            help={
+              <span className="flex items-start justify-between gap-3">
+                <span>Shown on the cancelled document. Up to {REASON_MAX} characters.</span>
+                <span className="shrink-0 tabular-nums">
+                  {reason.length}/{REASON_MAX}
+                </span>
+              </span>
+            }
           >
             {(field) => (
               <Textarea
@@ -133,6 +152,13 @@ export default function CancelDocument({ membershipId, documentId, title, number
               />
             )}
           </FormField>
+
+          <div className="flex items-start gap-3 rounded-card border border-info/20 bg-info/5 px-4 py-3">
+            <Info className="mt-0.5 size-5 shrink-0 text-info" aria-hidden="true" />
+            <p className="text-small text-text-secondary">
+              This action cannot be undone. The {title.toLowerCase()} will remain in the system as Cancelled and can still be viewed later.
+            </p>
+          </div>
         </div>
       </ConfirmDialog>
     </>

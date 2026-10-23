@@ -42,7 +42,7 @@ const GRID_HEIGHT = `calc(var(--week-hour) * ${GRID_HOURS} + ${TOP_OFFSET_PX + B
 // cards in the same weekday/time slot; the same value also insets every card
 // from its day column's own left/right edges, so cards never visually touch
 // the grid lines.
-const MIN_CARD_WIDTH_PX = 96;
+const MIN_CARD_WIDTH_PX = 128;
 // A day with only one (non-overlapping) card gets `width: 100%` of its day
 // column, which can stretch well past what a tiny avatar + short code needs
 // on a wide viewport — this caps how big the card is ever drawn, so it stays
@@ -50,7 +50,7 @@ const MIN_CARD_WIDTH_PX = 96;
 // shared/overlapping card below its MIN_CARD_WIDTH_PX floor: the two only
 // disagree when a card would otherwise be wider than this, i.e. exactly the
 // single-card-in-a-wide-column case this exists to fix.
-const CARD_MAX_WIDTH_PX = 140;
+const CARD_MAX_WIDTH_PX = 176;
 const CARD_GAP_PX = 4;
 // A hairline seam between two back-to-back cards (e.g. Tuesday 6–7 and
 // 7–8) so they read as two separate records, not one continuous block.

@@ -66,11 +66,24 @@ export default function MembershipCardItem({ membership, today, reminders, centr
 
   return (
     <EntityCard
+      animatedBorder
       className={cn("h-auto", menuOpen && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
       avatar={<Avatar name={student?.full_name} src={student?.photo_url} size="lg" bordered />}
-      title={student?.full_name ?? "—"}
-      subtitle={membership.membership_code}
+      title={
+        student?.id ? (
+          <Link href={`/students/${student.id}`} className="rounded-sm text-brand hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+            {student.full_name}
+          </Link>
+        ) : (
+          "—"
+        )
+      }
+      subtitle={
+        <Link href={`/memberships/${membership.id}`} className="rounded-sm text-brand hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+          {membership.membership_code}
+        </Link>
+      }
       status={<Badge variant={status.variant}>{status.label}</Badge>}
       statusPlacement="actions"
       actions={

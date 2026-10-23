@@ -33,7 +33,7 @@ export default function CommunicationAccordion({ subject, title, meta, actions, 
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="text-text-secondary hover:bg-brand/10 hover:text-brand"
+            className="bg-brand/5 text-text-secondary hover:bg-brand/10 hover:text-brand"
             aria-expanded={open}
             aria-controls={detailsId}
             aria-label={`${open ? "Collapse" : "Expand"} communication: ${subject}`}

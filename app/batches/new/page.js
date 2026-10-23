@@ -17,7 +17,7 @@ export default async function NewBatchPage() {
         title="Add Batch"
         description="Create a new batch. You can add schedules for it later."
       />
-      <div className="mx-auto w-full max-w-2xl">
+      <div className="mx-auto w-full max-w-3xl">
         <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
           <BatchForm action={createBatch} submitLabel="Create Batch" pendingLabel="Creating…" />
         </div>

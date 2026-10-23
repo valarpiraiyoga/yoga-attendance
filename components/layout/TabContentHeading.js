@@ -16,7 +16,7 @@ export default function TabContentHeading({ icon: Icon, title, description }) {
         <Icon className="size-5" aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <h2 className="text-body font-semibold text-text-primary">{title}</h2>
+        <h2 className="text-section-title font-semibold text-text-primary">{title}</h2>
         <p className="text-small mt-1 text-text-secondary">{description}</p>
       </div>
     </div>

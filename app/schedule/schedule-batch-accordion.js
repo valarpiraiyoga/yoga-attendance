@@ -2,20 +2,23 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Eye } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock, Eye, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
+import AnimatedBorder from "@/components/ui/animated-border";
 import BatchAvatar from "@/components/ui/batch-avatar";
 import { InstructorCell } from "@/components/ui/session-cells";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate, formatTime } from "@/lib/format";
 import { ENTITY_STATUS } from "@/lib/status";
-import { DAY_LABELS } from "@/lib/schedules/validation";
+import { DAY_LABELS, DAYS_OF_WEEK } from "@/lib/schedules/validation";
+import { TIME_RANGE_CHIPS, timeRangeKey, timeRangeSlots } from "@/lib/enrollments/schedule-picker-core";
 import { cn } from "@/lib/utils";
 import ScheduleCardMenu from "@/app/schedule/schedule-card-menu";
 import { scheduleContextOf } from "@/app/schedule/schedule-context";
 import SchedulePlaces from "@/app/schedule/schedule-places";
+import { placesDisplay } from "@/lib/schedules/capacity";
 
 // How many schedule rows a batch group shows on mobile before "+N more
 // schedules" (an in-place reveal, not pagination). The desktop table lists
@@ -66,39 +69,113 @@ function TimeRange({ schedule }) {
   );
 }
 
-// One schedule as a desktop table row: Day, Time, Instructor, Effective
-// From, Effective Until, Status, Action.
-function ScheduleTableRow({ schedule, batchId, batchName }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { status, day, instructor } = scheduleFacts(schedule);
+/**
+ * The batch's schedules grouped by time slot for the table (presentation only): slots earliest first, inside a slot by instructor and then
+ * Monday to Sunday. A schedule is still ONE row with its own day, dates, status, places and actions.
+ */
+function groupByTimeSlot(schedules) {
+  const dayIndex = (schedule) => {
+    const index = DAYS_OF_WEEK.indexOf(schedule.day_of_week);
+    return index === -1 ? DAYS_OF_WEEK.length : index;
+  };
+  const groups = new Map();
+  for (const schedule of schedules) {
+    const key = timeRangeKey(schedule);
+    const group = groups.get(key) ?? { key, schedules: [] };
+    group.schedules.push(schedule);
+    groups.set(key, group);
+  }
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      schedules: [...group.schedules].sort(
+        (a, b) => String(a.instructors?.full_name ?? "").localeCompare(String(b.instructors?.full_name ?? "")) || dayIndex(a) - dayIndex(b)
+      ),
+    }))
+    .sort((a, b) => String(a.schedules[0].start_time).localeCompare(String(b.schedules[0].start_time)) || a.key.localeCompare(b.key));
+}
+
+const instructorKey = (schedule) => schedule.instructors?.id ?? schedule.instructors?.full_name ?? "none";
+
+/**
+ * A slot's schedules as table rows: one row per instructor (and per effective period and status, so every column of a row is true for all of
+ * its days), its days in week order. Each day is still its own schedule record.
+ */
+function rowsOf(groupSchedules) {
+  const rows = new Map();
+  for (const schedule of groupSchedules) {
+    const key = [instructorKey(schedule), schedule.effective_from ?? "", schedule.effective_until ?? "", schedule.status ?? ""].join("|");
+    const row = rows.get(key) ?? { key, schedules: [] };
+    row.schedules.push(schedule);
+    rows.set(key, row);
+  }
+  return [...rows.values()];
+}
+
+/**
+ * One day of a row as a chip: the day and that schedule's places ("8 / 20", "Unlimited", a dash when they could not be read; tinted red when
+ * full). The chip opens the schedule's own menu (`ScheduleCardMenu`: View, Edit, View Batch, Delete) - every schedule keeps all its actions.
+ */
+function DayChip({ schedule, batchId, batchName }) {
+  const day = DAY_LABELS[schedule.day_of_week]?.slice(0, 3) ?? schedule.day_of_week;
   const time = `${formatTime(schedule.start_time)} – ${formatTime(schedule.end_time)}`;
+  const places = placesDisplay(schedule.places);
+  const placesText = places.unavailable ? "—" : places.text;
+  const placesLabel = places.unavailable ? "places unavailable" : places.isFull ? `full, ${places.text}` : `places ${places.text}`;
 
   return (
-    <TableRow className={cn(menuOpen && "bg-brand/10 hover:bg-brand/10")}>
-      <TableCell className="py-3 pr-2 pl-4 font-medium text-text-primary">{day}</TableCell>
+    <ScheduleCardMenu
+      scheduleId={schedule.id}
+      batchId={batchId}
+      batchName={batchName}
+      scheduleContext={scheduleContextOf(schedule, schedule.batches ?? { id: batchId, name: batchName })}
+      trigger={
+        <button
+          type="button"
+          aria-label={`${batchName}, ${DAY_LABELS[schedule.day_of_week] ?? day} ${time}, ${placesLabel}: schedule actions`}
+          className={cn(
+            "inline-flex min-w-14 flex-col items-center rounded-md border px-2.5 py-1 text-center transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+            places.isFull ? "border-danger/30 bg-danger/10 hover:bg-danger/15" : "border-border bg-brand/5 hover:bg-brand/10"
+          )}
+        >
+          <span className="text-small font-semibold text-text-primary">{day}</span>
+          <span className={cn("text-[0.6875rem] leading-4 tabular-nums", places.isFull ? "font-semibold text-danger" : "text-text-secondary")}>{placesText}</span>
+        </button>
+      }
+    />
+  );
+}
+
+// One table row: [the slot's Time block on its first row], Instructor, Days (a chip per day, with its places), Effective (from and until), Status.
+function ScheduleTableRow({ row, batchId, batchName, timeCell }) {
+  const first = row.schedules[0];
+  const { status, instructor } = scheduleFacts(first);
+
+  return (
+    <TableRow className="border-border/60 hover:bg-transparent">
+      {timeCell}
       <TableCell className="px-2 py-3">
-        <TimeRange schedule={schedule} />
+        <InstructorCell name={instructor} photoUrl={first.instructors?.photo_url} />
       </TableCell>
       <TableCell className="px-2 py-3">
-        <InstructorCell name={instructor} photoUrl={schedule.instructors?.photo_url} />
+        <span className="flex flex-wrap gap-1.5">
+          {row.schedules.map((schedule) => (
+            <DayChip key={schedule.id} schedule={schedule} batchId={batchId} batchName={batchName} />
+          ))}
+        </span>
       </TableCell>
-      <TableCell className="px-2 py-3">
-        <SchedulePlaces places={schedule.places} />
+      <TableCell className="px-2 py-3 whitespace-nowrap text-text-secondary">
+        <span className="block">
+          <span className="text-small">From </span>
+          <span className="text-text-primary">{formatDate(first.effective_from)}</span>
+        </span>
+        <span className="block">
+          <span className="text-small">Until </span>
+          <span className="text-text-primary">{formatDate(first.effective_until)}</span>
+        </span>
       </TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap text-text-secondary">{formatDate(schedule.effective_from)}</TableCell>
-      <TableCell className="px-2 py-3 whitespace-nowrap text-text-secondary">{formatDate(schedule.effective_until)}</TableCell>
-      <TableCell className="px-2 py-3">
+      <TableCell className="px-2 py-3 pr-4">
         <Badge variant={status.variant}>{status.label}</Badge>
-      </TableCell>
-      <TableCell className="w-px py-3 pr-3 pl-1 whitespace-nowrap">
-        <ScheduleActions
-          schedule={schedule}
-          batchId={batchId}
-          batchName={batchName}
-          day={day}
-          time={time}
-          onOpenChange={setMenuOpen}
-        />
       </TableCell>
     </TableRow>
   );
@@ -173,18 +250,24 @@ export default function ScheduleBatchAccordion({ batch, batchId, schedules, defa
   const countLabel = `${count} ${count === 1 ? "schedule" : "schedules"}`;
   const detail = [batch?.code ? `Code: ${batch.code}` : null, batch?.category].filter(Boolean).join(" · ");
   const hiddenCount = Math.max(0, count - MOBILE_ROW_LIMIT);
+  // The header's two figures: the batch's distinct time slots, and its distinct instructors (each person once, however many slots they teach).
+  const slotGroups = groupByTimeSlot(schedules);
+  const instructorCount = new Set(schedules.filter((schedule) => schedule.instructors).map(instructorKey)).size;
+  const tones = timeRangeSlots(schedules, TIME_RANGE_CHIPS.length);
   const mobileSchedules = showAll ? schedules : schedules.slice(0, MOBILE_ROW_LIMIT);
 
   return (
-    <section className="@container overflow-hidden rounded-card border border-border bg-surface shadow-xs">
+    // The shared hover border and lift of the list cards (`.card-border-animated`): inset 0 because the box clips its overflow.
+    <section className="card-border-animated @container overflow-hidden rounded-card border border-border bg-surface shadow-xs transition-shadow [--card-border-inset:0px] hover:shadow-lg">
+      <AnimatedBorder />
       <button
         type="button"
-        className="group flex w-full items-center gap-3 bg-brand/5 px-4 py-3 text-left transition-colors hover:bg-brand/10 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset"
+        className="group flex w-full items-center gap-3 bg-surface px-4 py-3 text-left focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset"
         aria-expanded={expanded}
         aria-controls={regionId}
         onClick={() => setExpanded((value) => !value)}
       >
-        <BatchAvatar batch={{ ...batch, name: batchName }} />
+        <BatchAvatar batch={{ ...batch, name: batchName }} size="lg" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-body font-semibold text-text-primary" title={batchName}>
             {batchName}
@@ -192,7 +275,17 @@ export default function ScheduleBatchAccordion({ batch, batchId, schedules, defa
           {detail ? <span className="block truncate text-small text-text-secondary">{detail}</span> : null}
           <span className="block text-small font-medium text-text-secondary @2xl:hidden">{countLabel}</span>
         </span>
-        <span className="hidden shrink-0 text-body font-medium text-text-primary @2xl:block">{countLabel}</span>
+        <span className="hidden shrink-0 items-center gap-2 @2xl:flex">
+          <span className="text-small inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 font-medium text-text-primary">
+            <Clock className="size-4 text-text-secondary" aria-hidden="true" />
+            {slotGroups.length} {slotGroups.length === 1 ? "time slot" : "time slots"}
+          </span>
+          <span className="text-small inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 font-medium text-text-primary">
+            <User className="size-4 text-text-secondary" aria-hidden="true" />
+            {instructorCount} {instructorCount === 1 ? "instructor" : "instructors"}
+          </span>
+          <span className="sr-only">{countLabel}</span>
+        </span>
         {expanded ? (
           <ChevronUp className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
         ) : (
@@ -206,22 +299,47 @@ export default function ScheduleBatchAccordion({ batch, batchId, schedules, defa
             <div className="hidden @2xl:block">
               <Table aria-label={`${batchName} schedules`}>
                 <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="h-10 pr-2 pl-4 text-small tracking-normal">Day</TableHead>
-                    <TableHead className="h-10 px-2 text-small tracking-normal">Time</TableHead>
+                  <TableRow className="bg-brand/5 hover:bg-brand/5">
+                    <TableHead className="h-10 w-48 pr-2 pl-4 text-small tracking-normal">Time</TableHead>
                     <TableHead className="h-10 px-2 text-small tracking-normal">Instructor</TableHead>
-                    <TableHead className="h-10 px-2 text-small tracking-normal">Places</TableHead>
-                    <TableHead className="h-10 px-2 text-small tracking-normal">Effective From</TableHead>
-                    <TableHead className="h-10 px-2 text-small tracking-normal">Effective Until</TableHead>
-                    <TableHead className="h-10 px-2 text-small tracking-normal">Status</TableHead>
-                    <TableHead className="h-10 w-px pr-3 pl-1 text-small tracking-normal">Action</TableHead>
+                    <TableHead className="h-10 px-2 text-small tracking-normal">
+                      Days <span className="font-normal normal-case">(places)</span>
+                    </TableHead>
+                    <TableHead className="h-10 px-2 text-small tracking-normal">Effective</TableHead>
+                    <TableHead className="h-10 px-2 pr-4 text-small tracking-normal">Status</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {schedules.map((schedule) => (
-                    <ScheduleTableRow key={schedule.id} schedule={schedule} batchId={batchId} batchName={batchName} />
-                  ))}
-                </TableBody>
+                {slotGroups.map((group) => {
+                  const first = group.schedules[0];
+                  const instructorCount = new Set(group.schedules.filter((schedule) => schedule.instructors).map(instructorKey)).size;
+                  const rows = rowsOf(group.schedules);
+                  return (
+                    <TableBody key={group.key} className="border-t border-border first:border-t-0">
+                      {rows.map((row, index) => (
+                        <ScheduleTableRow
+                          key={row.key}
+                          row={row}
+                          batchId={batchId}
+                          batchName={batchName}
+                          timeCell={
+                            index === 0 ? (
+                              <TableCell rowSpan={rows.length} className="p-1.5 pl-3 align-middle">
+                                <div className={cn("flex h-full min-h-14 flex-col items-center justify-center rounded-lg px-3 py-2 text-center", TIME_RANGE_CHIPS[tones.get(group.key) ?? 0])}>
+                                  <span className="text-small font-semibold whitespace-nowrap tabular-nums">
+                                    {formatTime(first.start_time)} – {formatTime(first.end_time)}
+                                  </span>
+                                  <span className="text-small opacity-80">
+                                    {instructorCount === 0 ? "No instructor" : instructorCount === 1 ? "1 instructor" : `${instructorCount} instructors`}
+                                  </span>
+                                </div>
+                              </TableCell>
+                            ) : null
+                          }
+                        />
+                      ))}
+                    </TableBody>
+                  );
+                })}
               </Table>
             </div>
 

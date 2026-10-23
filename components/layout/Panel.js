@@ -25,8 +25,8 @@ export function Panel({ children, className, ...props }) {
  * nested inside a page, e.g. "Student Information" or "Current Enrollments" on
  * a detail page.
  *
- * The icon sits in a fixed 16×22px slot that is exactly the title's line box
- * (`text-body` is 14/22), and the icon + text unit is top-aligned. So the icon
+ * The icon sits in a fixed 16×28px slot that is exactly the title's line box
+ * (`text-section-title` is 18/28), and the icon + text unit is top-aligned. So the icon
  * always centres on the *title line*, whether or not there is a description —
  * centring it on the whole title + description block (the earlier
  * `items-center`) dropped it ~9px below the title on every header that had a
@@ -48,13 +48,13 @@ export function PanelHeader({ icon: Icon, title, description, action, className,
         {Icon ? (
           <span
             aria-hidden="true"
-            className={cn("flex h-5.5 shrink-0 items-center justify-center", brand ? "w-5 text-brand" : "w-4 text-text-secondary")}
+            className={cn("flex h-7 shrink-0 items-center justify-center", brand ? "w-5 text-brand" : "w-4 text-text-secondary")}
           >
             <Icon className={brand ? "size-5" : "size-4"} aria-hidden="true" />
           </span>
         ) : null}
         <div className="min-w-0">
-          <h2 className="text-body font-semibold text-text-primary">{title}</h2>
+          <h2 className="text-section-title font-semibold text-text-primary">{title}</h2>
           {description ? <p className="text-small text-text-secondary">{description}</p> : null}
         </div>
       </div>

@@ -19,12 +19,14 @@ import { Button } from "@/components/ui/button";
  * involved; hiding only sets `hidden` on the strip's wrapper.
  *
  * The preference persists in `localStorage`, one entry per page, and
- * defaults to visible. If storage is unavailable (private mode, blocked),
- * the choice still works for the session via an in-memory fallback.
+ * defaults to hidden (the KPI button is off until the person turns it on).
+ * If storage is unavailable (private mode, blocked), the choice still works
+ * for the session via an in-memory fallback.
  *
- * SSR renders "visible"; a stored "hidden" applies right after hydration.
+ * SSR renders "hidden"; a stored "visible" applies right after hydration.
  */
-const STORAGE_PREFIX = "yoga-center:kpi-visibility:";
+// "v2": the default became hidden, so choices saved under the old key (made while the default was visible) are not carried over - every page starts hidden.
+const STORAGE_PREFIX = "yoga-center:kpi-visibility:v2:";
 const CHANGE_EVENT = "yoga-center:kpi-visibility-change";
 
 // Fallback for the session when localStorage can't be written or read.
@@ -35,9 +37,9 @@ const memory = new Map();
 function readVisible(pageKey) {
   if (memory.has(pageKey)) return memory.get(pageKey);
   try {
-    return window.localStorage.getItem(STORAGE_PREFIX + pageKey) !== "hidden";
+    return window.localStorage.getItem(STORAGE_PREFIX + pageKey) === "visible";
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -65,7 +67,7 @@ function useKpiVisible(pageKey) {
   const visible = useSyncExternalStore(
     subscribe,
     () => readVisible(pageKey),
-    () => true
+    () => false
   );
 
   return [visible, (next) => writeVisible(pageKey, next)];

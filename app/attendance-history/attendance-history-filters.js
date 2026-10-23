@@ -288,7 +288,8 @@ export default function AttendanceHistoryFilters({
             items={layoutItems}
             active={layout || undefined}
             ariaLabel="Attendance history views"
-            className={showDateFilters ? undefined : "flex-[2] sm:flex-none [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none"}
+            separate
+            iconOnly
           />
         </div>
       </ListToolbar>

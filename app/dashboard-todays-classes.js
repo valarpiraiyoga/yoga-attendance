@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowRight, Calendar, Info } from "lucide-react";
+import { ArrowRight, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DashboardClassRow from "@/app/dashboard-class-row";
+import DashboardClassTable from "@/app/dashboard-class-table";
 
 function resolveAction(session, today) {
   if (session.status === "cancelled" || session.status === "holiday") {
@@ -53,7 +54,9 @@ export default function DashboardTodaysClasses({
           </span>
           <div className="min-w-0">
             <h2 className="text-section-title font-semibold text-text-primary">Today&apos;s Classes</h2>
-            <p className="text-small mt-0.5 text-text-secondary">{description}</p>
+            <p className="text-small mt-0.5 text-text-secondary">
+              {description} Showing {count} {count === 1 ? "class" : "classes"}; times are in your center&apos;s local time zone ({timeZone}).
+            </p>
           </div>
         </div>
         {isAdmin ? (
@@ -64,24 +67,23 @@ export default function DashboardTodaysClasses({
         ) : null}
       </div>
 
-      <div className="mt-4 flex items-start gap-3 rounded-lg bg-background px-4 py-3">
-        <Info className="mt-0.5 size-4 shrink-0 text-text-secondary" aria-hidden="true" />
-        <div>
-          <p className="text-body font-medium text-text-primary">
-            Showing {count} {count === 1 ? "class" : "classes"} for today
-          </p>
-          <p className="text-small mt-0.5 text-text-secondary">
-            Times are in your center&apos;s local timezone ({timeZone}).
-          </p>
-        </div>
-      </div>
-
       {count === 0 ? (
         <div className="mt-4 flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-12 text-center">
           <p className="text-body max-w-sm text-text-secondary">No class sessions are scheduled for today.</p>
         </div>
       ) : (
-        <div className="mt-4 divide-y divide-border overflow-hidden rounded-lg border border-border">
+        <>
+        {/* From md up a table (Time, Batch, Instructor, Students, Status, Actions); on a phone the stacked rows. */}
+        <div className="mt-4 hidden md:block">
+          <DashboardClassTable
+            sessions={sessions}
+            showInstructor={showInstructor}
+            timeZone={timeZone}
+            actionOf={(session) => sessionAction(session, today)}
+            ariaLabel="Today's Classes"
+          />
+        </div>
+        <div className="mt-4 divide-y divide-border overflow-hidden rounded-lg border border-border md:hidden">
           {sessions.map((session) => (
             <DashboardClassRow
               key={session.id ?? `${session.schedule_id}:${session.session_date}`}
@@ -92,6 +94,7 @@ export default function DashboardTodaysClasses({
             />
           ))}
         </div>
+        </>
       )}
     </section>
   );

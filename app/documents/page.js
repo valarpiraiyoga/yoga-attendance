@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { KpiStrip, KpiToggle } from "@/components/ui/kpi-visibility";
 import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
@@ -61,10 +62,14 @@ export default async function DocumentsPage({ searchParams }) {
         title="Documents"
         description="Every invoice and receipt, issued and cancelled, across all memberships."
         icon={<FileText className="size-6" />}
+        actions={<KpiToggle pageKey="documents" />}
       />
 
       <Container>
-        <DocumentSummary summary={summary} currency={currency} />
+        {/* The KPI tiles are off until the person turns them on (the KPIs button; the shared default is hidden). */}
+        <KpiStrip pageKey="documents">
+          <DocumentSummary summary={summary} currency={currency} />
+        </KpiStrip>
 
         <DocumentFilters
           key={`${series}:${status}:${fromDate}:${toDate}`}

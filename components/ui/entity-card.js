@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import AnimatedBorder from "@/components/ui/animated-border";
 
 /**
  * The one list-item card (06-ui-implementation-rules.md §8.2), replacing
@@ -23,6 +24,8 @@ import { cn } from "@/lib/utils";
  * existed. `"actions"` instead stacks it under `actions` in the right
  * column (View/menu icons on top, status below) — the Students card's
  * finalized header shape. Every existing caller is unaffected by default.
+ *
+ * `animatedBorder` (opt-in; the Students cards): on hover the card lifts with a stronger shadow, gets a steady blue border and a slow gradient arc runs round it (`AnimatedBorder`, `.card-border-animated`, app/globals.css).
  */
 export default function EntityCard({
   avatar,
@@ -33,6 +36,7 @@ export default function EntityCard({
   actions,
   meta = [],
   iconClassName = "text-text-secondary",
+  animatedBorder = false,
   className,
   children,
 }) {
@@ -40,9 +44,11 @@ export default function EntityCard({
     <article
       className={cn(
         "flex h-full flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-sm",
+        animatedBorder && "card-border-animated transition-shadow hover:shadow-lg",
         className
       )}
     >
+      {animatedBorder ? <AnimatedBorder /> : null}
       <div className="flex items-start gap-2.5">
         {avatar}
         <div className="min-w-0 flex-1">

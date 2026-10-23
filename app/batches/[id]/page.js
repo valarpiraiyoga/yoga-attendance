@@ -8,7 +8,7 @@ import { getBatch } from "@/lib/batches/data";
 import { batchToday, currentSchedulesOf, summarizeCurrentSchedules } from "@/lib/batches/summary";
 import { countActiveEnrollments } from "@/lib/batches/active-students";
 import { listSchedulesForBatch } from "@/lib/schedules/data";
-import { listEnrollmentsForBatch } from "@/lib/enrollments/data";
+import { isScheduleAssignmentActive, listEnrollmentsForBatch, listScheduleAssignmentsForEnrollments } from "@/lib/enrollments/data";
 import { getBatchAttendanceReport } from "@/lib/reports/data";
 import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { monthBounds, parseCalendarMonth } from "@/lib/students/attendance-calendar";
@@ -67,6 +67,11 @@ export default async function BatchDetailsPage({ params, searchParams }) {
     listEnrollmentsForBatch(id),
     loadMonthSessions(id, month),
   ]);
+  // The enrollments' CURRENT schedule assignments (one read for the whole batch), for the Students section's grouping by session. If they cannot
+  // be read the section still lists every student, just without sessions.
+  const assignments = await listScheduleAssignmentsForEnrollments(enrollments.map((enrollment) => enrollment.id))
+    .then((rows) => rows.filter((assignment) => isScheduleAssignmentActive(assignment, today)))
+    .catch(() => null);
   // The batch's current schedules — the same set (same definition, same centre
   // date) the Batches card and table summarise; the Schedules tab lists every row.
   const currentSchedules = currentSchedulesOf(schedules, today);
@@ -127,9 +132,14 @@ export default async function BatchDetailsPage({ params, searchParams }) {
           />
         </StatTileGroup>
 
-        <WeeklyScheduleOverview batchId={batch.id} schedules={currentSchedules} upcomingScheduleCount={upcomingScheduleCount} />
+        <WeeklyScheduleOverview batchId={batch.id} schedules={currentSchedules} upcomingScheduleCount={upcomingScheduleCount} today={today} />
 
-        <BatchStudentsSection enrollments={enrollments} activeCount={activeStudentCount} />
+        <BatchStudentsSection
+          enrollments={enrollments}
+          activeCount={activeStudentCount}
+          assignments={assignments}
+          schedules={currentSchedules}
+        />
 
         <BatchAttendanceStrip batchId={batch.id} month={month} today={today} sessions={monthSessions} schedules={schedules} />
       </div>

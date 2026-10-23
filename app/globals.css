@@ -342,3 +342,105 @@ body {
     background-color: var(--color-text-secondary);
   }
 }
+
+/*
+  Animated card border (opt-in, Students list only: `AnimatedBorder` inside an `EntityCard animatedBorder` card - `.card-border-animated` - and
+  inside the first cell of a table row - `.card-border-animated-row`). While the pointer hovers (devices that can hover) a short brand-to-cyan
+  arc runs round the 1px border, slowly (6s a lap) and at a CONSTANT speed along the edge: it is an SVG rounded rect whose `pathLength` is 100, so a dash moves the
+  same distance per second on a long row edge, a short one and a corner alike (a rotating conic gradient speeds up toward the corners of a wide
+  row). The arc is two dashes of the same path - a long cyan tail and a short brand head, a fraction of a lap apart in time only - and the loop point
+  (dashoffset 0 / -100) is identical, so it never jumps. It is paused, not removed, when the pointer leaves, so it fades out where it is.
+  \`pointer-events: none\`, no layout. A row cannot carry the ring itself (a \`tr::before\` becomes an anonymous table cell and shifts the row), so
+  the svg and the shadow live in the row's first cell and are sized to the whole row, the positioned ancestor. A row has no border of its own
+  (its cells carry it), so its inset is 0: the card's -1px would stick out of the table and add a horizontal scrollbar.
+  Hover also holds a steady blue border under the arc and lifts the card/row with a stronger shadow. Reduced motion: nothing moves - the border just turns solid brand.
+*/
+@keyframes card-border-run {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+.card-border-animated,
+.card-border-animated-row {
+  position: relative;
+}
+
+.card-border-ring {
+  position: absolute;
+  top: var(--card-border-inset, -1px);
+  left: var(--card-border-inset, -1px);
+  width: calc(100% - 2 * var(--card-border-inset, -1px));
+  height: calc(100% - 2 * var(--card-border-inset, -1px));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+.card-border-ring rect {
+  fill: none;
+  stroke-width: 2; /* centred on the edge and clipped by the svg: 1px shows, exactly over the card's border */
+  stroke-dashoffset: 0;
+  animation: card-border-run 6s linear infinite paused;
+}
+
+.card-border-ring-tail {
+  stroke: var(--brand-secondary);
+  stroke-dasharray: 24 76;
+}
+
+.card-border-ring .card-border-ring-head {
+  stroke: var(--brand);
+  stroke-dasharray: 12 88;
+  animation-delay: -0.72s; /* 12% of the lap ahead of the tail: the brand head leads the cyan tail */
+}
+
+/* The steady blue border shown for as long as the pointer is on the card; the arc above runs over it. */
+.card-border-ring .card-border-ring-base {
+  stroke: var(--brand);
+  stroke-opacity: 0.55;
+  animation: none;
+}
+
+/* The row's hover shadow: spread pulled in so it falls into the gap between rows, not out past the table's edges. */
+.card-border-animated-row > :first-child::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-border-radius, 0);
+  box-shadow: 0 8px 20px -10px rgba(16, 24, 40, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+}
+
+@media (hover: hover) {
+  .card-border-animated:hover .card-border-ring,
+  .card-border-animated-row:hover .card-border-ring,
+  .card-border-animated-row:hover > :first-child::after {
+    opacity: 1;
+  }
+
+  .card-border-animated:hover .card-border-ring rect,
+  .card-border-animated-row:hover .card-border-ring rect {
+    animation-play-state: running;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-border-ring rect {
+    animation: none;
+  }
+
+  .card-border-ring-tail {
+    display: none;
+  }
+
+  .card-border-ring .card-border-ring-base {
+    stroke-opacity: 1;
+  }
+
+  .card-border-ring-head {
+    stroke-dasharray: none;
+  }
+}

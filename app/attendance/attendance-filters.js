@@ -239,7 +239,8 @@ export default function AttendanceFilters({
             items={layoutItems}
             active={layout || undefined}
             ariaLabel="Session list views"
-            className="flex-[2] sm:flex-none [&>a]:flex-1 [&>a]:justify-center sm:[&>a]:flex-none"
+            separate
+            iconOnly
           />
         </div>
 

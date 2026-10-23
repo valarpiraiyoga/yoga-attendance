@@ -79,7 +79,8 @@ export default function MembershipCardMenu({
       <DropdownMenuContent align="end" className="min-w-44">
         {reminders?.expiry || reminders?.payment ? (
           <>
-            <DropdownMenuGroup>
+            {/* The reminders, boxed: a bordered, softly tinted panel at the top of the menu. */}
+            <DropdownMenuGroup className="mx-1 mb-1 rounded-card border border-danger/20 bg-danger/5 py-1">
               <DropdownMenuLabel>Reminders</DropdownMenuLabel>
               {reminders.expiry ? <p className="text-small px-1.5 pb-1 font-medium text-danger">{reminders.expiry.text}</p> : null}
               {reminders.payment ? <p className="text-small px-1.5 pb-1 font-medium text-danger">{reminders.payment.text}</p> : null}

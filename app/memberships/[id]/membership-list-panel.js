@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, FileText, Plus } from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
  * Membership Details → Membership History on the left: every membership of this membership's student (the current one
  * highlighted with a blue border and a narrow blue bar on its left), each card opening that membership's details.
  *
- *   header   the title with the count, and Add Membership (the existing flow, for this student)
+ *   header   the title with the count (no Add button here; a membership is added from Student Details)
  *   search   by membership number or plan (no filters)
  *   cards    compact: membership number and dates; the amount, the derived status and a chevron. No invoice / receipt numbers
  *            (they are on the Payments card) and no plan line (the search still finds it)
@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
  * The search narrows the list on screen only - it works on the memberships the page already loaded, changes nothing, and never
  * touches the details on the right. `currentId` stays highlighted whether or not it matches.
  */
-export default function MembershipListPanel({ memberships, currentId, studentId }) {
+export default function MembershipListPanel({ memberships, currentId }) {
   const searchId = useId();
   const [q, setQ] = useState("");
 
@@ -34,22 +34,11 @@ export default function MembershipListPanel({ memberships, currentId, studentId 
   const isSearching = Boolean(q.trim());
 
   return (
-    <Panel aria-label="Membership History" className="sm:p-4">
+    <Panel aria-label="Membership History" className="flex min-h-0 flex-1 flex-col sm:p-4">
       <PanelHeader
         icon={FileText}
         tone="brand"
         title={`Membership History (${memberships.length})`}
-        action={
-          <Button
-            size="icon-sm"
-            aria-label="Add Membership"
-            title="Add Membership"
-            render={<Link href={`/students/${studentId}/memberships/new`} />}
-            nativeButton={false}
-          >
-            <Plus className="size-4" aria-hidden="true" />
-          </Button>
-        }
         className="mb-3"
       />
 
@@ -80,7 +69,7 @@ export default function MembershipListPanel({ memberships, currentId, studentId 
           />
         </div>
       ) : (
-        <ul aria-label="Memberships of this student" className="mt-3 flex flex-col gap-1.5">
+        <ul aria-label="Memberships of this student" className="mt-3 flex min-h-0 flex-col gap-1.5 xl:-mx-1 xl:flex-1 xl:overflow-y-auto xl:p-1 xl:scrollbar-slim">
           {visible.map((membership) => {
             const state = MEMBERSHIP_STATUS[membership.status] ?? MEMBERSHIP_STATUS.expired;
             const isCurrent = membership.id === currentId;
@@ -88,7 +77,7 @@ export default function MembershipListPanel({ memberships, currentId, studentId 
               <li
                 key={membership.id}
                 className={cn(
-                  "relative flex items-center gap-2 overflow-hidden rounded-card border bg-surface py-2 pr-2.5 pl-3.5 transition-colors focus-within:ring-3 focus-within:ring-ring/50",
+                  "relative flex min-h-16 shrink-0 items-center gap-2 overflow-hidden rounded-card border bg-surface py-2 pr-2.5 pl-3.5 transition-colors focus-within:ring-3 focus-within:ring-ring/50",
                   isCurrent ? "border-brand bg-brand/5" : "border-border hover:border-brand/40 hover:bg-background",
                 )}
               >

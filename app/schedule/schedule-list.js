@@ -34,7 +34,7 @@ export default function ScheduleList({ groups, scheduleCount, layout = "", sort,
       <ResultsHeader
         count={batchCount}
         label={`${batchCount === 1 ? "Batch" : "Batches"} · ${scheduleCount} ${scheduleCount === 1 ? "Schedule" : "Schedules"}`}
-        viewLabel="Grouped by batch"
+        viewLabel="Grouped by batch · Showing time slots and instructors"
         className="mb-3 flex-row items-start justify-between"
         aside={
           <SortSelect

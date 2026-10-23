@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Eye, Layers, Phone, Users } from "lucide-react";
+import { Layers, Phone, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import EntityCard from "@/components/ui/entity-card";
 import { cn } from "@/lib/utils";
@@ -14,8 +13,8 @@ import StudentCardMenu from "@/app/students/student-card-menu";
 
 /**
  * Student list card (finalized reference): the photo (initials when there is
- * none), the name primary with the student code beneath it, View + menu with
- * the student's status stacked under them, then a divider and compact
+ * none), the name primary with the student code beneath it, the one More (⋮) menu - every action, View Student first, grouped in it, as in
+ * the table - with the student's status stacked under it, then a divider and compact
  * icon rows — phone, batch, membership. All values come from the list query
  * (the membership summary is derived in the data layer against the centre
  * timezone), and the statuses from the shared badge maps.
@@ -29,32 +28,24 @@ export default function StudentCardItem({ student }) {
 
   return (
     <EntityCard
+      animatedBorder
       className={cn(menuOpen && "border-brand/40 bg-brand/5")}
       avatar={<Avatar name={student.full_name} src={student.photo_url} size="lg" bordered />}
-      title={student.full_name}
+      title={
+        <Link href={`/students/${student.id}`} className="rounded-sm text-brand hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+          {student.full_name}
+        </Link>
+      }
       subtitle={student.student_code}
       status={<Badge variant={entityStatus.variant}>{entityStatus.label}</Badge>}
       statusPlacement="actions"
       actions={
-        <div className="flex items-center">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="text-brand hover:bg-brand/10 hover:text-brand"
-            aria-label="View Student"
-            render={<Link href={`/students/${student.id}`} />}
-            nativeButton={false}
-          >
-            <Eye className="size-4" aria-hidden="true" />
-          </Button>
-          <StudentCardMenu
-            studentId={student.id}
-            membershipId={student.currentMembershipId}
-            enrollmentId={student.primaryEnrollmentId}
-            onOpenChange={setMenuOpen}
-          />
-        </div>
+        <StudentCardMenu
+          studentId={student.id}
+          membershipId={student.currentMembershipId}
+          enrollmentId={student.primaryEnrollmentId}
+          onOpenChange={setMenuOpen}
+        />
       }
     >
       {/* Hand-rolled rather than EntityCard's `meta` prop: `meta` has no

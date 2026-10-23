@@ -297,25 +297,20 @@ export default function EnrollmentForm({
           ) : null}
         </div>
 
+        {/* The schedules appear only once a batch is chosen (they are that batch's schedules); the label is an ordinary field label. */}
+        {batchId ? (
         <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              <Label id="schedules-label">
-                Select Schedule(s)<span className="text-danger" aria-hidden="true"> *</span>
-              </Label>
-              <HelpTip label="About selecting schedules">
-                Choose the days and time slots for this student. You can select multiple schedules. At least one is required.
-              </HelpTip>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Label id="schedules-label">
+              Select Class Schedules<span className="text-danger" aria-hidden="true"> *</span>
+            </Label>
             {batchId && pickerOptions.length > 0 ? (
               <span aria-live="polite" className="text-small rounded-full bg-brand/10 px-2.5 py-0.5 font-medium text-brand">
                 {selectedSeriesIds.size} selected
               </span>
             ) : null}
           </div>
-          {!batchId ? (
-            <p className="text-body text-text-secondary">Select a batch to see its available schedules.</p>
-          ) : pickerOptions.length === 0 ? (
+          {pickerOptions.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-background/60 p-4">
               <p className="text-body text-text-secondary">
                 This batch has no currently available schedules. Add a schedule for this batch first.
@@ -348,6 +343,7 @@ export default function EnrollmentForm({
             </p>
           ) : null}
         </div>
+        ) : null}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
@@ -355,9 +351,6 @@ export default function EnrollmentForm({
               <Label htmlFor="effective_start_date">
                 Enrollment Start Date<span className="text-danger" aria-hidden="true"> *</span>
               </Label>
-              {joinDate ? (
-                <HelpTip label="About the start date">Cannot be before the student&rsquo;s join date ({joinDateLabel(joinDate)}).</HelpTip>
-              ) : null}
             </div>
             <Input
               id="effective_start_date"
@@ -373,6 +366,9 @@ export default function EnrollmentForm({
                 fieldErrors.effective_start_date ? "effective_start_date-error" : undefined
               }
             />
+            {joinDate ? (
+              <p className="text-small text-text-secondary">Cannot be before the student&rsquo;s join date ({joinDateLabel(joinDate)}).</p>
+            ) : null}
             {fieldErrors.effective_start_date ? (
               <p id="effective_start_date-error" role="alert" className="text-small text-danger">
                 {fieldErrors.effective_start_date}
@@ -383,7 +379,6 @@ export default function EnrollmentForm({
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-1.5">
               <Label htmlFor="effective_end_date">Enrollment End Date</Label>
-              <HelpTip label="About the end date">Optional — leave blank if the enrollment has no planned end date.</HelpTip>
             </div>
             <Input
               id="effective_end_date"
@@ -395,6 +390,7 @@ export default function EnrollmentForm({
               aria-invalid={Boolean(fieldErrors.effective_end_date)}
               aria-describedby={fieldErrors.effective_end_date ? "effective_end_date-error" : undefined}
             />
+            <p className="text-small text-text-secondary">Optional — leave blank if there is no planned end date.</p>
             {fieldErrors.effective_end_date ? (
               <p id="effective_end_date-error" role="alert" className="text-small text-danger">
                 {fieldErrors.effective_end_date}

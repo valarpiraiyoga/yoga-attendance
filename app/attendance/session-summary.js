@@ -37,6 +37,7 @@ export function summarizeSession(session, today, timeZone) {
     key: session.id ?? `${session.schedule_id}:${session.session_date}`,
     batchName: session.batches?.name ?? "—",
     batchCode: session.batches?.code ?? null,
+    batchColor: session.batches?.batch_color ?? null,
     instructor: session.instructors?.full_name ?? "—",
     instructorPhotoUrl: session.instructors?.photo_url ?? null,
     startTime: session.start_time,

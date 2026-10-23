@@ -27,6 +27,8 @@ import { cn } from "@/lib/utils";
  * current value stays available to assistive tech); from `sm` up it is the
  * usual "Sort by [ value ]". Off by default.
  *
+ * A value longer than the select truncates inside it, so the chevron never falls outside the control.
+ *
  * `triggerClassName` overrides the select's width (default `w-44`) and
  * `labelClassName` adds to the "Sort by" label (e.g. `sr-only` for a tight row;
  * the label still names the select for assistive tech).
@@ -74,7 +76,7 @@ export default function SortSelect({
       </span>
       <Select items={options} value={value} onValueChange={handleChange}>
         <SelectTrigger id={id} aria-labelledby={`${id}-label`} className={cn(
-            "h-9 w-44",
+            "h-9 w-44 bg-surface [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate",
             compactOnMobile &&
               "max-sm:w-auto max-sm:gap-0 max-sm:border-0 max-sm:bg-transparent max-sm:px-1 max-sm:[&>span:last-child]:hidden",
             triggerClassName

@@ -18,21 +18,12 @@ import { getActiveStudentCount } from "@/lib/students/data";
 import { getActiveBatchCount } from "@/lib/batches/data";
 import { cn } from "@/lib/utils";
 import DashboardTodaysClasses from "@/app/dashboard-todays-classes";
-import DashboardUpcomingClasses from "@/app/dashboard-upcoming-classes";
 import DashboardSystemUsage from "@/app/dashboard-system-usage";
 import { DashboardCalendar, DashboardQuickActions, DashboardRecentActivity } from "@/app/dashboard-side-panels";
 import DashboardReminders from "@/app/dashboard-reminders";
 import { getReminders } from "@/lib/reminders/data";
 import { getCenterSettings } from "@/lib/center-profile/settings";
 import { DEFAULT_CENTER_SETTINGS } from "@/lib/center-profile/settings-core";
-
-// How many days ahead Upcoming Classes looks, and how many rows it shows —
-// a short preview (approved wireframes p.2, p.8 show 1–3 rows), not a
-// second schedule browser. "View Full Schedule" (Admin only — Instructor
-// has no /schedule route, `02-ux.md`'s Role-Based IA) is the entry point
-// into the real thing; this stays intentionally small.
-const UPCOMING_WINDOW_DAYS = 6;
-const UPCOMING_LIMIT = 5;
 
 function formatHeadingDate(value) {
   return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -180,7 +171,7 @@ function DashboardSkeleton({ isAdmin }) {
  * The data-dependent half of the Dashboard, streamed in behind a
  * `<Suspense>` boundary (`app/reports/page.js` established this same
  * pattern for Reports) so the greeting header appears immediately while
- * today's sessions, their attendance summaries, and Upcoming Classes are
+ * today's sessions and their attendance summaries are
  * fetched.
  *
  * Every query here is set-based:
@@ -204,17 +195,8 @@ function DashboardSkeleton({ isAdmin }) {
  * the two counts) — independent of how many sessions exist on either list.
  */
 async function DashboardContent({ isAdmin, today, timeZone, month }) {
-  const upcomingFrom = addDaysUTC(today, 1);
-  const upcomingTo = addDaysUTC(today, UPCOMING_WINDOW_DAYS);
-
-  const [todaysSessions, upcoming, activeStudentCount, activeBatchCount, dateNavigation, recentActivity, reminders, centreName] = await Promise.all([
+  const [todaysSessions, activeStudentCount, activeBatchCount, dateNavigation, recentActivity, reminders, centreName] = await Promise.all([
     listSessionsForDate(today).then(withAttendanceSummaries),
-    listSessions({ dateFrom: upcomingFrom, dateTo: upcomingTo, page: 1, pageSize: UPCOMING_LIMIT }).then(
-      async (result) => ({
-        ...result,
-        sessions: await withAttendanceSummaries(result.sessions),
-      })
-    ),
     isAdmin ? getActiveStudentCount() : Promise.resolve(null),
     isAdmin ? getActiveBatchCount() : Promise.resolve(null),
     // The calendar's days with class sessions (RLS narrows an Instructor to their own), and,
@@ -310,37 +292,6 @@ async function DashboardContent({ isAdmin, today, timeZone, month }) {
       />
 
       {isAdmin ? <DashboardReminders result={reminders} centreName={centreName} /> : null}
-
-      <DashboardSection className="sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <span
-              aria-hidden="true"
-              className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info"
-            >
-              <Calendar className="size-5" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-section-title font-semibold text-text-primary">Upcoming Classes</h2>
-              <p className="text-small mt-1 text-text-secondary">Your scheduled classes for the next few days.</p>
-            </div>
-          </div>
-          {isAdmin ? (
-            <Button variant="secondary" size="sm" className="self-start" render={<Link href="/schedule" />} nativeButton={false}>
-              View Full Schedule
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Button>
-          ) : null}
-        </div>
-
-        {upcoming.sessions.length === 0 ? (
-          <EmptyState>No upcoming classes in the next {UPCOMING_WINDOW_DAYS} days.</EmptyState>
-        ) : (
-          <div className="mt-4">
-            <DashboardUpcomingClasses sessions={upcoming.sessions} showInstructor={isAdmin} timeZone={timeZone} />
-          </div>
-        )}
-      </DashboardSection>
       </div>
 
       <aside aria-label="Calendar and shortcuts" className="flex min-w-0 flex-col gap-6">

@@ -26,6 +26,11 @@ import { cn } from "@/lib/utils";
  * inside one shared frame — the toolbar treatment where Search, Filters and
  * each view button are individual surfaces. The active segment keeps the
  * brand fill. Off by default; every other screen keeps the framed switcher.
+ *
+ * `iconOnly` (with `separate`; the Students toolbar) shows each view as a square icon button to save toolbar width, as ONE button group:
+ * the buttons share a single bordered frame with a hairline between them, the active one in the secondary button style (a soft brand tint with
+ * brand text, not the filled brand) and the other on the white surface. The label is not drawn but stays as the button's accessible name and
+ * tooltip. Off by default.
  */
 // Full literal class strings, deliberately NOT passed through `cn()`:
 // tailwind-merge does not know our custom type tokens and treats
@@ -50,6 +55,16 @@ const SEPARATE_AUTO = {
   "below-lg": `${SEPARATE_BASE} max-lg:border-brand max-lg:bg-brand max-lg:text-surface lg:border-border lg:bg-surface lg:text-text-secondary lg:hover:bg-muted lg:hover:text-text-primary`,
 };
 
+// `iconOnly` button group: square segments inside one frame. Active = the secondary button style (`bg-primary/10 text-primary`). Literal strings.
+const GROUP_BASE =
+  "inline-flex h-full w-9 items-center justify-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset not-first:border-l not-first:border-border";
+const GROUP_ACTIVE = `${GROUP_BASE} bg-primary/10 text-primary`;
+const GROUP_INACTIVE = `${GROUP_BASE} bg-surface text-text-secondary hover:bg-muted hover:text-text-primary`;
+const GROUP_AUTO = {
+  lg: `${GROUP_BASE} lg:bg-primary/10 lg:text-primary max-lg:bg-surface max-lg:text-text-secondary max-lg:hover:bg-muted max-lg:hover:text-text-primary`,
+  "below-lg": `${GROUP_BASE} max-lg:bg-primary/10 max-lg:text-primary lg:bg-surface lg:text-text-secondary lg:hover:bg-muted lg:hover:text-text-primary`,
+};
+
 const SEGMENT_AUTO = {
   lg: `${SEGMENT_BASE} lg:bg-brand lg:text-surface lg:shadow-sm max-lg:text-text-secondary max-lg:hover:bg-surface max-lg:hover:text-text-primary`,
   "below-lg": `${SEGMENT_BASE} max-lg:bg-brand max-lg:text-surface max-lg:shadow-sm lg:text-text-secondary lg:hover:bg-surface lg:hover:text-text-primary`,
@@ -60,13 +75,17 @@ const SEGMENT_AUTO = {
  * container (the `default` step of the button size scale, same as Filters)
  * with 26px segments and the same 14px/20px label.
  */
-export default function ViewSwitcher({ items, active, ariaLabel = "Views", separate = false, className }) {
+export default function ViewSwitcher({ items, active, ariaLabel = "Views", separate = false, iconOnly = false, className }) {
+  const grouped = iconOnly && separate && items.every((item) => Boolean(item.icon));
+
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        separate
+        grouped
+          ? "inline-flex h-9 shrink-0 items-stretch overflow-hidden rounded-button border border-border bg-surface"
+          : separate
           ? "inline-flex shrink-0 items-stretch gap-2"
           : "inline-flex h-9 shrink-0 items-stretch gap-1 rounded-lg border border-border bg-background/60 p-1",
         className
@@ -83,8 +102,16 @@ export default function ViewSwitcher({ items, active, ariaLabel = "Views", separ
             href={item.href}
             role="tab"
             aria-selected={isAuto ? undefined : isActive}
+            aria-label={grouped ? item.label : undefined}
+            title={grouped ? item.label : undefined}
             className={
-              separate
+              grouped
+                ? isAuto
+                  ? GROUP_AUTO[item.autoActive]
+                  : isActive
+                    ? GROUP_ACTIVE
+                    : GROUP_INACTIVE
+                : separate
                 ? isAuto
                   ? SEPARATE_AUTO[item.autoActive]
                   : isActive
@@ -97,8 +124,8 @@ export default function ViewSwitcher({ items, active, ariaLabel = "Views", separ
                     : SEGMENT_INACTIVE
             }
           >
-            {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden="true" /> : null}
-            {item.label}
+            {Icon ? <Icon className={grouped ? "size-4 shrink-0" : "size-3.5 shrink-0"} aria-hidden="true" /> : null}
+            {grouped ? null : item.label}
           </Link>
         );
       })}

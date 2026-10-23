@@ -12,6 +12,7 @@ import { summarizeCurrentSchedules } from "@/lib/batches/summary";
 import { cn } from "@/lib/utils";
 import BatchCardMenu from "@/app/batches/batch-card-menu";
 import BatchInstructorSummary from "@/app/batches/batch-instructor-summary";
+import BatchQuickView from "@/app/batches/batch-quick-view";
 
 /**
  * Batch list card (finalized reference): identity (larger initials tile, the
@@ -45,10 +46,11 @@ export default function BatchCardItem({ batch }) {
 
   return (
     <EntityCard
+      animatedBorder
       className={cn("h-auto", menuOpen && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
       avatar={<BatchAvatar batch={batch} size="lg" />}
-      title={batch.name}
+      title={<BatchQuickView batch={batch} />}
       subtitle={batch.code}
       status={<Badge variant={status.variant}>{status.label}</Badge>}
       statusPlacement="actions"

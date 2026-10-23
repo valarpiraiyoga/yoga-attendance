@@ -61,7 +61,7 @@ export default async function EditEnrollmentPage({ params }) {
         title="Edit Batch Enrollment"
         description={<>Update {student.full_name}&rsquo;s enrollment in {enrollment.batches?.name ?? "this batch"}.</>}
       />
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full max-w-5xl">
         <div className="rounded-card border border-border bg-surface p-6 shadow-xs">
           <StudentIdentityHeader student={student} className="mb-6" />
           <EnrollmentForm

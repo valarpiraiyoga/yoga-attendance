@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Info } from "lucide-react";
+import { Building2, Globe, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,6 +111,8 @@ export default function CenterProfileForm({ action, profile }) {
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="flex flex-col gap-6 lg:col-span-3">
         <Panel className="flex flex-col gap-5">
+          <PanelHeader className="mb-0" icon={Building2} tone="brand" title="Center Details" description="The name and contact details shown on documents and in the app." />
+
           <FormField id="name" label="Yoga Center Name" required error={fieldErrors.name}>
             {(field) => (
               <Input
@@ -170,6 +172,8 @@ export default function CenterProfileForm({ action, profile }) {
         <Panel className="flex flex-col gap-5">
           <PanelHeader
             className="mb-0"
+            icon={Globe}
+            tone="brand"
             title="Regional Settings"
             description="The center's time zone and currency, used across the application."
           />

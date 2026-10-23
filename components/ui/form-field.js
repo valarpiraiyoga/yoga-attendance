@@ -1,3 +1,4 @@
+import HelpTip from "@/components/ui/help-tip";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -9,13 +10,16 @@ import { cn } from "@/lib/utils";
  * `role="alert"` error paragraph — the exact wiring every existing form
  * field already repeats by hand.
  *
+ * `helpTip` (optional): an explanation shown as a "?" icon beside the label that opens it in a popup (`HelpTip`), instead of permanent `help`
+ * text under the field.
+ *
  * `children` is a render function so `FormField` can wrap any control
  * (`Input`, `Select`, `Textarea`, a custom control) without cloning
  * arbitrary elements: `{(field) => <Input {...field} />}`. `field` carries
  * `id`, `aria-invalid` and `aria-describedby` only — `name`, `value`,
  * `onChange` etc. stay the caller's own props on the control.
  */
-export default function FormField({ id, label, error, help, required, className, children }) {
+export default function FormField({ id, label, error, help, helpTip, required, className, children }) {
   const errorId = error ? `${id}-error` : undefined;
   const helpId = help ? `${id}-help` : undefined;
   const describedBy = [errorId, helpId].filter(Boolean).join(" ") || undefined;
@@ -29,15 +33,18 @@ export default function FormField({ id, label, error, help, required, className,
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {label ? (
-        <Label htmlFor={id}>
-          {label}
-          {required ? (
-            <span className="text-danger" aria-hidden="true">
-              {" "}
-              *
-            </span>
-          ) : null}
-        </Label>
+        <div className={cn(helpTip && "flex items-center gap-1.5")}>
+          <Label htmlFor={id}>
+            {label}
+            {required ? (
+              <span className="text-danger" aria-hidden="true">
+                {" "}
+                *
+              </span>
+            ) : null}
+          </Label>
+          {helpTip ? <HelpTip label={`About ${String(label).toLowerCase()}`}>{helpTip}</HelpTip> : null}
+        </div>
       ) : null}
 
       {typeof children === "function" ? children(field) : children}

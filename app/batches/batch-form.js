@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useProfilePhoto } from "@/components/ui/profile-photo-field";
@@ -116,7 +117,9 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
       {batch ? <BatchIdentityHeader batch={batch} /> : null}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Batch Name</Label>
+        <Label htmlFor="name">
+          Batch Name<span className="text-danger" aria-hidden="true"> *</span>
+        </Label>
         <Input
           id="name"
           name="name"
@@ -136,6 +139,7 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
         ) : null}
       </div>
 
+      <div className="grid gap-5 sm:grid-cols-2">
       <div className="flex flex-col gap-2">
         <Label htmlFor="code">Short Code</Label>
         <Input
@@ -175,13 +179,14 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
           </p>
         ) : null}
       </div>
+      </div>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="description">Description</Label>
-        <Input
+        <Textarea
           id="description"
           name="description"
-          autoComplete="off"
+          rows={3}
           disabled={isPending}
           defaultValue={state?.values?.description ?? batch?.description ?? ""}
           placeholder="Enter description (optional)"
@@ -194,6 +199,8 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
           </p>
         ) : null}
       </div>
+
+      <hr className="border-border" />
 
       <BatchIdentityField
         batchName={batchName}

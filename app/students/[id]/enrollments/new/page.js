@@ -10,6 +10,7 @@ import { createEnrollment } from "@/lib/enrollments/actions";
 import { getCurrentMembershipForStudent } from "@/lib/memberships/data";
 import EnrollmentForm from "@/app/students/[id]/enrollments/enrollment-form";
 import StudentIdentityHeader from "@/components/ui/student-identity-header";
+import StudentFacts from "@/app/students/[id]/enrollments/student-facts";
 import GuidedSteps from "@/app/students/guided-steps";
 import PageHeader from "@/components/layout/PageHeader";
 import { formatEndDate } from "@/lib/memberships/period";
@@ -80,26 +81,15 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
         title="Add Batch Enrollment"
         description={<>Assign this student to a batch{isGuided ? " to complete their setup." : "."}</>}
       />
-      <div className={isGuided ? "mx-auto w-full max-w-4xl" : "mx-auto w-full max-w-3xl"}>
+      <div className={"mx-auto w-full max-w-5xl"}>
         {isGuided ? <GuidedSteps current={3} className="mt-0" /> : null}
 
         <div
           className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8" : ""}`}
         >
-          {isGuided ? null : <StudentIdentityHeader student={student} className="mb-6" />}
-          <div className={isGuided ? "mb-6 grid gap-4 sm:grid-cols-2" : undefined}>
-            {isGuided ? (
-              <div className="flex flex-col gap-1 rounded-lg border border-border bg-background/60 p-3">
-                <span className="text-small font-medium tracking-wide text-text-secondary uppercase">
-                  Student Context
-                </span>
-                <div className="flex flex-wrap items-baseline gap-x-3">
-                  <span className="text-body font-medium text-text-primary">{student.full_name}</span>
-                  <span className="text-body text-text-secondary">{student.phone}</span>
-                </div>
-              </div>
-            ) : null}
-
+          {/* The identity header as a pale brand panel, the student's facts on the right. */}
+          <StudentIdentityHeader student={student} className="mb-6" action={<StudentFacts student={student} />} />
+          <div className={isGuided ? "mb-6" : undefined}>
             {isGuided && currentMembership ? (
               <div className="flex flex-col gap-1 rounded-lg border border-border bg-background/60 p-3">
                 <span className="text-small font-medium tracking-wide text-text-secondary uppercase">
@@ -136,7 +126,7 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
             scheduleCapacities={scheduleCapacities}
             todayDate={await getCentreToday()}
             guided={isGuided}
-            submitLabel="Save Enrollment"
+            submitLabel="Enroll Student"
             pendingLabel="Saving…"
             cancelHref={`/students/${id}`}
           />

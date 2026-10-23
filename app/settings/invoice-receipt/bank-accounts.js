@@ -203,6 +203,8 @@ export default function BankAccounts({ accounts }) {
     <Panel className="flex flex-col gap-4">
       <PanelHeader
         className="mb-0"
+        icon={Landmark}
+        tone="brand"
         title="Bank Accounts"
         description="Manage bank accounts used on new invoices. Changes apply to invoices issued from now on."
         action={

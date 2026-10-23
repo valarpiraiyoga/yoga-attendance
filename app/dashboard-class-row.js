@@ -51,11 +51,11 @@ function InstructorMeta({ instructor }) {
       {photoUrl ? (
         // A plain <img>: the same tradeoff as every other stored image here (see Avatar).
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photoUrl} alt="" className="size-5 shrink-0 rounded-full object-cover" />
+        <img src={photoUrl} alt="" className="size-5 shrink-0 rounded-md object-cover" />
       ) : (
         <span
           aria-hidden="true"
-          className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand/10 text-[10px] leading-none font-semibold text-brand"
+          className="flex size-5 shrink-0 items-center justify-center rounded-md bg-brand/10 text-[10px] leading-none font-semibold text-brand"
         >
           {initials(name)}
         </span>

@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { CalendarDays, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import AnimatedBorder from "@/components/ui/animated-border";
 import BatchAvatar from "@/components/ui/batch-avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BATCH_STATUS } from "@/lib/status";
 import { summarizeCurrentSchedules } from "@/lib/batches/summary";
 import { cn } from "@/lib/utils";
 import BatchCardMenu from "@/app/batches/batch-card-menu";
+import BatchQuickView from "@/app/batches/batch-quick-view";
 import BatchInstructorSummary from "@/app/batches/batch-instructor-summary";
 
 // Responsive by the table's own width (container queries), not the viewport,
@@ -20,7 +25,13 @@ const DAYS_TIME_ONLY = "hidden @[40rem]:table-cell";
 const INSTRUCTOR_ONLY = "hidden @[56rem]:table-cell";
 const WIDE_ONLY = "hidden @[64rem]:table-cell";
 
-const HEAD = "h-10 px-2 text-small tracking-normal";
+// Each batch is its own rounded row card on the page background (the table is `border-separate`, with a gap between rows) - the same look as
+// the Students and Memberships tables: a pale rounded header strip, and every row's cells carry the surface and the pale border, rounded at the
+// row's two ends. The hover border is the shared animated one (`.card-border-animated-row`, drawn by `AnimatedBorder` in the first cell).
+const HEAD = "h-10 border-y border-border/60 bg-brand/5 px-2 text-small tracking-normal first:rounded-l-lg first:border-l last:rounded-r-lg last:border-r";
+const CELL = "border-y border-border px-2 py-3 first:rounded-l-card first:border-l last:rounded-r-card last:border-r";
+const SURFACE = "[&>td]:bg-surface";
+const SURFACE_OPEN = "[&>td]:bg-brand/10";
 
 /**
  * One batch as a table row: Batch (initials, name, and the code beneath it —
@@ -38,12 +49,22 @@ function BatchRow({ batch }) {
   const summary = summarizeCurrentSchedules(batch.currentSchedules);
 
   return (
-    <TableRow className={cn(menuOpen && "bg-brand/10 hover:bg-brand/10")}>
-      <TableCell className="py-3 pr-2 pl-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <BatchAvatar batch={batch} />
+    <TableRow
+      className={cn(
+        "card-border-animated-row border-0 [--card-border-inset:0px] [--card-border-radius:var(--radius-card)] hover:bg-transparent",
+        menuOpen ? SURFACE_OPEN : SURFACE
+      )}
+    >
+      <TableCell className={cn(CELL, "py-3 pr-2 pl-3")}>
+        {/* The row's hover border: drawn from the first cell, sized to the whole row (see `.card-border-animated-row`). */}
+        <AnimatedBorder />
+        <div className="flex min-w-0 items-center gap-3">
+          <BatchAvatar batch={batch} size="lg" />
           <div className="min-w-0">
-            <p className="text-body font-semibold text-text-primary">{batch.name}</p>
+            {/* The name opens the quick view (a right-hand panel with View Details); the eye icon in Actions goes straight to Batch Details. */}
+            <p className="text-body font-semibold text-text-primary">
+              <BatchQuickView batch={batch} />
+            </p>
             {batch.code ? <p className="text-small text-text-secondary">{batch.code}</p> : null}
             {/* Below 40rem the schedule summary has no column of its own. */}
             {summary.hasSchedule ? (
@@ -54,43 +75,62 @@ function BatchRow({ batch }) {
           </div>
         </div>
       </TableCell>
-      <TableCell className={cn("px-2 py-3 text-text-secondary", WIDE_ONLY)}>{batch.category || "—"}</TableCell>
-      <TableCell className={cn("px-2 py-3", INSTRUCTOR_ONLY)}>
+      <TableCell className={cn(CELL, WIDE_ONLY)}>
+        {batch.category ? <Badge variant="default">{batch.category}</Badge> : <span className="text-text-secondary">—</span>}
+      </TableCell>
+      <TableCell className={cn(CELL, INSTRUCTOR_ONLY)}>
         <BatchInstructorSummary schedules={batch.currentSchedules} showLabel />
       </TableCell>
-      <TableCell className={cn("px-2 py-3", DAYS_TIME_ONLY)} title={summary.detail || undefined}>
+      <TableCell className={cn(CELL, DAYS_TIME_ONLY)} title={summary.detail || undefined}>
         {summary.hasSchedule ? (
-          <>
-            <p className="text-body font-medium text-text-primary">{summary.days}</p>
-            <p className="text-small whitespace-nowrap text-text-secondary">{summary.time}</p>
-          </>
+          <div className="flex min-w-0 items-center gap-3">
+            <CalendarDays className="size-5 shrink-0 text-text-secondary" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="text-body font-medium text-text-primary">{summary.days}</p>
+              <p className="text-small whitespace-nowrap text-text-secondary">{summary.time}</p>
+            </div>
+          </div>
         ) : (
           <span className="text-text-secondary">{summary.time}</span>
         )}
       </TableCell>
-      <TableCell className={cn("px-2 py-3 text-center tabular-nums text-text-secondary", WIDE_ONLY)}>
+      <TableCell className={cn(CELL, "text-center tabular-nums text-text-secondary", WIDE_ONLY)}>
         {summary.count}
       </TableCell>
-      <TableCell className={cn("px-2 py-3 text-center tabular-nums text-text-secondary", DAYS_TIME_ONLY)}>
+      <TableCell className={cn(CELL, "text-center tabular-nums text-text-primary", DAYS_TIME_ONLY)}>
         {batch.studentCount}
       </TableCell>
-      <TableCell className="px-2 py-3">
+      <TableCell className={CELL}>
         <Badge variant={status.variant}>{status.label}</Badge>
       </TableCell>
-      <TableCell className="w-px py-3 pr-3 pl-1 whitespace-nowrap">
-        <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} />
+      <TableCell className={cn(CELL, "w-px py-3 pr-3 pl-1 whitespace-nowrap")}>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="text-brand hover:bg-brand/10 hover:text-brand"
+            aria-label={`View batch ${batch.name}`}
+            title="View batch"
+            render={<Link href={`/batches/${batch.id}`} />}
+            nativeButton={false}
+          >
+            <Eye className="size-4" aria-hidden="true" />
+          </Button>
+          <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} />
+        </div>
       </TableCell>
     </TableRow>
   );
 }
 
-/** The Batches table (finalized compact style): see `BatchRow` for the columns. */
+/** The Batches table (rounded row cards on the page background): see `BatchRow` for the columns. */
 export default function BatchTable({ batches }) {
   return (
-    <div className="@container overflow-hidden rounded-lg border border-border bg-surface shadow-xs">
-      <Table aria-label="Batches">
+    <div className="@container">
+      <Table aria-label="Batches" className="border-separate border-spacing-y-2">
         <TableHeader>
-          <TableRow className="hover:bg-transparent">
+          <TableRow className="border-0 hover:bg-transparent">
             <TableHead className={cn(HEAD, "pl-3")}>Batch</TableHead>
             <TableHead className={cn(HEAD, WIDE_ONLY)}>Category</TableHead>
             <TableHead className={cn(HEAD, INSTRUCTOR_ONLY)}>Instructor</TableHead>
@@ -98,7 +138,7 @@ export default function BatchTable({ batches }) {
             <TableHead className={cn(HEAD, "text-center", WIDE_ONLY)}>Schedules</TableHead>
             <TableHead className={cn(HEAD, "text-center", DAYS_TIME_ONLY)}>Students</TableHead>
             <TableHead className={HEAD}>Status</TableHead>
-            <TableHead className="h-10 w-px pr-3 pl-1 text-small tracking-normal whitespace-nowrap">Action</TableHead>
+            <TableHead className={cn(HEAD, "w-px pr-3 pl-1 whitespace-nowrap")}>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

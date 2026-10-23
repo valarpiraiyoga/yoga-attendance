@@ -9,15 +9,17 @@ import { cn } from "@/lib/utils";
  * and the Student ID - and, when an existing membership is being edited, its
  * "Membership · MEM-... · Plan" line, since that says which record it is. Nothing
  * else; the student's other details live on Student Details. Nothing here is
- * editable.
+ * editable. A pale brand-tinted panel - the same header look on every form (`BatchIdentityHeader` matches it).
  *
  * @param {object} props
  * @param {{ full_name: string, student_code?: string, photo_url?: string|null }} props.student
  * @param {{ code: string, plan: string }} [props.membership]
+ * @param {import("react").ReactNode} [props.action] shown at the right of the row (e.g. a segmented control)
  */
-export default function StudentIdentityHeader({ student, membership, className }) {
+export default function StudentIdentityHeader({ student, membership, className, action }) {
   return (
-    <div className={cn("flex items-center gap-3 border-b border-border pb-5", className)}>
+    <div className={cn("flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-card border border-border bg-brand/5 p-4 sm:p-5", className)}>
+      <div className="flex min-w-0 items-center gap-3">
       <Avatar name={student.full_name} src={student.photo_url} size="lg" />
       <div className="min-w-0">
         <p className="text-page-title font-semibold break-words text-text-primary">{student.full_name}</p>
@@ -31,6 +33,8 @@ export default function StudentIdentityHeader({ student, membership, className }
           {membership ? <MembershipTag code={membership.code} plan={membership.plan} /> : null}
         </div>
       </div>
+      </div>
+      {action ?? null}
     </div>
   );
 }

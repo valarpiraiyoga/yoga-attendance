@@ -8,25 +8,31 @@ import { cn } from "@/lib/utils";
  * when both do. They wrap rather than widen the row or card. No state, so it works in the table rows and the cards alike.
  *
  * @param {object} props
+ * `only` ("expiry" | "payment") shows just that one: the Memberships table puts the Balance badge in its Amount & Payment column, under the
+ * payment status, and the expiry badge under the membership status.
+ *
  * @param {{ expiry?: { text: string }, payment?: { text: string } }|undefined} props.reminders - one entry of `remindersByMembership`.
+ * @param {"expiry"|"payment"} [props.only]
  */
-export default function ReminderIndicators({ reminders, className }) {
-  if (!reminders?.expiry && !reminders?.payment) return null;
+export default function ReminderIndicators({ reminders, only, className }) {
+  const expiry = only === "payment" ? null : reminders?.expiry;
+  const payment = only === "expiry" ? null : reminders?.payment;
+  if (!expiry && !payment) return null;
 
   return (
     <span className={cn("flex flex-wrap items-center gap-1", className)}>
-      {reminders.expiry ? (
-        <Badge variant="danger" title={`Expiry reminder: ${reminders.expiry.text}`}>
+      {expiry ? (
+        <Badge variant="danger" title={`Expiry reminder: ${expiry.text}`}>
           <AlarmClock className="size-3" aria-hidden="true" />
           <span className="sr-only">Expiry reminder: </span>
-          {reminders.expiry.text}
+          {expiry.text}
         </Badge>
       ) : null}
-      {reminders.payment ? (
-        <Badge variant="danger" title={`Payment pending: ${reminders.payment.text}`}>
+      {payment ? (
+        <Badge variant="danger" title={`Payment pending: ${payment.text}`}>
           <Wallet className="size-3" aria-hidden="true" />
           <span className="sr-only">Payment pending: </span>
-          {reminders.payment.text}
+          {payment.text}
         </Badge>
       ) : null}
     </span>

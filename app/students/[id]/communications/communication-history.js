@@ -1,4 +1,5 @@
-import { CalendarClock, MessagesSquare, UserRound } from "lucide-react";
+import { CalendarClock, CalendarDays, MessageCircle, MessageSquare, MessagesSquare, Phone, Users } from "lucide-react";
+import Avatar from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import EmptyState from "@/components/ui/empty-state";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
@@ -57,6 +58,37 @@ export default function CommunicationHistory({ studentId, student, timeZone, com
   );
 }
 
+// The channel badge: a soft pill with the channel's icon (presentation only - the stored type decides it).
+const CHANNEL_BADGE = {
+  whatsapp: { variant: "success", Icon: MessageCircle },
+  phone_call: { variant: "info", Icon: Phone },
+  in_person: { variant: "default", Icon: Users },
+  other: { variant: "neutral", Icon: MessageSquare },
+};
+
+/** "Calendar icon + text", then a hairline, then the recorder's avatar and "by name" - the metadata row of a record and of a completed follow-up. */
+function MetaRow({ label, dateTime, by, className }) {
+  return (
+    <p className={`text-small flex flex-wrap items-center gap-x-3 gap-y-1 text-text-secondary ${className ?? ""}`}>
+      <span className="inline-flex items-center gap-1.5">
+        <CalendarDays className="size-3.5 shrink-0" aria-hidden="true" />
+        {dateTime}
+      </span>
+      {by ? (
+        <>
+          <span aria-hidden="true" className="h-3.5 w-px bg-border" />
+          <span className="inline-flex items-center gap-1.5">
+            <Avatar name={by} size="sm" className="size-5 text-[0.625rem]" />
+            <span>
+              <span className="sr-only">{label} </span>by {by}
+            </span>
+          </span>
+        </>
+      ) : null}
+    </p>
+  );
+}
+
 function CommunicationItem({ item, studentId, student, timeZone }) {
   const followUp = item.followUp;
   const status = followUp ? FOLLOW_UP_STATUS[followUp.status] : null;
@@ -75,19 +107,23 @@ function CommunicationItem({ item, studentId, student, timeZone }) {
           subject={item.subject}
           title={
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="text-body font-semibold break-words text-text-primary">{item.subject}</p>
-              <Badge variant="neutral">{item.typeLabel}</Badge>
+              <p className="text-section-title font-semibold break-words text-text-primary">{item.subject}</p>
+              <Badge variant={(CHANNEL_BADGE[item.type] ?? CHANNEL_BADGE.other).variant}>
+                {(() => {
+                  const { Icon } = CHANNEL_BADGE[item.type] ?? CHANNEL_BADGE.other;
+                  return <Icon className="size-3.5" aria-hidden="true" />;
+                })()}
+                {item.typeLabel}
+              </Badge>
             </div>
           }
           meta={
-            <p className="text-small mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-text-secondary">
-              <time dateTime={item.communicatedAt}>{item.dateTimeLabel}</time>
-              <span aria-hidden="true" className="h-3.5 w-px bg-border" />
-              <span className="inline-flex items-center gap-1.5">
-                <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
-                Recorded by {item.recordedBy}
-              </span>
-            </p>
+            <MetaRow
+              className="mt-1"
+              label="Recorded"
+              dateTime={<time dateTime={item.communicatedAt}>{item.dateTimeLabel}</time>}
+              by={item.recordedBy}
+            />
           }
           actions={
             <EditCommunication
@@ -109,24 +145,21 @@ function CommunicationItem({ item, studentId, student, timeZone }) {
             ) : null
           }
         >
-          <p className="text-body mt-3 break-words whitespace-pre-line text-text-primary">{item.notes}</p>
+          {item.notes ? <p className="text-body mt-3 break-words whitespace-pre-line text-text-primary">{item.notes}</p> : null}
 
           {followUp ? (
-            <div className="mt-4 flex flex-col gap-3 rounded-card border border-border bg-background px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-4 flex flex-col gap-3 rounded-card border border-border bg-brand/5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="text-small inline-flex items-center gap-2 font-semibold text-text-primary">
+                  <span className="text-body inline-flex items-center gap-2 font-semibold text-text-primary">
                     <CalendarClock className="size-4 shrink-0" aria-hidden="true" />
                     Follow-up due {followUp.dateLabel}
                   </span>
                   <Badge variant={status.variant}>{status.label}</Badge>
                 </div>
-                <p className="text-small mt-2 break-words whitespace-pre-line text-text-primary">{followUp.note}</p>
+                {followUp.note ? <p className="text-body mt-2 break-words whitespace-pre-line text-text-primary">{followUp.note}</p> : null}
                 {followUp.status === "completed" ? (
-                  <p className="text-small mt-1 text-text-secondary">
-                    Completed {followUp.completedAtLabel}
-                    {followUp.completedBy ? ` by ${followUp.completedBy}` : ""}
-                  </p>
+                  <MetaRow className="mt-2" label="Completed" dateTime={`Completed ${followUp.completedAtLabel}`} by={followUp.completedBy} />
                 ) : null}
               </div>
               {followUp.status === "pending" ? (

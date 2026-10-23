@@ -30,10 +30,15 @@ export default function InstructorCardItem({ instructor, isUpdating, disabled, o
 
   return (
     <EntityCard
+      animatedBorder
       className={cn((menuOpen || isUpdating) && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
       avatar={<Avatar name={instructor.full_name} src={instructor.photo_url} size="lg" bordered />}
-      title={instructor.full_name}
+      title={
+        <Link href={`/settings/instructors/${instructor.id}/edit`} className="rounded-sm text-brand hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+          {instructor.full_name}
+        </Link>
+      }
       status={<Badge variant={status.variant}>{status.label}</Badge>}
       statusPlacement="actions"
       actions={

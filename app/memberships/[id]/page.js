@@ -116,7 +116,7 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         ) : null}
 
         <div className="grid items-start gap-4 xl:grid-cols-[19rem_minmax(0,1fr)]">
-        <div className="order-last min-w-0 xl:order-first">
+        <div className="order-last min-w-0 xl:sticky xl:top-24 xl:order-first xl:flex xl:max-h-[calc(100dvh-8rem)] xl:flex-col">
           <MembershipListPanel
             memberships={history.map((entry) => ({
               id: entry.id,
@@ -251,10 +251,10 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
             description="No batch enrollments overlap this membership’s period."
           />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
+          <div className="overflow-hidden rounded-card border border-border">
             <Table aria-label="Covered batch enrollments" className="[&_td]:px-4 [&_td]:py-2.5 [&_th]:h-10 [&_th]:px-4">
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow className="bg-brand/5 hover:bg-brand/5">
                   <TableHead className="whitespace-nowrap">Batch</TableHead>
                   <TableHead className="whitespace-nowrap">Enrolled On</TableHead>
                   <TableHead className="whitespace-nowrap">End Date</TableHead>

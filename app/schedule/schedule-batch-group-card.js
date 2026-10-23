@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarDays, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import AnimatedBorder from "@/components/ui/animated-border";
 import BatchAvatar from "@/components/ui/batch-avatar";
 import { ENTITY_STATUS } from "@/lib/status";
 import { summarizeCurrentSchedules } from "@/lib/batches/summary";
@@ -51,10 +52,12 @@ export default function ScheduleBatchGroupCard({ batch, batchId, schedules }) {
   return (
     <div
       className={cn(
-        "flex h-auto flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-sm",
+        "card-border-animated flex h-auto flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-sm transition-shadow hover:shadow-lg",
         menuOpen && "border-brand/40 bg-brand/5"
       )}
     >
+      {/* The shared hover border (`.card-border-animated`), as on the Students, Memberships, Documents and Batches lists. */}
+      <AnimatedBorder />
       <div className="flex items-start gap-2.5">
         <BatchAvatar batch={{ ...batch, name: batchName }} />
         <div className="flex min-w-0 flex-1 items-start justify-between gap-2">

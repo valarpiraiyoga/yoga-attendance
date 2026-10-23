@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
  * One row of Membership Details' Covered Batch Enrollments table: batch
  * (avatar, name, code), the enrollment's start and end, its status, and the
  * finalized action pair — eye icon (View Batch) + overflow menu (View Batch,
- * Edit Enrollment). Both destinations are existing routes.
+ * Edit Enrollment). Both destinations are existing routes. Presentation: a large batch tile and darker date text.
  */
 export default function CoveredEnrollmentRow({ enrollment, studentId }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -34,21 +34,21 @@ export default function CoveredEnrollmentRow({ enrollment, studentId }) {
   return (
     <TableRow
       className={cn(
-        "border-border/30 bg-surface/40 transition-colors hover:bg-surface/70",
+        "border-border/60 bg-surface transition-colors hover:bg-surface",
         menuOpen && "bg-brand/10 hover:bg-brand/10"
       )}
     >
       <TableCell>
         <div className="flex min-w-0 items-center gap-3">
-          <BatchAvatar batch={{ ...batch, name: batchName }} />
+          <BatchAvatar batch={{ ...batch, name: batchName }} size="lg" />
           <div className="min-w-0">
-            <p className="font-semibold whitespace-nowrap text-text-primary">{batchName}</p>
-            <p className="text-small whitespace-nowrap text-text-secondary">{batch?.code ?? "—"}</p>
+            <p className="text-body font-semibold whitespace-nowrap text-text-primary">{batchName}</p>
+            <p className="text-body whitespace-nowrap text-text-secondary">{batch?.code ?? "—"}</p>
           </div>
         </div>
       </TableCell>
-      <TableCell className="whitespace-nowrap text-text-secondary">{formatDate(enrollment.effective_start_date)}</TableCell>
-      <TableCell className="whitespace-nowrap text-text-secondary">
+      <TableCell className="whitespace-nowrap text-text-primary">{formatDate(enrollment.effective_start_date)}</TableCell>
+      <TableCell className="whitespace-nowrap text-text-primary">
         {enrollment.effective_end_date ? formatDate(enrollment.effective_end_date) : "Present"}
       </TableCell>
       <TableCell>

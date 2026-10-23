@@ -61,8 +61,8 @@ export default function PageHeader({
       <h1
         className={cn(
           "font-semibold break-words text-text-primary",
-          // The compact strip is one size on every page: a small title keeps it short.
-          compact ? "text-body max-lg:sr-only" : "text-section-title"
+          // The compact strip is one size on every page: the section-title scale (18px), still short enough for a compact strip.
+          compact ? "text-section-title max-lg:sr-only" : "text-section-title"
         )}
       >
         {title}

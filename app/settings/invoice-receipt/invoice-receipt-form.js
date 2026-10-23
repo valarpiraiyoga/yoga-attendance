@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useRef, useState, useSyncExternalStore } from "react";
-import { Info, Lock, Receipt, X } from "lucide-react";
+import { FileText, Hash, Info, Lock, Percent, Receipt, ScrollText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import ContextCard from "@/components/ui/context-card";
@@ -247,7 +247,7 @@ export default function InvoiceReceiptForm({ action, settings, startingLocked, r
         <div className="grid gap-6 lg:grid-cols-5">
           <div className="flex flex-col gap-6 lg:col-span-3">
             <Panel className="flex flex-col gap-5">
-              <PanelHeader className="mb-0" title="Document" />
+              <PanelHeader className="mb-0" icon={FileText} tone="brand" title="Document" />
 
               <FormField id="document_title" label="Document Title" error={fieldErrors.document_title}>
                 {(field) => (
@@ -328,7 +328,7 @@ export default function InvoiceReceiptForm({ action, settings, startingLocked, r
 
             {/* V1 Tax Adjustment: the separate sequence of non-tax payment receipts. */}
             <Panel className="flex flex-col gap-5">
-              <PanelHeader className="mb-0" title="Payment Receipt Numbering" />
+              <PanelHeader className="mb-0" icon={Hash} tone="brand" title="Payment Receipt Numbering" />
 
               <FormField
                 id="payment_receipt_starting_number"
@@ -378,6 +378,8 @@ export default function InvoiceReceiptForm({ action, settings, startingLocked, r
             <Panel className="flex flex-col gap-5">
               <PanelHeader
                 className="mb-0"
+                icon={Percent}
+                tone="brand"
                 title="Tax"
                 action={
                   <HelpPopover label="About tax" title="About tax">
@@ -454,7 +456,7 @@ export default function InvoiceReceiptForm({ action, settings, startingLocked, r
             </Panel>
 
             <Panel className="flex flex-col gap-5">
-              <PanelHeader className="mb-0" title="Document Content" />
+              <PanelHeader className="mb-0" icon={ScrollText} tone="brand" title="Document Content" />
 
               <FormField id="terms" label="Terms & Conditions" error={fieldErrors.terms}>
                 {(field) => (

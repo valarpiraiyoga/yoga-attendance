@@ -19,26 +19,33 @@ import DeleteScheduleDialog from "@/app/schedule/delete-schedule-dialog";
  * on Schedule Details, behind its own review step, as the lifecycle action for
  * a schedule that has been used; Delete opens `DeleteScheduleDialog`, which
  * says whether the schedule can be deleted at all. Mirrors `BatchCardMenu`.
+ *
+ * `trigger` (optional) replaces the ⋮ button with another element - the Schedule list's day chips, each of which opens this same menu for
+ * its own schedule. It must carry its own accessible name.
  */
-export default function ScheduleCardMenu({ scheduleId, batchId, batchName, scheduleContext, onOpenChange }) {
+export default function ScheduleCardMenu({ scheduleId, batchId, batchName, scheduleContext, onOpenChange, trigger = null }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
     <>
       <DropdownMenu onOpenChange={onOpenChange}>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
-              aria-label={`Schedule actions for ${batchName}`}
-            />
-          }
-        >
-          <MoreVertical className="size-4" aria-hidden="true" />
-        </DropdownMenuTrigger>
+        {trigger ? (
+          <DropdownMenuTrigger render={trigger} />
+        ) : (
+          <DropdownMenuTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 text-brand hover:bg-brand/10 hover:text-brand"
+                aria-label={`Schedule actions for ${batchName}`}
+              />
+            }
+          >
+            <MoreVertical className="size-4" aria-hidden="true" />
+          </DropdownMenuTrigger>
+        )}
         <DropdownMenuContent align="end" className="min-w-44">
           <DropdownMenuItem render={<Link href={`/schedule/${scheduleId}`} />} nativeButton={false}>
             View Schedule

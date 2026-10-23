@@ -33,12 +33,14 @@ export default function BatchIdentityField({
   disabled = false,
 }) {
   return (
-    <fieldset className="flex flex-col gap-4 rounded-lg border border-border bg-background/50 p-4">
-      <legend className="px-1 text-body font-semibold text-text-primary">Batch Identity</legend>
+    <fieldset className="flex flex-col gap-4 rounded-card border border-border bg-brand/5 p-5">
+      <legend className="px-1 text-section-title font-semibold text-text-primary">Batch Identity</legend>
       <p className="-mt-1 text-small text-text-secondary">
         Choose a color and optionally upload an image or icon to help identify this batch throughout the app.
       </p>
 
+      {/* Colour on the left, the image on the right of a vertical rule (stacked on a phone). */}
+      <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-6">
       <FormField id="batch_color" label="Color" error={colorError}>
         {(field) => (
           <Select
@@ -72,6 +74,8 @@ export default function BatchIdentityField({
         )}
       </FormField>
 
+      <div aria-hidden="true" className="hidden w-px bg-border md:block" />
+
       <ProfilePhotoField
         name={batchName}
         label="Image / Icon"
@@ -89,6 +93,7 @@ export default function BatchIdentityField({
           />
         )}
       />
+      </div>
     </fieldset>
   );
 }

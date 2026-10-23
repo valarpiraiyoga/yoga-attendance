@@ -48,6 +48,7 @@ export default function MembershipReminderMessage({ membership, reminders, centr
       reminders={reminders}
       student={membership.students}
       membership={{
+        id: membership.id,
         code: membership.membership_code,
         planLabel: membership.package_name ?? PLAN[membership.plan] ?? membership.plan,
         period: formatPeriod(membership.start_date, membership.end_date),

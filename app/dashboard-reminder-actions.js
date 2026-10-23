@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import MembershipCardMenu from "@/app/memberships/membership-card-menu";
-import MembershipReminderMessage, { ReminderMessageButton } from "@/app/memberships/membership-reminder-message";
+import { Button } from "@/components/ui/button";
+import MembershipReminderMessage from "@/app/memberships/membership-reminder-message";
 
 /**
  * The actions at the end of a Dashboard reminder row - the same pattern as a Memberships list row: the red reminder bell as the one primary
@@ -43,7 +44,17 @@ export default function DashboardReminderActions({ reminder, reminders, centreNa
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <ReminderMessageButton reminders={reminders} studentName={student.fullName} onClick={() => setReminderOpen(true)} />
+      {/* The reminder message popup's labelled opener (the Admin sends the message themselves; nothing is sent from here). */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="border-brand/40 bg-surface text-brand hover:bg-brand/5 hover:text-brand"
+        aria-label={`Send a reminder to ${student.fullName ?? "this student"}: prepare the message`}
+        onClick={() => setReminderOpen(true)}
+      >
+        Send Reminder
+      </Button>
       <MembershipCardMenu
         membershipId={membership.id}
         studentId={student.id}
