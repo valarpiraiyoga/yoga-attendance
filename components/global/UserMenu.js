@@ -23,10 +23,9 @@ function getInitials(name) {
 }
 
 /**
- * The account control: an initials avatar (the existing avatar treatment) that
- * opens the account menu. It sits in the Sidebar's utility row, so the trigger
- * is the avatar alone; the name and role it used to print beside it are the
- * menu's heading instead, and the menu keeps its Log out item.
+ * The account control: the person's initials in a rounded-square avatar (the app's avatar shape, in the brand tint with a soft border) that opens
+ * the account menu. It is the first of the four equal targets in the Sidebar's utility row, so the trigger is the avatar alone; the name and
+ * role are the menu's heading (and the tooltip), and the menu keeps its Log out item.
  */
 export default function UserMenu({ role, name }) {
   const roleLabel = ROLE_LABELS[role] ?? role;
@@ -37,11 +36,11 @@ export default function UserMenu({ role, name }) {
       <DropdownMenuTrigger
         aria-label={`Account: ${displayName} (${roleLabel})`}
         title={`${displayName} · ${roleLabel}`}
-        className="flex h-10 w-full items-center justify-center rounded-lg outline-none transition-colors hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="group flex h-10 w-full items-center justify-center rounded-lg outline-none transition-colors hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <span
           aria-hidden="true"
-          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background text-small font-medium text-brand"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-brand/20 bg-brand/10 text-small font-semibold text-brand shadow-xs transition-colors group-hover:bg-brand/15 group-data-popup-open:border-brand/40 group-data-popup-open:bg-brand/20"
         >
           {getInitials(displayName)}
         </span>

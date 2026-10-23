@@ -8,9 +8,8 @@ import { signOut } from "@/lib/auth/actions";
 const UTILITY_BUTTON_CLASS = "w-full text-text-secondary hover:bg-surface hover:text-text-primary";
 
 /**
- * The compact utility row at the bottom of the Sidebar and of the mobile
- * navigation sheet: Profile · Notifications · Help · Logout, four equal icon
- * targets in one line instead of stacked text rows.
+ * The compact utility row at the bottom of the Sidebar and of the mobile navigation sheet: Profile (the avatar, which opens the account menu) ·
+ * Notifications · Help · Logout, four equal icon targets in one line.
  *
  * Behaviour is exactly what the header carried before: the profile control is
  * the existing `UserMenu` (account menu), Notifications and Help are the same
