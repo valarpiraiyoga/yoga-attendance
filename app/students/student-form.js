@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useProfilePhoto } from "@/components/ui/profile-photo-field";
 import ProfilePhotoCard from "@/components/ui/profile-photo-card";
 import { Textarea } from "@/components/ui/textarea";
+import HelpTip from "@/components/ui/help-tip";
 import FormField from "@/components/ui/form-field";
 import PhoneInput from "@/components/forms/PhoneInput";
 import StudentIdentityHeader from "@/components/ui/student-identity-header";
@@ -120,6 +121,25 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
 
       {/* Edit only: says which student this is (the SAVED name and ID, not what is typed below). */}
       {student ? <StudentIdentityHeader student={student} /> : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+        <h2 className="text-section-title font-semibold text-text-primary">Student Details</h2>
+        <div className="flex items-center gap-2">
+          <Label id="tax_invoice_default-label">Issue tax invoice by default</Label>
+          <HelpTip label="About the tax invoice default">
+            Used as the starting choice when a payment is recorded. It can be changed for one payment without changing this setting.
+          </HelpTip>
+          <Switch
+            name="tax_invoice_default"
+            value="1"
+            uncheckedValue="0"
+            checked={taxInvoiceDefault}
+            onCheckedChange={setTaxInvoiceDefault}
+            disabled={isPending}
+            aria-labelledby="tax_invoice_default-label"
+          />
+        </div>
+      </div>
 
       {/* The photo is its own compact left card (a portrait photo, full-width buttons inside it); every other field sits to its right. */}
       <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
@@ -252,25 +272,6 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
             </p>
           ) : null}
         </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <Label id="tax_invoice_default-label">Issue tax invoice by default</Label>
-          <Switch
-            name="tax_invoice_default"
-            value="1"
-            uncheckedValue="0"
-            checked={taxInvoiceDefault}
-            onCheckedChange={setTaxInvoiceDefault}
-            disabled={isPending}
-            aria-labelledby="tax_invoice_default-label"
-            aria-describedby="tax_invoice_default-help"
-          />
-        </div>
-        <p id="tax_invoice_default-help" className="text-small text-text-secondary">
-          Used as the starting choice when a payment is recorded. It can be changed for one payment without changing this setting.
-        </p>
       </div>
 
       <div className="flex flex-col gap-2">

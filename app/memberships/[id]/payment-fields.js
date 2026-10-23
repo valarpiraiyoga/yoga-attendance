@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FormField from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import HelpTip from "@/components/ui/help-tip";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/currencies";
@@ -95,7 +96,27 @@ export default function PaymentFields({
   idPrefix = "payment",
   fieldName,
   onRowRemoved,
+  compact = false,
 }) {
+  if (compact) {
+    return (
+      <CompactPaymentFields
+        draft={draft}
+        currency={currency}
+        today={today}
+        disabled={disabled}
+        fieldErrors={fieldErrors}
+        rowErrors={rowErrors}
+        formError={formError}
+        taxInvoiceDefault={taxInvoiceDefault}
+        showTaxInvoice={showTaxInvoice}
+        showPaymentDate={showPaymentDate}
+        idPrefix={idPrefix}
+        fieldName={fieldName}
+        onRowRemoved={onRowRemoved}
+      />
+    );
+  }
   const { rows, totalPaise, remainingPaise } = draft;
   const money = (paise) => formatCurrency(fromPaise(paise), currency);
   const taxId = `${idPrefix}-tax-invoice`;
@@ -270,6 +291,224 @@ export default function PaymentFields({
           {fieldErrors.methods}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+// The cell grid of the compact table (md and up): #, Method, Amount, Reference No., Notes, Action. On a phone each row stacks and
+// every field carries its own small label.
+const ROW_GRID = "md:grid md:grid-cols-[2rem_9.5rem_9rem_minmax(0,1fr)_minmax(0,1fr)_2.5rem] md:items-start md:gap-3";
+
+function Cell({ label, children }) {
+  return (
+    <div>
+      <span className="text-small mb-1 block font-medium text-text-secondary md:hidden">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The compact layout of the payment fields (Add Student and Add Membership): the payment date above one editable table of
+ * methods, then the tax invoice choice on the left and the totals on the right. The same draft, rules and field names as
+ * the stacked layout above - only the arrangement differs.
+ */
+function CompactPaymentFields({
+  draft,
+  currency,
+  today,
+  disabled,
+  fieldErrors,
+  rowErrors,
+  formError,
+  taxInvoiceDefault,
+  showTaxInvoice,
+  showPaymentDate,
+  idPrefix,
+  fieldName,
+  onRowRemoved,
+}) {
+  const { rows, totalPaise, remainingPaise } = draft;
+  const money = (paise) => formatCurrency(fromPaise(paise), currency);
+  const taxId = `${idPrefix}-tax-invoice`;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {fieldName ? <input type="hidden" name={fieldName} value={JSON.stringify(draft.input)} /> : null}
+
+      {formError ? (
+        <p role="alert" className="text-body rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-danger">
+          {formError}
+        </p>
+      ) : null}
+
+      {showPaymentDate ? (
+        <FormField id={`${idPrefix}-date`} label="Payment Date" required error={fieldErrors.payment_date} className="sm:max-w-xs">
+          {(field) => (
+            <Input
+              {...field}
+              type="date"
+              required
+              max={today}
+              disabled={disabled}
+              value={draft.paymentDate}
+              onChange={(event) => draft.setPaymentDate(event.target.value)}
+            />
+          )}
+        </FormField>
+      ) : null}
+
+      <fieldset className="overflow-hidden rounded-card border border-border">
+        <legend className="sr-only">Payment methods</legend>
+        <div className={`${ROW_GRID} text-small hidden border-b border-border bg-background px-3 py-2 font-medium text-text-secondary`}>
+          <span>#</span>
+          <span>
+            Method<span className="text-danger" aria-hidden="true"> *</span>
+          </span>
+          <span>
+            Amount ({currency})<span className="text-danger" aria-hidden="true"> *</span>
+          </span>
+          <span>Reference No.</span>
+          <span>Notes</span>
+          <span className="text-right">Action</span>
+        </div>
+
+        <div className="divide-y divide-border">
+          {rows.map((row, index) => {
+            const errors = rowErrors[index] ?? {};
+            const number = index + 1;
+            const rowError = errors.method ?? errors.amount ?? errors.referenceId ?? errors.notes;
+            return (
+              <div key={index} className="px-3 py-3">
+                <div className={`${ROW_GRID} flex flex-col gap-3`}>
+                  <span className="text-small font-medium text-text-secondary md:pt-2.5">
+                    <span className="md:hidden">Method </span>
+                    {number}
+                  </span>
+                  <Cell label="Method">
+                    <Select items={PAYMENT_METHODS} value={row.method} onValueChange={(value) => draft.updateRow(index, "method", value)} disabled={disabled}>
+                      <SelectTrigger id={`${idPrefix}-method-${index}`} aria-label={`Method ${number}`} aria-invalid={Boolean(errors.method)} className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_METHODS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Cell>
+                  <Cell label={`Amount (${currency})`}>
+                    <Input
+                      id={`${idPrefix}-amount-${index}`}
+                      aria-label={`Amount ${number}`}
+                      aria-invalid={Boolean(errors.amount)}
+                      inputMode="decimal"
+                      required
+                      disabled={disabled}
+                      value={row.amount}
+                      onChange={(event) => draft.updateRow(index, "amount", event.target.value)}
+                    />
+                  </Cell>
+                  <Cell label="Reference No.">
+                    <Input
+                      id={`${idPrefix}-reference-${index}`}
+                      aria-label={`Reference ${number}`}
+                      aria-invalid={Boolean(errors.referenceId)}
+                      maxLength={100}
+                      placeholder={row.method === "cash" ? "" : "Optional"}
+                      disabled={disabled || row.method === "cash"}
+                      value={row.method === "cash" ? "" : row.referenceId}
+                      onChange={(event) => draft.updateRow(index, "referenceId", event.target.value)}
+                    />
+                  </Cell>
+                  <Cell label="Notes">
+                    <Input
+                      id={`${idPrefix}-notes-${index}`}
+                      aria-label={`Notes ${number}`}
+                      aria-invalid={Boolean(errors.notes)}
+                      maxLength={500}
+                      placeholder="Optional"
+                      disabled={disabled}
+                      value={row.notes}
+                      onChange={(event) => draft.updateRow(index, "notes", event.target.value)}
+                    />
+                  </Cell>
+                  <div className="flex md:justify-end">
+                    {rows.length > 1 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          draft.removeRow(index);
+                          onRowRemoved?.();
+                        }}
+                        disabled={disabled}
+                        aria-label={`Remove method ${number}`}
+                      >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                {rowError ? (
+                  <p role="alert" className="text-small mt-2 text-danger">
+                    {rowError}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="border-t border-border bg-background px-3 py-2">
+          <Button type="button" variant="secondary" size="sm" onClick={draft.addRow} disabled={disabled}>
+            <Plus className="size-4" aria-hidden="true" />
+            Add Payment Method
+          </Button>
+        </div>
+      </fieldset>
+
+      {fieldErrors.methods ? (
+        <p role="alert" className="text-small text-danger">
+          {fieldErrors.methods}
+        </p>
+      ) : null}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {showTaxInvoice ? (
+          <div className="flex items-center gap-2">
+            <input
+              id={taxId}
+              type="checkbox"
+              className="size-4 shrink-0 accent-brand"
+              checked={draft.issueTaxInvoice}
+              disabled={disabled}
+              onChange={(event) => draft.setIssueTaxInvoice(event.target.checked)}
+            />
+            <Label htmlFor={taxId}>Issue Tax Invoice</Label>
+            <HelpTip label="About issuing a tax invoice">
+              For this payment only. The student&rsquo;s default is {taxInvoiceDefault ? "on" : "off"}; changing this does not change it.
+            </HelpTip>
+          </div>
+        ) : (
+          <span />
+        )}
+        <dl className="text-small flex min-w-64 flex-col gap-1 rounded-input bg-background px-3 py-2">
+          <div className="flex justify-between gap-4">
+            <dt className="text-text-secondary">Total Payment</dt>
+            <dd className="font-semibold text-text-primary tabular-nums">{money(totalPaise)}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-text-secondary">Balance after this payment</dt>
+            <dd className={remainingPaise < 0 ? "font-semibold text-danger tabular-nums" : "font-semibold text-text-primary tabular-nums"}>
+              {money(remainingPaise)}
+            </dd>
+          </div>
+        </dl>
+      </div>
     </div>
   );
 }

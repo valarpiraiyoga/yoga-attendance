@@ -5,6 +5,7 @@ import { useActionState, useRef, useState } from "react";
 import { Banknote, CalendarDays, CalendarX2, CircleCheck, Hash, Layers, Package, Receipt, UserRound, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import HelpTip from "@/components/ui/help-tip";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -103,6 +104,7 @@ export default function PackageMembershipForm({
   skipHref,
   allowInitialPayment = false,
   today,
+  headerAction = null,
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const saved = state?.values ?? {};
@@ -252,41 +254,46 @@ export default function PackageMembershipForm({
           </p>
         ))}
 
-        <StudentIdentityHeader student={student} />
+        <StudentIdentityHeader student={student} action={headerAction} />
 
         <input name="pricing_mode" value={pricingMode} readOnly hidden />
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="package_id">Package</Label>
-          <Select name="package_id" items={packageItems} value={packageId} onValueChange={handlePackageChange} disabled={isPending}>
-            <SelectTrigger id="package_id" aria-invalid={Boolean(fieldErrors.package_id)}>
-              <SelectValue placeholder="Select a package…" />
-            </SelectTrigger>
-            <SelectContent>
-              {packageItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FieldError message={fieldErrors.package_id} />
-        </div>
-
-        {isClassCount ? (
-          <div className="flex flex-col gap-1">
-            <Label>Class allowance</Label>
-            <p className="text-body flex items-center gap-2 text-text-primary">
-              <Hash className="size-4 text-text-secondary" aria-hidden="true" />
-              {pkg.total_classes} {pkg.total_classes === 1 ? "class" : "classes"}
-            </p>
+        {/* Row 1: Package | Duration (a class-count package shows its allowance instead). */}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="package_id">
+              Package<span className="text-danger" aria-hidden="true"> *</span>
+            </Label>
+            <Select name="package_id" items={packageItems} value={packageId} onValueChange={handlePackageChange} disabled={isPending}>
+              <SelectTrigger id="package_id" aria-invalid={Boolean(fieldErrors.package_id)} className="w-full">
+                <SelectValue placeholder="Select a package…" />
+              </SelectTrigger>
+              <SelectContent>
+                {packageItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError message={fieldErrors.package_id} />
           </div>
-        ) : (
-          <>
+
+          {isClassCount ? (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="duration_option">Duration</Label>
+              <Label>Class allowance</Label>
+              <p className="text-body flex h-9 items-center gap-2 text-text-primary">
+                <Hash className="size-4 text-text-secondary" aria-hidden="true" />
+                {pkg.total_classes} {pkg.total_classes === 1 ? "class" : "classes"}
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="duration_option">
+                Duration<span className="text-danger" aria-hidden="true"> *</span>
+              </Label>
               <Select name="duration_option" items={offered} value={option} onValueChange={setOption} disabled={isPending || !pkg}>
-                <SelectTrigger id="duration_option" aria-invalid={Boolean(fieldErrors.duration_option)}>
+                <SelectTrigger id="duration_option" aria-invalid={Boolean(fieldErrors.duration_option)} className="w-full">
                   <SelectValue placeholder={pkg ? "Select a duration…" : "Select a package first"} />
                 </SelectTrigger>
                 <SelectContent>
@@ -299,40 +306,51 @@ export default function PackageMembershipForm({
               </Select>
               <FieldError message={fieldErrors.duration_option} />
             </div>
+          )}
 
-            {option === "custom" ? (
-              <div className="flex flex-col gap-2">
+          {!isClassCount && option === "custom" ? (
+            <div className="flex flex-col gap-2 sm:col-start-2">
+              <div className="flex items-center gap-1.5">
                 <Label htmlFor="custom_months">Number of months</Label>
-                <Input
-                  id="custom_months"
-                  name="custom_months"
-                  type="number"
-                  inputMode="numeric"
-                  min={CUSTOM_MONTHS_MIN}
-                  max={CUSTOM_MONTHS_MAX}
-                  step="1"
-                  disabled={isPending}
-                  value={customMonths}
-                  onChange={(event) => setCustomMonths(event.target.value)}
-                  placeholder={`Whole months, ${CUSTOM_MONTHS_MIN} to ${CUSTOM_MONTHS_MAX}`}
-                  aria-invalid={Boolean(fieldErrors.custom_months)}
-                />
-                <p className="text-small text-text-secondary">
+                <HelpTip label="About the number of months">
                   {customDiscountLabel
                     ? `The ${customDiscountLabel} package discount applies, if this package has one.`
                     : months
                       ? "Under 3 months there is no package discount."
                       : "A whole number of calendar months. The package discount of the largest standard duration it does not exceed applies."}
-                </p>
-                <FieldError message={fieldErrors.custom_months} />
+                </HelpTip>
               </div>
-            ) : null}
-          </>
-        )}
+              <Input
+                id="custom_months"
+                name="custom_months"
+                type="number"
+                inputMode="numeric"
+                min={CUSTOM_MONTHS_MIN}
+                max={CUSTOM_MONTHS_MAX}
+                step="1"
+                disabled={isPending}
+                value={customMonths}
+                onChange={(event) => setCustomMonths(event.target.value)}
+                placeholder={`Whole months, ${CUSTOM_MONTHS_MIN} to ${CUSTOM_MONTHS_MAX}`}
+                aria-invalid={Boolean(fieldErrors.custom_months)}
+              />
+              <FieldError message={fieldErrors.custom_months} />
+            </div>
+          ) : null}
+        </div>
 
+        {/* Row 2: Start Date | End Date (a class-count package has an optional expiry instead). */}
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="start_date">Start Date</Label>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="start_date">
+                Start Date<span className="text-danger" aria-hidden="true"> *</span>
+              </Label>
+              <HelpTip label="About the start date">
+                {isCustomPlan ? "The first day of the membership." : "The fee in effect on this date prices the membership."}
+                {student?.join_date ? ` Not before the student's join date (${joinDateLabel(student.join_date)}).` : ""}
+              </HelpTip>
+            </div>
             <Input
               id="start_date"
               name="start_date"
@@ -342,22 +360,19 @@ export default function PackageMembershipForm({
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
               aria-invalid={Boolean(fieldErrors.start_date)}
-              aria-describedby="start_date-help"
             />
-            <p id="start_date-help" className="text-small text-text-secondary">
-              {isCustomPlan ? "The first day of the membership." : "The fee in effect on this date prices the membership."}
-              {student?.join_date ? ` Not before the student's join date (${joinDateLabel(student.join_date)}).` : ""}
-            </p>
             <FieldError message={fieldErrors.start_date} />
           </div>
 
           {isClassCount ? null : (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="end_date_display">End Date</Label>
-              <Input id="end_date_display" value={endDate?.success ? formatDate(endDate.data) : ""} readOnly placeholder="Calculated" aria-describedby="end_date-help" />
-              <p id="end_date-help" className="text-small text-text-secondary">
-                Calculated from the duration and Start Date. It cannot be edited.
-              </p>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="end_date_display">
+                  End Date<span className="text-danger" aria-hidden="true"> *</span>
+                </Label>
+                <HelpTip label="About the end date">Calculated from the duration and Start Date. It cannot be edited.</HelpTip>
+              </div>
+              <Input id="end_date_display" value={endDate?.success ? formatDate(endDate.data) : ""} readOnly placeholder="Calculated" />
               <FieldError message={fieldErrors.end_date} />
             </div>
           )}
@@ -366,14 +381,16 @@ export default function PackageMembershipForm({
         {isClassCount ? (
           <fieldset className="flex flex-col gap-3" disabled={isPending}>
             <legend className="text-body font-medium text-text-primary">Expiry</legend>
-            <RadioOption id="expiry-none" group="expiry" checked={expiryMode === "none"} onChange={() => setExpiryMode("none")} disabled={isPending}>
-              No expiry
-            </RadioOption>
-            <RadioOption id="expiry-date" group="expiry" checked={expiryMode === "date"} onChange={() => setExpiryMode("date")} disabled={isPending}>
-              Expires on a date
-            </RadioOption>
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <RadioOption id="expiry-none" group="expiry" checked={expiryMode === "none"} onChange={() => setExpiryMode("none")} disabled={isPending}>
+                No expiry
+              </RadioOption>
+              <RadioOption id="expiry-date" group="expiry" checked={expiryMode === "date"} onChange={() => setExpiryMode("date")} disabled={isPending}>
+                Expires on a date
+              </RadioOption>
+            </div>
             {expiryChosen ? (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 sm:max-w-sm">
                 <Label htmlFor="end_date">Expiry date</Label>
                 <Input
                   id="end_date"
@@ -392,56 +409,99 @@ export default function PackageMembershipForm({
           </fieldset>
         ) : null}
 
-        <fieldset className="flex flex-col gap-3" disabled={isPending}>
-          <legend className="text-body font-medium text-text-primary">Pricing</legend>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <RadioOption id="pricing-standard" group="pricing" checked={!isCustomPlan} onChange={() => handlePricingModeChange("standard")} disabled={isPending}>
-              Standard pricing
-            </RadioOption>
-            <RadioOption id="pricing-custom" group="pricing" checked={isCustomPlan} onChange={() => handlePricingModeChange("custom_fee_plan")} disabled={isPending}>
-              Custom Fee Plan
-            </RadioOption>
-          </div>
-          {isCustomPlan ? (
-            <p className="text-small text-text-secondary">
-              A special price agreed by the Admin. The agreed fee is the final fee: no package or individual discount is applied.
-            </p>
-          ) : null}
-        </fieldset>
+        {/* Row 3: Pricing | Individual discount (a Custom Fee Plan has no discount; its fee fields follow below). */}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <fieldset className="flex flex-col gap-2" disabled={isPending}>
+            <legend className="text-body mb-2 flex items-center gap-1.5 font-medium text-text-primary">
+              <span>
+                Pricing<span className="text-danger" aria-hidden="true"> *</span>
+              </span>
+            </legend>
+            <div className="flex h-9 flex-wrap items-center gap-x-6 gap-y-2">
+              <RadioOption id="pricing-standard" group="pricing" checked={!isCustomPlan} onChange={() => handlePricingModeChange("standard")} disabled={isPending}>
+                Standard pricing
+              </RadioOption>
+              <RadioOption id="pricing-custom" group="pricing" checked={isCustomPlan} onChange={() => handlePricingModeChange("custom_fee_plan")} disabled={isPending}>
+                Custom Fee Plan
+              </RadioOption>
+              <HelpTip label="About the Custom Fee Plan">
+                A Custom Fee Plan is a special price agreed by the Admin. The agreed fee is the final fee: no package or individual discount is applied.
+              </HelpTip>
+            </div>
+          </fieldset>
+
+          {isCustomPlan ? null : (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="individual_discount_type_select">Individual discount</Label>
+                <HelpTip label="About the individual discount">
+                  Optional. Taken from the fee after the package discount, with a reason.
+                </HelpTip>
+              </div>
+              <Select
+                items={DISCOUNT_TYPES}
+                value={discountType}
+                onValueChange={(value) => {
+                  setDiscountType(value);
+                  if (value === "none") {
+                    setDiscountValue("");
+                    setDiscountReason("");
+                    setDiscountNote("");
+                  }
+                }}
+                disabled={isPending}
+              >
+                <SelectTrigger id="individual_discount_type_select" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DISCOUNT_TYPES.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <input type="hidden" name="individual_discount_type" value={discountType === "none" ? "" : discountType} />
+            </div>
+          )}
+        </div>
 
         {isCustomPlan ? (
           <div className="flex flex-col gap-4 rounded-card border border-border p-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="custom_fee">Custom agreed fee ({currency})</Label>
-              <Input
-                id="custom_fee"
-                name="custom_fee"
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                disabled={isPending}
-                value={customFee}
-                onChange={(event) => setCustomFee(event.target.value)}
-                placeholder="Enter the agreed fee"
-                aria-invalid={Boolean(fieldErrors.custom_fee)}
-              />
-              <FieldError message={fieldErrors.custom_fee} />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="custom_fee_reason">Reason</Label>
-              <Textarea
-                id="custom_fee_reason"
-                name="custom_fee_reason"
-                rows={2}
-                maxLength={REASON_MAX_LENGTH}
-                disabled={isPending}
-                value={customReason}
-                onChange={(event) => setCustomReason(event.target.value)}
-                placeholder="Why this fee is agreed (3 to 500 characters)"
-                aria-invalid={Boolean(fieldErrors.custom_fee_reason)}
-              />
-              <FieldError message={fieldErrors.custom_fee_reason} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="custom_fee">Custom agreed fee ({currency})</Label>
+                <Input
+                  id="custom_fee"
+                  name="custom_fee"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  disabled={isPending}
+                  value={customFee}
+                  onChange={(event) => setCustomFee(event.target.value)}
+                  placeholder="Enter the agreed fee"
+                  aria-invalid={Boolean(fieldErrors.custom_fee)}
+                />
+                <FieldError message={fieldErrors.custom_fee} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="custom_fee_reason">Reason</Label>
+                <Textarea
+                  id="custom_fee_reason"
+                  name="custom_fee_reason"
+                  rows={2}
+                  maxLength={REASON_MAX_LENGTH}
+                  disabled={isPending}
+                  value={customReason}
+                  onChange={(event) => setCustomReason(event.target.value)}
+                  placeholder="Why this fee is agreed (3 to 500 characters)"
+                  aria-invalid={Boolean(fieldErrors.custom_fee_reason)}
+                />
+                <FieldError message={fieldErrors.custom_fee_reason} />
+              </div>
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor="custom_fee_confirmed" className="text-body flex items-start gap-3 text-text-primary">
@@ -460,99 +520,62 @@ export default function PackageMembershipForm({
               <FieldError message={fieldErrors.custom_fee_confirmed} />
             </div>
           </div>
-        ) : (
-          <div className="flex flex-col gap-3">
+        ) : discountType !== "none" ? (
+          <div className="grid gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="individual_discount_type_select">Individual discount</Label>
-              <Select
-                items={DISCOUNT_TYPES}
-                value={discountType}
-                onValueChange={(value) => {
-                  setDiscountType(value);
-                  if (value === "none") {
-                    setDiscountValue("");
-                    setDiscountReason("");
-                    setDiscountNote("");
-                  }
-                }}
+              <Label htmlFor="individual_discount_value">{discountType === "percent" ? "Discount (%)" : `Discount amount (${currency})`}</Label>
+              <Input
+                id="individual_discount_value"
+                name="individual_discount_value"
+                inputMode="decimal"
                 disabled={isPending}
-              >
-                <SelectTrigger id="individual_discount_type_select">
-                  <SelectValue />
+                value={discountValue}
+                onChange={(event) => setDiscountValue(event.target.value)}
+                placeholder={discountType === "percent" ? "e.g. 10" : "0.00"}
+                aria-invalid={Boolean(discountErrors)}
+              />
+              <FieldError message={discountErrors} />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="individual_discount_reason_select">Reason</Label>
+              <Select items={REASON_ITEMS} value={discountReason} onValueChange={setDiscountReason} disabled={isPending}>
+                <SelectTrigger id="individual_discount_reason_select" aria-invalid={Boolean(fieldErrors.discount_reason)} className="w-full">
+                  <SelectValue placeholder="Select a reason…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DISCOUNT_TYPES.map((item) => (
+                  {REASON_ITEMS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                       {item.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <input type="hidden" name="individual_discount_type" value={discountType === "none" ? "" : discountType} />
+              <input type="hidden" name="individual_discount_reason" value={discountReason} />
+              <FieldError message={fieldErrors.discount_reason} />
             </div>
 
-            {discountType !== "none" ? (
-              <>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="individual_discount_value">{discountType === "percent" ? "Discount (%)" : `Discount amount (${currency})`}</Label>
-                  <Input
-                    id="individual_discount_value"
-                    name="individual_discount_value"
-                    inputMode="decimal"
-                    disabled={isPending}
-                    value={discountValue}
-                    onChange={(event) => setDiscountValue(event.target.value)}
-                    placeholder={discountType === "percent" ? "e.g. 10" : "0.00"}
-                    aria-invalid={Boolean(discountErrors)}
-                  />
-                  <p className="text-small text-text-secondary">Taken from the fee after the package discount.</p>
-                  <FieldError message={discountErrors} />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="individual_discount_reason_select">Reason</Label>
-                  <Select items={REASON_ITEMS} value={discountReason} onValueChange={setDiscountReason} disabled={isPending}>
-                    <SelectTrigger id="individual_discount_reason_select" aria-invalid={Boolean(fieldErrors.discount_reason)}>
-                      <SelectValue placeholder="Select a reason…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {REASON_ITEMS.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <input type="hidden" name="individual_discount_reason" value={discountReason} />
-                  <FieldError message={fieldErrors.discount_reason} />
-                </div>
-
-                {discountReason === "other" ? (
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="individual_discount_note">Explanation</Label>
-                    <Textarea
-                      id="individual_discount_note"
-                      name="individual_discount_note"
-                      rows={2}
-                      maxLength={REASON_MAX_LENGTH}
-                      disabled={isPending}
-                      value={discountNote}
-                      onChange={(event) => setDiscountNote(event.target.value)}
-                      placeholder="Explain the discount (3 to 500 characters)"
-                      aria-invalid={Boolean(fieldErrors.discount_note)}
-                    />
-                    <FieldError message={fieldErrors.discount_note} />
-                  </div>
-                ) : null}
-              </>
+            {discountReason === "other" ? (
+              <div className="flex flex-col gap-2 sm:col-span-2">
+                <Label htmlFor="individual_discount_note">Explanation</Label>
+                <Textarea
+                  id="individual_discount_note"
+                  name="individual_discount_note"
+                  rows={2}
+                  maxLength={REASON_MAX_LENGTH}
+                  disabled={isPending}
+                  value={discountNote}
+                  onChange={(event) => setDiscountNote(event.target.value)}
+                  placeholder="Explain the discount (3 to 500 characters)"
+                  aria-invalid={Boolean(fieldErrors.discount_note)}
+                />
+                <FieldError message={fieldErrors.discount_note} />
+              </div>
             ) : null}
           </div>
-        )}
+        ) : null}
 
-        <section aria-labelledby="fee-breakdown-heading" className="flex flex-col gap-3 rounded-card border border-border bg-background/60 p-4">
-          <h2 id="fee-breakdown-heading" className="text-body font-semibold text-text-primary">
-            Fee breakdown
-          </h2>
+        <section aria-label="Fee breakdown" className="flex flex-col gap-2 rounded-card bg-background px-4 py-3">
           {isCustomPlan ? (
             customOk ? (
               <dl className="flex flex-col gap-2">
@@ -573,8 +596,18 @@ export default function PackageMembershipForm({
                 {standardPrice.individualDiscountPaise > 0 ? `− ${formatCurrency(fromPaise(standardPrice.individualDiscountPaise), currency)}` : "None"}
               </BreakdownRow>
               <div className="border-t border-border pt-2">
-                <BreakdownRow label="Final agreed fee" strong>
-                  {formatCurrency(fromPaise(standardPrice.finalFeePaise), currency)}
+                <BreakdownRow
+                  label={
+                    <span className="inline-flex items-center gap-1.5">
+                      Final agreed fee
+                      <HelpTip label="About the fee preview">
+                        A preview. The final fee{isClassCount ? " is" : " and the end date are"} calculated again when the membership is saved.
+                      </HelpTip>
+                    </span>
+                  }
+                  strong
+                >
+                  <span className="text-section-title">{formatCurrency(fromPaise(standardPrice.finalFeePaise), currency)}</span>
                 </BreakdownRow>
               </div>
             </dl>
@@ -590,7 +623,6 @@ export default function PackageMembershipForm({
               {isClassCount ? "Choose a package and a start date to see the fee." : "Choose a package, a duration and a start date to see the fee."}
             </p>
           )}
-          <p className="text-small text-text-secondary">A preview. The final fee{isClassCount ? "" : " and the end date are"}{isClassCount ? " is" : ""} calculated again when the membership is saved.</p>
         </section>
 
         <div className="flex flex-col gap-2">
@@ -598,6 +630,7 @@ export default function PackageMembershipForm({
           <Textarea
             id="notes"
             name="notes"
+            rows={2}
             disabled={isPending}
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
@@ -608,38 +641,38 @@ export default function PackageMembershipForm({
         </div>
 
         {allowInitialPayment ? (
-          <div className="flex flex-col gap-4 rounded-card border border-border p-4">
-            <div className="flex items-start gap-3">
+          <div className="overflow-hidden rounded-card border border-border">
+            <div className="flex items-center gap-2 bg-background px-4 py-3">
               <input
                 id="record-payment-now"
                 type="checkbox"
-                className="mt-1 size-4 shrink-0 accent-brand"
+                className="size-4 shrink-0 accent-brand"
                 checked={paymentEnabled}
                 disabled={isPending || !canSave}
                 onChange={handlePaymentToggle}
-                aria-describedby="record-payment-now-help"
               />
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="record-payment-now">Record Payment Now</Label>
-                <p id="record-payment-now-help" className="text-small text-text-secondary">
-                  Optional. Record the first payment together with this membership. Leave it off to save the membership as Pending.
-                </p>
-              </div>
+              <Label htmlFor="record-payment-now">Record first payment now (Optional)</Label>
+              <HelpTip label="About recording the first payment">
+                Optional. Record the first payment together with this membership. Leave it off to save the membership as Pending.
+              </HelpTip>
             </div>
 
             {paymentEnabled && canSave ? (
-              <PaymentFields
-                draft={payment}
-                currency={currency}
-                today={today}
-                disabled={isPending}
-                fieldErrors={paymentErrors}
-                rowErrors={paymentErrors.rows ?? {}}
-                taxInvoiceDefault={taxInvoiceDefault}
-                idPrefix="initial-payment"
-                fieldName={INITIAL_PAYMENT_FIELD}
-                onRowRemoved={() => setPaymentErrors((current) => ({ ...current, rows: {} }))}
-              />
+              <div className="border-t border-border p-4">
+                <PaymentFields
+                  compact
+                  draft={payment}
+                  currency={currency}
+                  today={today}
+                  disabled={isPending}
+                  fieldErrors={paymentErrors}
+                  rowErrors={paymentErrors.rows ?? {}}
+                  taxInvoiceDefault={taxInvoiceDefault}
+                  idPrefix="initial-payment"
+                  fieldName={INITIAL_PAYMENT_FIELD}
+                  onRowRemoved={() => setPaymentErrors((current) => ({ ...current, rows: {} }))}
+                />
+              </div>
             ) : null}
           </div>
         ) : null}

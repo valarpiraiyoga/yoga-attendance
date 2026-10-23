@@ -5,6 +5,7 @@ import { useActionState, useRef, useState } from "react";
 import { Banknote, CalendarDays, CalendarX2, CircleCheck, Hash, Layers, Receipt, UserRound, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import HelpTip from "@/components/ui/help-tip";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -96,6 +97,7 @@ function LegacyMembershipForm({
   today,
   lockKind = false,
   classesUsed = 0,
+  headerAction = null,
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const [kind, setKind] = useState(state?.values?.kind || membership?.kind || initialValues?.kind || "duration");
@@ -270,6 +272,7 @@ function LegacyMembershipForm({
         <StudentIdentityHeader
           student={student}
           membership={membership ? { code: membership.membership_code, plan: planLabel(membership.plan) } : undefined}
+          action={headerAction}
         />
 
         {/* The kind travels with the form; only a new membership can choose it (Edit and Renew keep the stored one). */}
@@ -468,31 +471,29 @@ function LegacyMembershipForm({
         </div>
 
         {allowInitialPayment ? (
-          <div className="flex flex-col gap-4 rounded-card border border-border p-4">
-            <div className="flex items-start gap-3">
+          <div className="overflow-hidden rounded-card border border-border">
+            <div className="flex items-center gap-2 bg-background px-4 py-3">
               <input
                 id="record-payment-now"
                 type="checkbox"
-                className="mt-1 size-4 shrink-0 accent-brand"
+                className="size-4 shrink-0 accent-brand"
                 checked={paymentEnabled}
                 disabled={isPending}
                 onChange={handlePaymentToggle}
-                aria-describedby="record-payment-now-help"
               />
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="record-payment-now">Record Payment Now</Label>
-                <p id="record-payment-now-help" className="text-small text-text-secondary">
-                  Optional. Record the first payment together with this membership. Leave it off to save the membership as Pending.
-                </p>
-              </div>
+              <Label htmlFor="record-payment-now">Record first payment now (Optional)</Label>
+              <HelpTip label="About recording the first payment">
+                Optional. Record the first payment together with this membership. Leave it off to save the membership as Pending.
+              </HelpTip>
             </div>
 
             {paymentEnabled ? (
-              <>
+              <div className="flex flex-col gap-4 border-t border-border p-4">
                 {amountPaise === null ? (
                   <p className="text-small text-text-secondary">Enter the membership amount to see the balance.</p>
                 ) : null}
                 <PaymentFields
+                  compact
                   draft={payment}
                   currency={currency}
                   today={today}
@@ -504,7 +505,7 @@ function LegacyMembershipForm({
                   fieldName={INITIAL_PAYMENT_FIELD}
                   onRowRemoved={() => setPaymentErrors((current) => ({ ...current, rows: {} }))}
                 />
-              </>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -615,21 +616,28 @@ export default function MembershipForm(props) {
   const offersPackages = Boolean(packageAction) && !membership && Array.isArray(packages) && packages.length > 0;
   const [mode, setMode] = useState(defaultMode);
 
+  const modeSwitch = (
+    <div role="group" aria-label="Pricing" className="inline-flex gap-0.5 rounded-input border border-border bg-surface p-0.5">
+      <Button type="button" size="sm" variant={mode === "package" ? "default" : "ghost"} aria-pressed={mode === "package"} onClick={() => setMode("package")}>
+        From a package
+      </Button>
+      <Button type="button" size="sm" variant={mode === "manual" ? "default" : "ghost"} aria-pressed={mode === "manual"} onClick={() => setMode("manual")}>
+        Without a package
+      </Button>
+    </div>
+  );
+
   // Edit of a package-linked membership is its own workflow (app/memberships/[id]/edit/package-membership-editor.js); every Edit form
   // that reaches here is the legacy form below.
   if (!offersPackages) return <LegacyMembershipForm {...props} />;
 
   return (
     <div className="flex flex-col gap-5">
-      <div role="group" aria-label="Pricing" className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant={mode === "package" ? "default" : "outline"} aria-pressed={mode === "package"} onClick={() => setMode("package")}>
-          From a package
-        </Button>
-        <Button type="button" size="sm" variant={mode === "manual" ? "default" : "outline"} aria-pressed={mode === "manual"} onClick={() => setMode("manual")}>
-          Without a package
-        </Button>
-      </div>
-      {mode === "package" ? <PackageMembershipForm {...props} action={packageAction} initialValues={packageInitialValues} /> : <LegacyMembershipForm {...props} />}
+      {mode === "package" ? (
+        <PackageMembershipForm {...props} action={packageAction} initialValues={packageInitialValues} headerAction={modeSwitch} />
+      ) : (
+        <LegacyMembershipForm {...props} headerAction={modeSwitch} />
+      )}
     </div>
   );
 }
