@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MoreVertical } from "lucide-react";
+import { Eye, MoreVertical, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,8 +16,11 @@ import {
  * (Batch Details, Edit, and the batch's Students and Schedules tabs).
  * Status changes stay on Edit Batch. Mirrors `StudentCardMenu` /
  * `MembershipCardMenu`.
+ *
+ * `listActions` (the Batches list, table and cards): the short menu - View Batch and Edit Batch, each with an icon, icon and label only.
+ * The Schedule page's batch cards keep the full menu (with View Students and View Schedule).
  */
-export default function BatchCardMenu({ batchId, batchName, onOpenChange }) {
+export default function BatchCardMenu({ batchId, batchName, onOpenChange, listActions = false }) {
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
@@ -35,20 +38,26 @@ export default function BatchCardMenu({ batchId, batchName, onOpenChange }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
         <DropdownMenuItem render={<Link href={`/batches/${batchId}`} />} nativeButton={false}>
+          {listActions ? <Eye aria-hidden="true" /> : null}
           View Batch
         </DropdownMenuItem>
         <DropdownMenuItem render={<Link href={`/batches/${batchId}/edit`} />} nativeButton={false}>
+          {listActions ? <Pencil aria-hidden="true" /> : null}
           Edit Batch
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator />
+        {listActions ? null : (
+          <>
+            <DropdownMenuSeparator />
 
-        <DropdownMenuItem render={<Link href={`/batches/${batchId}/students`} />} nativeButton={false}>
-          View Students
-        </DropdownMenuItem>
-        <DropdownMenuItem render={<Link href={`/batches/${batchId}/schedules`} />} nativeButton={false}>
-          View Schedule
-        </DropdownMenuItem>
+            <DropdownMenuItem render={<Link href={`/batches/${batchId}/students`} />} nativeButton={false}>
+              View Students
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link href={`/batches/${batchId}/schedules`} />} nativeButton={false}>
+              View Schedule
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

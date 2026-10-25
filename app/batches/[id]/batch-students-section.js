@@ -233,7 +233,7 @@ export default function BatchStudentsSection({ enrollments, activeCount, assignm
             action={
               <Button
                 type="button"
-                variant="secondary"
+                variant="destructive"
                 size="sm"
                 onClick={() => {
                   setQ("");
@@ -266,7 +266,9 @@ export default function BatchStudentsSection({ enrollments, activeCount, assignm
                 const rowCount = isCollapsed ? 1 : group.rows.length;
 
                 const sessionCell = (
-                  <TableCell rowSpan={rowCount} className="p-1.5 pl-3 align-middle">
+                  // `h-px` gives the spanning cell a definite height, so the tinted block's `h-full` fills every row it spans
+                  // instead of shrinking to its text (a percentage height has nothing to resolve against in an auto-height cell).
+                  <TableCell rowSpan={rowCount} className="h-px p-1.5 pl-3 align-middle">
                     <div className={cn("flex h-full min-h-16 items-center gap-2 rounded-lg px-3 py-2", tone)}>
                       <Button
                         type="button"

@@ -21,6 +21,7 @@ import {
   validateCommunicationInput,
 } from "@/lib/communications/core";
 import { recordStudentCommunication, updateStudentCommunication } from "@/lib/communications/actions";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 const emptyDraft = (timeZone) => ({
   communicatedAt: defaultCommunicatedAt(new Date(), timeZone),
@@ -146,6 +147,7 @@ function CommunicationDialog({ mode, studentId, student, timeZone, communication
         }
         inFlight.current = false;
         handleOpenChange(false);
+        showSuccessToast(mode === "edit" ? "Communication updated successfully." : "Communication recorded successfully.");
         router.refresh();
       } catch {
         setFormError("Could not reach the server. Try again.");

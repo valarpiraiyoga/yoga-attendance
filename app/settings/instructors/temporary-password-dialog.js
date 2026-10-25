@@ -70,7 +70,7 @@ export default function TemporaryPasswordDialog({ instructor, open, password, em
             autoComplete="off"
             className="text-body h-10 min-w-0 flex-1 rounded-input border border-border bg-background px-3 font-mono tracking-wide text-text-primary"
           />
-          <Button type="button" variant="outline" onClick={copy}>
+          <Button type="button" variant="secondary" onClick={copy}>
             {copied === "copied" ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
             {copied === "copied" ? "Copied" : "Copy"}
           </Button>

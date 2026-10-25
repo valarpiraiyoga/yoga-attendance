@@ -192,7 +192,7 @@ export default async function MembershipsPage({ searchParams }) {
           }
           action={
             isFiltered ? (
-              <Button variant="secondary" render={<Link href="/memberships" />} nativeButton={false}>
+              <Button variant="destructive" render={<Link href="/memberships" />} nativeButton={false}>
                 Clear Filters
               </Button>
             ) : (

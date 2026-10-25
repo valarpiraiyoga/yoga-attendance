@@ -224,7 +224,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
                 {isCompleted && !editing ? (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     onClick={() => {
                       setSavedMessage(null);
                       setEditing(true);
@@ -235,7 +235,7 @@ export default function AttendancePanel({ session, scheduleId, date, eligibleStu
                   </Button>
                 ) : null}
                 {showControls ? (
-                  <Button type="button" variant="outline" onClick={markAllPresent} disabled={isPending}>
+                  <Button type="button" variant="secondary" onClick={markAllPresent} disabled={isPending}>
                     Mark All Present
                   </Button>
                 ) : null}

@@ -40,7 +40,7 @@ export default function CommunicationHistory({ studentId, student, timeZone, com
           size="sm"
           title="No communications yet"
           description="No communication records have been added for this student yet."
-          action={<AddCommunication studentId={studentId} student={student} timeZone={timeZone} variant="outline" />}
+          action={<AddCommunication studentId={studentId} student={student} timeZone={timeZone} variant="secondary" />}
         />
       ) : (
         // A timeline: one vertical rail down the left (through the centre of the 24px markers), a brand dot per record, and a divider

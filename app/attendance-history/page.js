@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   DEFAULT_HISTORY_SORT,
   HISTORY_RANGE_LIMIT,
-  QUICK_DATE_COUNT,
   getHistoryDateNavigation,
   listAttendanceHistory,
 } from "@/lib/attendance-history/data";
@@ -88,7 +87,7 @@ export default async function AttendanceHistoryPage({ searchParams }) {
   const settle = (promise) => promise.then((value) => ({ ok: true, value }), () => ({ ok: false }));
   const { from: monthFrom, to: monthTo } = monthRange(month);
 
-  const [{ sessions, total }, navigation, batchOptions, instructorOptions, classCountResult, classCountMonth, classCountRecent] = await Promise.all([
+  const [{ sessions, total }, navigation, batchOptions, instructorOptions, classCountResult, classCountMonth] = await Promise.all([
     listAttendanceHistory({
       dateFrom: rangeFrom,
       dateTo: rangeTo,
@@ -105,18 +104,14 @@ export default async function AttendanceHistoryPage({ searchParams }) {
     isAdmin ? listInstructorOptions() : Promise.resolve([]),
     showClassCount ? settle(readRange({ dateFrom: rangeFrom, dateTo: rangeTo, q })) : null,
     canSeeClassCount ? settle(readDates({ dateFrom: monthFrom, dateTo: monthTo })) : null,
-    canSeeClassCount ? settle(readDates()) : null,
   ]);
 
   const classCountRecords = classCountResult?.ok ? classCountResult.value.records : [];
   const classCountTotal = classCountResult?.ok ? classCountResult.value.total : 0;
   const classCountFailed = Boolean(classCountResult) && !classCountResult.ok;
-  // Calendar days and Quick dates: sessions as before, plus (Admin or Instructor, each within their own access) the dates that hold class-count records - in a separate
+  // Calendar days: sessions as before, plus (Admin or Instructor, each within their own access) the dates that hold class-count records - in a separate
   // `classCount` number, so a session count never includes one. A failed class-count read just leaves them out.
   const monthDays = canSeeClassCount ? mergeNavigationDays(navigation.monthDays, classCountMonth?.ok ? classCountMonth.value : []) : navigation.monthDays;
-  const quickDates = canSeeClassCount
-    ? mergeNavigationDays(navigation.quickDates, classCountRecent?.ok ? classCountRecent.value : []).slice(0, QUICK_DATE_COUNT)
-    : navigation.quickDates;
 
   const groups = mergeHistoryGroups(groupSessionsByDate(sessions), classCountRecords);
   const requestedDate = isValidDateString(rawParams.date) ? rawParams.date : "";
@@ -142,7 +137,7 @@ export default async function AttendanceHistoryPage({ searchParams }) {
             currentParams={rawParams}
             month={month}
             monthDays={monthDays}
-            quickDates={quickDates}
+            quickDates={[]}
             selectedDate={selectedDate}
             rangeFrom={rangeFrom}
             rangeTo={rangeTo}
@@ -188,7 +183,7 @@ export default async function AttendanceHistoryPage({ searchParams }) {
                   }
                   action={
                     isFiltered ? (
-                      <Button variant="secondary" render={<Link href={BASE_PATH} />} nativeButton={false}>
+                      <Button variant="destructive" render={<Link href={BASE_PATH} />} nativeButton={false}>
                         Clear Filters
                       </Button>
                     ) : undefined

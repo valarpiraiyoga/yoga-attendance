@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
+import { documentBack } from "@/lib/documents/source";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getInvoiceForMembership } from "@/lib/invoices/data";
 import { getInvoiceAssetUrls } from "@/lib/invoices/document-data";
@@ -45,10 +46,11 @@ import ShareInvoiceButton from "@/app/memberships/[id]/invoice/share-invoice-but
  * All the actions sit in the header's `actions`, which show at every width (the header's own pattern),
  * and both are `print:hidden` with it.
  */
-export default async function InvoiceDetailPage({ params }) {
+export default async function InvoiceDetailPage({ params, searchParams }) {
   await requireRole(ROLES.ADMIN);
 
   const { id } = await params;
+  const rawParams = await searchParams;
   const invoice = await getInvoiceForMembership(id);
 
   if (!invoice) {
@@ -84,7 +86,7 @@ export default async function InvoiceDetailPage({ params }) {
             <ShareInvoiceButton share={invoiceShareProps(invoice, invoiceDocument, id)} />
           </>
         }
-        back={{ href: `/memberships/${id}`, label: "Back to Membership" }}
+        back={documentBack(rawParams, { href: `/memberships/${id}`, label: "Back to Membership" })}
         title={`${invoiceDocument.title} ${invoiceDocument.number}`}
         description="This receipt keeps the details it was issued with. Later changes to the membership do not change it. Receipt number remains assigned to this membership."
       />

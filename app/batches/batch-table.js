@@ -12,7 +12,6 @@ import { BATCH_STATUS } from "@/lib/status";
 import { summarizeCurrentSchedules } from "@/lib/batches/summary";
 import { cn } from "@/lib/utils";
 import BatchCardMenu from "@/app/batches/batch-card-menu";
-import BatchQuickView from "@/app/batches/batch-quick-view";
 import BatchInstructorSummary from "@/app/batches/batch-instructor-summary";
 
 // Responsive by the table's own width (container queries), not the viewport,
@@ -61,9 +60,8 @@ function BatchRow({ batch }) {
         <div className="flex min-w-0 items-center gap-3">
           <BatchAvatar batch={batch} size="lg" />
           <div className="min-w-0">
-            {/* The name opens the quick view (a right-hand panel with View Details); the eye icon in Actions goes straight to Batch Details. */}
             <p className="text-body font-semibold text-text-primary">
-              <BatchQuickView batch={batch} />
+              <Link href={`/batches/${batch.id}`} className="rounded-sm text-brand hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">{batch.name}</Link>
             </p>
             {batch.code ? <p className="text-small text-text-secondary">{batch.code}</p> : null}
             {/* Below 40rem the schedule summary has no column of its own. */}
@@ -117,7 +115,7 @@ function BatchRow({ batch }) {
           >
             <Eye className="size-4" aria-hidden="true" />
           </Button>
-          <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} />
+          <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} listActions />
         </div>
       </TableCell>
     </TableRow>

@@ -87,7 +87,7 @@ export default function CorrectionsPanel({ membershipId, currency, canEdit, corr
           </div>
         </div>
         {canEdit ? (
-          <Button variant="outline" size="sm" className="text-brand" render={<Link href={`/memberships/${membershipId}/edit`} />} nativeButton={false}>
+          <Button variant="secondary" size="sm" render={<Link href={`/memberships/${membershipId}/edit`} />} nativeButton={false}>
             <Pencil className="size-4" aria-hidden="true" />
             Edit Membership
           </Button>

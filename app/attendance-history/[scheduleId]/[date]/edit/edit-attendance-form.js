@@ -133,7 +133,7 @@ export default function EditAttendanceForm({ scheduleId, date, students, initial
             />
           ) : null}
           <div className={cn("flex flex-wrap gap-2", showSearch && "sm:ml-auto")}>
-            <Button type="button" variant="outline" onClick={markAllPresent}>
+            <Button type="button" variant="secondary" onClick={markAllPresent}>
               Mark All Present
             </Button>
           </div>

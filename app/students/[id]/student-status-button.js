@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useTransition } from "react";
-import { ToggleLeft, ToggleRight } from "lucide-react";
+import { CircleCheck, CircleSlash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import StudentContext from "@/components/ui/student-context";
@@ -10,10 +10,10 @@ import { cn } from "@/lib/utils";
 import { setStudentStatus } from "@/lib/students/actions";
 
 /**
- * The Student Details header's active / inactive toggle icon button, placed
- * before Edit Student (the status text itself is the badge beside the student's
- * name). The toggle shows the current state — on and green when active, off and
- * grey when inactive — and is also the control that changes it — the Deactivate / Activate Student actions that used to live
+ * The Student Details header's status button, placed before Edit Student. The
+ * status badge beside the student's name says what the student IS; this button
+ * says what it DOES - "Deactivate" while the student is active, "Activate"
+ * (green) while inactive - and is the control that changes the status: the Deactivate / Activate Student actions that used to live
  * in the overflow menu (wireframe p10; 02-ux.md Flow 11: "Students → Select
  * Student → Deactivate Student → Review → Confirm → Save → Student Inactive").
  * The actions and their rules are unchanged.
@@ -53,26 +53,14 @@ export default function StudentStatusButton({ studentId, studentName, status, st
       <Button
         type="button"
         variant="outline"
-        size="icon"
         disabled={isPending}
         onClick={isActive ? () => setConfirmOpen(true) : () => runStatusChange("active")}
-        aria-label={
-          isActive
-            ? `${studentName} is active. Deactivate student`
-            : `${studentName} is inactive. Activate student`
-        }
-        title={isActive ? "Active — click to deactivate" : "Inactive — click to activate"}
-        className={cn(
-          isActive
-            ? "border-success/30 bg-success/5 text-success hover:bg-success/10 hover:text-success"
-            : "text-text-secondary"
-        )}
+        aria-label={isActive ? `Deactivate ${studentName}` : `Activate ${studentName}`}
+        title={isActive ? "Deactivate student" : "Activate student"}
+        className={cn(!isActive && "border-success/30 bg-success/5 text-success hover:bg-success/10 hover:text-success")}
       >
-        {isActive ? (
-          <ToggleRight className="size-5" aria-hidden="true" />
-        ) : (
-          <ToggleLeft className="size-5" aria-hidden="true" />
-        )}
+        {isActive ? <CircleSlash className="size-4" aria-hidden="true" /> : <CircleCheck className="size-4" aria-hidden="true" />}
+        {isActive ? "Deactivate" : "Activate"}
       </Button>
 
       <Toast

@@ -8,6 +8,7 @@ import StudentContext from "@/components/ui/student-context";
 import { Textarea } from "@/components/ui/textarea";
 import { reverseClassCount } from "@/lib/class-count-attendance/actions";
 import { REASON_MAX, reasonError, remainingText, trimReason } from "@/lib/class-count-attendance/record-core";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 /**
  * Reverse for one recorded class (02-ux.md "Class Attendance panel"): a confirmation that names the record - its date, who
@@ -54,6 +55,7 @@ export default function ReverseClassDialog({ record, remaining, student, members
           setSubmitError(result.error);
         } else {
           setOpen(false);
+          showSuccessToast("Class reversed successfully.");
         }
       } catch {
         // Not answered: keep the request ID, so trying again repeats this reversal rather than making another.

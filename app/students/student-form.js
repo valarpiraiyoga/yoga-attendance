@@ -110,6 +110,9 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
 
   return (
     <form action={submitForm} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
+      {/* Edit only: says which student this is (the SAVED name and ID, not what is typed below). */}
+      {student ? <StudentIdentityHeader student={student} /> : null}
+
       {state?.error ? (
         <p
           role="alert"
@@ -118,9 +121,6 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
           {state.error}
         </p>
       ) : null}
-
-      {/* Edit only: says which student this is (the SAVED name and ID, not what is typed below). */}
-      {student ? <StudentIdentityHeader student={student} /> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <h2 className="text-section-title font-semibold text-text-primary">Student Details</h2>

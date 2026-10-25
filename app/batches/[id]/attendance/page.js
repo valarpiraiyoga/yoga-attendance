@@ -99,7 +99,7 @@ export default async function BatchAttendancePage({ params, searchParams }) {
             }
             action={
               isFiltered ? (
-                <Button variant="secondary" render={<Link href={basePath} />} nativeButton={false}>
+                <Button variant="destructive" render={<Link href={basePath} />} nativeButton={false}>
                   Clear Filters
                 </Button>
               ) : undefined

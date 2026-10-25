@@ -19,6 +19,7 @@ import ScheduleCardMenu from "@/app/schedule/schedule-card-menu";
 import { scheduleContextOf } from "@/app/schedule/schedule-context";
 import SchedulePlaces from "@/app/schedule/schedule-places";
 import { placesDisplay } from "@/lib/schedules/capacity";
+import { countedLabel } from "@/lib/schedules/counted-label";
 
 // How many schedule rows a batch group shows on mobile before "+N more
 // schedules" (an in-place reveal, not pagination). The desktop table lists
@@ -276,14 +277,14 @@ export default function ScheduleBatchAccordion({ batch, batchId, schedules, defa
           <span className="block text-small font-medium text-text-secondary @2xl:hidden">{countLabel}</span>
         </span>
         <span className="hidden shrink-0 items-center gap-2 @2xl:flex">
-          <span className="text-small inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 font-medium text-text-primary">
-            <Clock className="size-4 text-text-secondary" aria-hidden="true" />
-            {slotGroups.length} {slotGroups.length === 1 ? "time slot" : "time slots"}
-          </span>
-          <span className="text-small inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 font-medium text-text-primary">
-            <User className="size-4 text-text-secondary" aria-hidden="true" />
-            {instructorCount} {instructorCount === 1 ? "instructor" : "instructors"}
-          </span>
+          <Badge variant="outline" className="gap-1.5 border-info/25 bg-info/10 px-3 py-1">
+            <Clock className="size-3.5 text-info" aria-hidden="true" />
+            {countedLabel(slotGroups.length, "time slot")}
+          </Badge>
+          <Badge variant="outline" className="gap-1.5 border-brand-accent/25 bg-brand-accent/10 px-3 py-1">
+            <User className="size-3.5 text-brand-accent" aria-hidden="true" />
+            {countedLabel(instructorCount, "instructor")}
+          </Badge>
           <span className="sr-only">{countLabel}</span>
         </span>
         {expanded ? (
@@ -323,7 +324,7 @@ export default function ScheduleBatchAccordion({ batch, batchId, schedules, defa
                           batchName={batchName}
                           timeCell={
                             index === 0 ? (
-                              <TableCell rowSpan={rows.length} className="p-1.5 pl-3 align-middle">
+                              <TableCell rowSpan={rows.length} className="h-px p-1.5 pl-3 align-middle">
                                 <div className={cn("flex h-full min-h-14 flex-col items-center justify-center rounded-lg px-3 py-2 text-center", TIME_RANGE_CHIPS[tones.get(group.key) ?? 0])}>
                                   <span className="text-small font-semibold whitespace-nowrap tabular-nums">
                                     {formatTime(first.start_time)} – {formatTime(first.end_time)}

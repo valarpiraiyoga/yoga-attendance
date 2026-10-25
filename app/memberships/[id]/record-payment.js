@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/currencies";
 import { recordMembershipPayment } from "@/lib/memberships/payment-actions";
 import { fromPaise } from "@/lib/memberships/payments-core";
 import PaymentFields, { usePaymentDraft } from "@/app/memberships/[id]/payment-fields";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 /**
  * Record Payment (V1 Tax Adjustment, Step 2) - a payment against a membership that is not yet fully
@@ -55,6 +56,7 @@ export default function RecordPayment({ membershipId, balancePaise, currency, to
       }
 
       handleOpenChange(false);
+      showSuccessToast("Payment recorded successfully.");
     });
   }
 

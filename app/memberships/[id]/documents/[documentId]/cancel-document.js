@@ -9,6 +9,7 @@ import ContextCard from "@/components/ui/context-card";
 import FormField from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
 import { cancelPaymentDocument } from "@/lib/invoices/actions";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 const REASON_MAX = 500;
 
@@ -66,6 +67,7 @@ export default function CancelDocument({ membershipId, documentId, title, number
 
         inFlight.current = false;
         handleOpenChange(false);
+        showSuccessToast("Document cancelled successfully.");
         // The action has revalidated this page: it now shows the document as cancelled, with the reason.
         router.refresh();
       } catch {

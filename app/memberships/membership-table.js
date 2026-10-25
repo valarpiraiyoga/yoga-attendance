@@ -117,7 +117,6 @@ function MembershipRow({ membership, today, reminders, centreName }) {
             {/* The expiry reminder sits under the membership status (02-ux.md "Membership & payment reminders"); the Balance badge belongs under the
                 payment status, so here it only shows while the Amount & Payment column is hidden (a narrow table). */}
             <ReminderIndicators reminders={reminders} only="expiry" className="max-w-48" />
-            <ReminderIndicators reminders={reminders} only="payment" className="max-w-48 @[42rem]:hidden" />
           </div>
         </div>
       </TableCell>
@@ -146,7 +145,6 @@ function MembershipRow({ membership, today, reminders, centreName }) {
           <PaymentIcon className="size-3.5" aria-hidden="true" />
           {payment.label}
         </Badge>
-        <ReminderIndicators reminders={reminders} only="payment" className="mt-1" />
       </TableCell>
       <TableCell className={cn(CELL, REMAINING_ONLY)}>
         <div className="flex min-w-0 items-center gap-3">
@@ -187,6 +185,7 @@ function MembershipRow({ membership, today, reminders, centreName }) {
             onOpenReminderMessage={() => setReminderOpen(true)}
             onIssueInvoice={() => setIssueOpen(true)}
             onOpenChange={setMenuOpen}
+            listActions
           />
           {documentAction.kind === "issue-receipt" ? (
             <MembershipIssueInvoiceDialog membership={membership} student={student} open={issueOpen} onOpenChange={setIssueOpen} />

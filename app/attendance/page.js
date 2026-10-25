@@ -240,7 +240,7 @@ export default async function AttendancePage({ searchParams }) {
                   description="No sessions match your search or filters."
                   action={
                     isFiltered ? (
-                      <Button variant="secondary" render={<Link href="/attendance" />} nativeButton={false}>
+                      <Button variant="destructive" render={<Link href="/attendance" />} nativeButton={false}>
                         Clear Filters
                       </Button>
                     ) : undefined
@@ -347,8 +347,7 @@ export default async function AttendancePage({ searchParams }) {
             currentParams={rawParams}
             month={month}
             monthDays={navigation.monthDays}
-            quickDates={navigation.quickDates}
-            quickDatesTitle="Sessions by date"
+            quickDates={[]}
             selectedDate={selectedDate}
             rangeFrom={rangeFrom}
             rangeTo={rangeTo}
@@ -382,7 +381,7 @@ export default async function AttendancePage({ searchParams }) {
                   }
                   action={
                     isFiltered ? (
-                      <Button variant="secondary" render={<Link href="/attendance?view=all" />} nativeButton={false}>
+                      <Button variant="destructive" render={<Link href="/attendance?view=all" />} nativeButton={false}>
                         Clear Filters
                       </Button>
                     ) : undefined

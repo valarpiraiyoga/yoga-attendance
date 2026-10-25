@@ -4,6 +4,7 @@ import { getCenterSettings } from "@/lib/center-profile/settings";
 import { DEFAULT_CENTER_SETTINGS } from "@/lib/center-profile/settings-core";
 import { ROLES } from "@/lib/auth/dal";
 import { getReminders } from "@/lib/reminders/data";
+import { SuccessToastHost } from "@/components/ui/success-toast";
 
 /**
  * Reusable application-level layout.
@@ -57,6 +58,8 @@ export default async function AppShell({ role, user, mobileTitle, children }) {
           {children}
         </main>
       </div>
+      {/* The one host for `showSuccessToast` (in-place saves): it outlives any dialog or page that asked for it. */}
+      <SuccessToastHost />
     </div>
   );
 }

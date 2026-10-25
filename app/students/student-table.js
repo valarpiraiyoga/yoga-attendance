@@ -10,6 +10,7 @@ import { ENTITY_STATUS, MEMBERSHIP_SUMMARY } from "@/lib/status";
 import { formatPhone } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import StudentCardMenu from "@/app/students/student-card-menu";
+import StudentViewButton from "@/app/students/student-view-button";
 
 // Responsive by the table's own width (container queries), not the viewport,
 // the same rule as the Attendance, Schedule and Batches tables. Narrowest
@@ -74,12 +75,16 @@ function StudentRow({ student }) {
         <Badge variant={entityStatus.variant}>{entityStatus.label}</Badge>
       </TableCell>
       <TableCell className={cn(CELL, "w-px py-3 pr-3 pl-1 whitespace-nowrap")}>
-        <StudentCardMenu
-          studentId={student.id}
-          membershipId={student.currentMembershipId}
-          enrollmentId={student.primaryEnrollmentId}
-          onOpenChange={setMenuOpen}
-        />
+        <div className="flex items-center gap-1">
+          <StudentViewButton student={student} />
+          <StudentCardMenu
+            studentId={student.id}
+            membershipId={student.currentMembershipId}
+            enrollmentId={student.primaryEnrollmentId}
+            onOpenChange={setMenuOpen}
+            listActions
+          />
+        </div>
       </TableCell>
     </TableRow>
   );

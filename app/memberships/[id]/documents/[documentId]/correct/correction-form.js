@@ -14,6 +14,8 @@ import { CORRECTION_REASON_MAX } from "@/lib/invoices/document-correction";
 import { correctAndReissuePaymentDocument, previewPaymentDocumentCorrection } from "@/lib/invoices/actions";
 import { fromPaise, PAYMENT_METHOD_LABEL, toPaise } from "@/lib/memberships/payments-core";
 import PaymentFields, { usePaymentDraft } from "@/app/memberships/[id]/payment-fields";
+import { showSuccessToast } from "@/components/ui/success-toast";
+import { withDocumentsSource } from "@/lib/documents/source";
 
 const PAYMENT_STATUS_LABEL = { paid: "Paid", partially_paid: "Partially Paid" };
 
@@ -78,6 +80,7 @@ function ErrorBanner({ children }) {
 export default function CorrectionForm({
   membershipId,
   documentId,
+  fromDocuments = false,
   series,
   title,
   number,
@@ -180,7 +183,10 @@ export default function CorrectionForm({
 
         if (result?.success) {
           // Stay locked while the replacement opens: the original is cancelled now, and there is nothing left to submit.
-          router.push(`/memberships/${membershipId}/documents/${result.invoiceId}`);
+          showSuccessToast("Document corrected and reissued successfully.");
+          // The replacement opens where the original did: from the Documents list it stays under Documents.
+          const replacementPath = `/memberships/${membershipId}/documents/${result.invoiceId}`;
+          router.push(fromDocuments ? withDocumentsSource(replacementPath) : replacementPath);
           router.refresh();
           return;
         }
@@ -195,7 +201,8 @@ export default function CorrectionForm({
     });
   }
 
-  const backHref = `/memberships/${membershipId}/documents/${documentId}`;
+  const backPath = `/memberships/${membershipId}/documents/${documentId}`;
+  const backHref = fromDocuments ? withDocumentsSource(backPath) : backPath;
   const header = <StudentIdentityHeader student={student} membership={membership} />;
 
   // ---- step 2: review ------------------------------------------------------------------------------------------------

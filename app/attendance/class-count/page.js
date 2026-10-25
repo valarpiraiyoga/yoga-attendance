@@ -3,6 +3,7 @@ import { requireRole, ROLES } from "@/lib/auth/dal";
 import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
+import { Badge } from "@/components/ui/badge";
 import { todayDateString } from "@/lib/memberships/data";
 import { listClassCountEligible, listClassCountToRenew } from "@/lib/class-count-attendance/data";
 import AttendanceViewToggle from "@/app/attendance/attendance-view-toggle";
@@ -56,9 +57,10 @@ export default async function ClassCountAttendancePage() {
           />
         ) : (
           <div className="flex flex-col gap-8">
-            <section aria-labelledby="class-count-record-heading" className="flex flex-col gap-3">
-              <h2 id="class-count-record-heading" className="text-body font-semibold text-text-primary">
+            <section aria-labelledby="class-count-record-heading" className="flex flex-col gap-1">
+              <h2 id="class-count-record-heading" className="flex items-center gap-2 text-body font-semibold text-text-primary">
                 Ready to record
+                <Badge variant="neutral">{eligible.length}</Badge>
               </h2>
               {eligible.length === 0 ? (
                 <EmptyState size="sm" description="No class-count membership has classes to record today." />
@@ -68,9 +70,10 @@ export default async function ClassCountAttendancePage() {
             </section>
 
             {toRenew.length > 0 ? (
-              <section aria-labelledby="class-count-renew-heading" className="flex flex-col gap-3">
-                <h2 id="class-count-renew-heading" className="text-body font-semibold text-text-primary">
+              <section aria-labelledby="class-count-renew-heading" className="flex flex-col gap-1">
+                <h2 id="class-count-renew-heading" className="flex items-center gap-2 text-body font-semibold text-text-primary">
                   No classes remaining
+                  <Badge variant="neutral">{toRenew.length}</Badge>
                 </h2>
                 <ClassCountList rows={toRenew} mode="renew" ariaLabel="Class-count memberships with no classes left" />
               </section>

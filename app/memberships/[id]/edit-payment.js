@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/currencies";
 import { editMembershipPayment } from "@/lib/memberships/payment-actions";
 import { fromPaise, toPaise } from "@/lib/memberships/payments-core";
 import PaymentFields, { usePaymentDraft } from "@/app/memberships/[id]/payment-fields";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 /** A saved method in the shape the payment fields edit. */
 const rowOf = (method) => ({
@@ -68,14 +69,15 @@ export default function EditPayment({ membershipId, payment, balancePaise, curre
       }
 
       handleOpenChange(false);
+      showSuccessToast("Payment updated successfully.");
     });
   }
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => handleOpenChange(true)} aria-label={`Edit ${paymentLabel}`}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => handleOpenChange(true)} aria-label={`Edit ${paymentLabel}`} title="Edit payment">
         <Pencil className="size-4" aria-hidden="true" />
-        Edit Payment
+        Edit
       </Button>
 
       <ConfirmDialog

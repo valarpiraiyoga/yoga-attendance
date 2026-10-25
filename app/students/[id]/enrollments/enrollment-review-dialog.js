@@ -1,52 +1,55 @@
 "use client";
 
-import { CalendarDays, CalendarX2, Clock, Info, Layers, UserRound } from "lucide-react";
+import { CalendarDays, CalendarX2, Info, Layers } from "lucide-react";
+import Avatar from "@/components/ui/avatar";
 import ReviewDialog, { ReviewRow } from "@/components/ui/review-dialog";
 import StudentContext from "@/components/ui/student-context";
-import { getBatchColor } from "@/lib/batches/identity";
-import { formatTime } from "@/lib/format";
+import { formatTimeRange } from "@/lib/format";
 import { DAY_LABELS } from "@/lib/schedules/validation";
-import { cn } from "@/lib/utils";
+import { groupSchedulesByTimeSlot, instructorCountLabel, SLOT_TONES } from "@/lib/students/enrollment-schedule-groups";
 
-// Each weekday gets one stable accent from the existing Batch Identity palette, so a day chip
-// reads the same everywhere and no new colours are introduced.
-const DAY_COLOR = {
-  monday: "teal",
-  tuesday: "amber",
-  wednesday: "blue",
-  thursday: "green",
-  friday: "purple",
-  saturday: "pink",
-  sunday: "orange",
-};
-
-/** One schedule as a row: day chip, time range, instructor. */
-function ScheduleLine({ schedule }) {
-  const day = schedule?.day_of_week;
-  const color = getBatchColor(DAY_COLOR[day]);
-
-  return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2.5 text-body">
-      <span className={cn("inline-flex w-12 justify-center rounded-md px-2 py-1 text-small font-medium", color.tile)}>
-        {(DAY_LABELS[day] ?? day ?? "—").slice(0, 3)}
-      </span>
-      <span className="inline-flex items-center gap-2 whitespace-nowrap text-text-primary">
-        <Clock className="size-4 text-text-secondary" aria-hidden="true" />
-        {formatTime(schedule?.start_time)} – {formatTime(schedule?.end_time)}
-      </span>
-      <span className="inline-flex min-w-0 items-center gap-2 text-text-primary">
-        <UserRound className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
-        <span className="min-w-0 truncate">{schedule?.instructors?.full_name ?? "—"}</span>
-      </span>
-    </li>
-  );
-}
-
+/**
+ * Schedules grouped by time slot, as Student Details' Batch Enrollments lists them: each distinct time slot is one tinted block (the time and
+ * "N instructors") spanning that slot's instructor rows; each instructor is a row (photo, name) with the days they teach that slot as chips.
+ * Presentation only - `groupSchedulesByTimeSlot` groups the schedules the review already holds.
+ */
 function ScheduleList({ schedules, label }) {
+  const groups = groupSchedulesByTimeSlot(schedules.map((schedule) => ({ schedule })));
+
   return (
     <ul aria-label={label} className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
-      {schedules.map((schedule, index) => (
-        <ScheduleLine key={schedule.series_id ?? schedule.id ?? `${schedule.day_of_week}-${index}`} schedule={schedule} />
+      {groups.map((group, groupIndex) => (
+        <li key={group.key} className="flex items-stretch gap-2 p-1.5">
+          <div
+            className={`flex w-32 shrink-0 flex-col items-center justify-center rounded-lg px-2 py-2 text-center sm:w-36 ${SLOT_TONES[groupIndex % SLOT_TONES.length]}`}
+          >
+            <span className="text-small leading-5 font-semibold whitespace-nowrap tabular-nums">{formatTimeRange(group.startTime, group.endTime)}</span>
+            <span className="text-small opacity-80">{instructorCountLabel(group.instructorCount)}</span>
+          </div>
+          <ul className="flex min-w-0 flex-1 flex-col divide-y divide-border/60">
+            {group.rows.map((row) => (
+              <li key={row.key} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1 py-2 first:pt-1 last:pb-1">
+                <span className="flex min-w-0 items-center gap-2 text-body text-text-primary">
+                  {row.instructor ? (
+                    <>
+                      <Avatar name={row.instructor.full_name} src={row.instructor.photo_url} size="sm" className="shrink-0" />
+                      <span className="min-w-0 truncate">{row.instructor.full_name}</span>
+                    </>
+                  ) : (
+                    <span className="text-text-secondary">—</span>
+                  )}
+                </span>
+                <ul className="flex flex-wrap gap-1.5">
+                  {row.days.map((day) => (
+                    <li key={day} className="text-small rounded-md border border-border bg-brand/5 px-2 py-0.5 font-medium text-text-primary">
+                      {(DAY_LABELS[day] ?? day).slice(0, 3)}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </li>
       ))}
     </ul>
   );

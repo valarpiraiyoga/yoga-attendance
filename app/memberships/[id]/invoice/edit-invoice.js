@@ -10,6 +10,7 @@ import FormField from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { updateInvoiceDetails } from "@/lib/invoices/actions";
 import { initialEditValues, submitInvoiceEdit } from "@/lib/invoices/edit-invoice";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 /**
  * Edit Invoice - the one direct edit an issued invoice allows: its number and its date. Nothing else is
@@ -56,6 +57,7 @@ export default function EditInvoice({ initial, title, number }) {
 
       if (outcome.status === "saved") {
         setOpen(false);
+        showSuccessToast("Invoice details updated successfully.");
         router.refresh();
         return;
       }
@@ -66,7 +68,7 @@ export default function EditInvoice({ initial, title, number }) {
 
   return (
     <>
-      <Button type="button" variant="outline" onClick={() => handleOpenChange(true)}>
+      <Button type="button" variant="secondary" onClick={() => handleOpenChange(true)}>
         <Pencil className="size-4" aria-hidden="true" />
         Edit
       </Button>

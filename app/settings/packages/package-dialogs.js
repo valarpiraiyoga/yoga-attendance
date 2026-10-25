@@ -16,6 +16,7 @@ import { PACKAGE_DESCRIPTION_MAX, PACKAGE_NAME_MAX } from "@/lib/packages/servic
 import PackageContext from "@/app/settings/packages/package-context";
 import { ReasonField } from "@/app/settings/packages/fee-fields";
 import { usePackageAction } from "@/app/settings/packages/use-package-action";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 const KIND_ITEMS = Object.entries(KIND_LABELS).map(([value, label]) => ({ value, label }));
 
@@ -88,6 +89,7 @@ export function AddPackageButton({ className }) {
   const [options, setOptions] = useState(["monthly", "quarterly", "half_yearly", "annual"]);
   const { error, fieldErrors, isPending, run, reset } = usePackageAction((result) => {
     setOpen(false);
+    showSuccessToast("Package created successfully.");
     router.push(`/settings/packages/${result.packageId}`);
   });
 
@@ -157,7 +159,10 @@ export function EditDetailsButton({ pkg }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(pkg.name);
   const [description, setDescription] = useState(pkg.description ?? "");
-  const { error, fieldErrors, isPending, run, reset } = usePackageAction(() => setOpen(false));
+  const { error, fieldErrors, isPending, run, reset } = usePackageAction(() => {
+    setOpen(false);
+    showSuccessToast("Package details updated successfully.");
+  });
 
   function handleOpenChange(next) {
     if (next) {
@@ -170,7 +175,7 @@ export function EditDetailsButton({ pkg }) {
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => handleOpenChange(true)}>
+      <Button variant="secondary" size="sm" onClick={() => handleOpenChange(true)}>
         <Pencil className="size-4" aria-hidden="true" />
         Edit
       </Button>
@@ -199,7 +204,10 @@ export function EditTermsButton({ pkg }) {
   const [totalClasses, setTotalClasses] = useState(String(pkg.total_classes ?? ""));
   const [options, setOptions] = useState(pkg.options);
   const [reason, setReason] = useState("");
-  const { error, fieldErrors, isPending, run, reset } = usePackageAction(() => setOpen(false));
+  const { error, fieldErrors, isPending, run, reset } = usePackageAction(() => {
+    setOpen(false);
+    showSuccessToast("Package terms updated successfully.");
+  });
 
   function handleOpenChange(next) {
     if (next) {
@@ -213,7 +221,7 @@ export function EditTermsButton({ pkg }) {
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => handleOpenChange(true)}>
+      <Button variant="secondary" size="sm" onClick={() => handleOpenChange(true)}>
         <Pencil className="size-4" aria-hidden="true" />
         Edit
       </Button>
@@ -250,7 +258,10 @@ export function StatusButton({ pkg }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const deactivating = pkg.status === "active";
-  const { error, fieldErrors, isPending, run, reset } = usePackageAction(() => setOpen(false));
+  const { error, fieldErrors, isPending, run, reset } = usePackageAction(() => {
+    setOpen(false);
+    showSuccessToast(deactivating ? "Package deactivated successfully." : "Package activated successfully.");
+  });
 
   function handleOpenChange(next) {
     if (next) {

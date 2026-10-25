@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import PageHeader from "@/components/layout/PageHeader";
+import { cameFromDocuments, keepDocumentsSource } from "@/lib/documents/source";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getCenterTimezone } from "@/lib/center-profile/settings";
 import { centreDateOf } from "@/lib/class-sessions/validation";
@@ -28,11 +29,12 @@ const rowOf = (method) => ({
  * the form's server actions do the validation, the recalculation and the writing. A document that is already cancelled has
  * nothing to correct and goes back to its own page.
  */
-export default async function CorrectPaymentDocumentPage({ params }) {
+export default async function CorrectPaymentDocumentPage({ params, searchParams }) {
   // Authorization boundary - see app/memberships/layout.js. The actions and the database check it again.
   await requireRole(ROLES.ADMIN);
 
   const { id, documentId } = await params;
+  const rawParams = await searchParams;
   const context = await getCorrectionContext(id, documentId);
 
   if (!context) {
@@ -40,7 +42,8 @@ export default async function CorrectPaymentDocumentPage({ params }) {
   }
 
   const { document, payment, membership: paymentMembership } = context;
-  const documentPath = `/memberships/${id}/documents/${documentId}`;
+  // Opened from the Documents list: Back (and the highlighted menu) stay with Documents.
+  const documentPath = keepDocumentsSource(rawParams, `/memberships/${id}/documents/${documentId}`);
 
   if (document.status !== "issued") {
     redirect(documentPath);
@@ -64,10 +67,11 @@ export default async function CorrectPaymentDocumentPage({ params }) {
         description="Correct the details, review the replacement, then reissue. The original is kept, cancelled, with its number."
       />
       <div className="mx-auto w-full max-w-3xl">
-        <div className="rounded-card border border-border bg-surface p-4 shadow-xs sm:p-6">
+        <div className="rounded-card border border-border bg-surface p-4 shadow-xs [--card-pad:1rem] sm:p-6 sm:[--card-pad:1.5rem]">
           <CorrectionForm
             membershipId={id}
             documentId={documentId}
+            fromDocuments={cameFromDocuments(rawParams)}
             series={document.document_series}
             title={title}
             number={number}

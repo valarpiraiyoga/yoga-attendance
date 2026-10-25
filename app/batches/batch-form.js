@@ -105,6 +105,8 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
 
   return (
     <form action={submitForm} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
+      {batch ? <BatchIdentityHeader batch={batch} /> : null}
+
       {state?.error ? (
         <p
           role="alert"
@@ -113,8 +115,6 @@ export default function BatchForm({ action, batch, submitLabel, pendingLabel }) 
           {state.error}
         </p>
       ) : null}
-
-      {batch ? <BatchIdentityHeader batch={batch} /> : null}
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="name">

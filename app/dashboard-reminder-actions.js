@@ -47,9 +47,8 @@ export default function DashboardReminderActions({ reminder, reminders, centreNa
       {/* The reminder message popup's labelled opener (the Admin sends the message themselves; nothing is sent from here). */}
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         size="sm"
-        className="border-brand/40 bg-surface text-brand hover:bg-brand/5 hover:text-brand"
         aria-label={`Send a reminder to ${student.fullName ?? "this student"}: prepare the message`}
         onClick={() => setReminderOpen(true)}
       >

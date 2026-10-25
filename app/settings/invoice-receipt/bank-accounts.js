@@ -19,6 +19,7 @@ import {
   maskAccountNumber,
   validateBankAccountInput,
 } from "@/lib/bank-accounts/validation";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 const EMPTY_FORM = { bank_name: "", account_name: "", account_number: "", ifsc_code: "", branch: "" };
 
@@ -172,6 +173,7 @@ export default function BankAccounts({ accounts }) {
         return;
       }
       setEditor(null);
+      showSuccessToast(editor.account ? "Bank account updated successfully." : "Bank account added successfully.");
     });
   }
 
@@ -193,6 +195,7 @@ export default function BankAccounts({ accounts }) {
         return;
       }
       setStatusChange(null);
+      showSuccessToast(kind === "activate" ? "Bank account activated successfully." : "Bank account deactivated successfully.");
     });
   }
 

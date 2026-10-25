@@ -14,16 +14,16 @@ import StudentCardMenu from "@/app/students/student-card-menu";
  * the student's photo and name with their status badge; Student ID, join date and gender beneath; and at the right the status
  * toggle, Edit Student and the student's overflow menu.
  *
- * `membershipId` and `enrollmentId` are only the overflow menu's shortcuts (View Membership, Edit Enrollment): Student Details
- * passes the student's current membership and active enrollment, Membership Details the membership it is showing and the student's
- * active enrollment that overlaps it. `showEdit={false}` hides the Edit Student button (Membership Details keeps only the status
- * toggle and the menu). Nothing else differs.
+ * `membershipId` and `enrollmentId` are only the overflow menu's shortcuts (View Membership, Edit Enrollment): Membership Details
+ * passes the membership it is showing and the student's active enrollment that overlaps it. `showEdit={false}` hides the Edit Student
+ * button (Membership Details keeps only the status toggle and the menu); `showMenu={false}` hides the overflow menu (Student Details
+ * keeps only the status toggle and Edit Student - the page itself holds every other action). Nothing else differs.
  *
  * @param {{ student: { id: string, full_name: string, student_code: string, photo_url: string|null, status: string,
  *                      join_date: string, gender?: string|null },
  *           membershipId?: string|null, enrollmentId?: string|null }} props
  */
-export default function StudentHeader({ student, membershipId = null, enrollmentId = null, showEdit = true }) {
+export default function StudentHeader({ student, membershipId = null, enrollmentId = null, showEdit = true, showMenu = true }) {
   const studentStatus = ENTITY_STATUS[student.status] ?? ENTITY_STATUS.inactive;
 
   return (
@@ -66,15 +66,17 @@ export default function StudentHeader({ student, membershipId = null, enrollment
               Edit Student
             </Button>
           ) : null}
-          <StudentCardMenu
-            studentId={student.id}
-            membershipId={membershipId}
-            enrollmentId={enrollmentId}
-            triggerVariant="outline"
-            triggerSize="icon"
-            triggerClassName=""
-            triggerLabel={`More actions for ${student.full_name}`}
-          />
+          {showMenu ? (
+            <StudentCardMenu
+              studentId={student.id}
+              membershipId={membershipId}
+              enrollmentId={enrollmentId}
+              triggerVariant="outline"
+              triggerSize="icon"
+              triggerClassName=""
+              triggerLabel={`More actions for ${student.full_name}`}
+            />
+          ) : null}
         </>
       }
     />

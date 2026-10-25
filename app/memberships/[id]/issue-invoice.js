@@ -9,6 +9,7 @@ import FormField from "@/components/ui/form-field";
 import StudentContext from "@/components/ui/student-context";
 import { issueInvoice } from "@/lib/invoices/actions";
 import { prepareIssueInvoiceInput } from "@/lib/invoices/membership-invoice";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 /**
  * Issue Receipt — the explicit action for a Paid membership that has no
@@ -72,6 +73,7 @@ export function IssueInvoiceDialog({ open, onOpenChange, membershipId, needsPaym
       }
 
       handleOpenChange(false);
+      showSuccessToast("Receipt issued successfully.");
     });
   }
 
@@ -140,7 +142,7 @@ export default function IssueInvoice({ membershipId, needsPaymentDate, paymentDa
 
   return (
     <>
-      <Button type="button" variant="outline" onClick={() => setOpen(true)}>
+      <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
         <Receipt className="size-4" aria-hidden="true" />
         Issue Receipt
       </Button>

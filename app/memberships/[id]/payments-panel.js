@@ -9,6 +9,7 @@ import { formatDate, formatDateParts } from "@/lib/format";
 import { fromPaise, PAYMENT_METHOD_LABEL, summarizePayments } from "@/lib/memberships/payments-core";
 import { canIssuePaymentDocument, DOCUMENT_TITLE_LABEL, PAYMENT_DOCUMENT_BLOCKED_MESSAGE } from "@/lib/invoices/membership-invoice";
 import { formatInvoiceNumberOf } from "@/lib/invoices/invoice-number";
+import { PAYMENTS_SECTION_ID } from "@/lib/memberships/payment-focus";
 import RecordPayment from "@/app/memberships/[id]/record-payment";
 import IssuePaymentDocument from "@/app/memberships/[id]/issue-payment-document";
 import EditPayment from "@/app/memberships/[id]/edit-payment";
@@ -24,10 +25,23 @@ const METHOD_ICON = {
 };
 
 // The three summary cards: a tinted surface, a round icon and the figure in the same colour.
+// The same modern, colourful look as the shared KPI tile (`StatTile`): a tone wash with a tinted border, and a solid tone icon badge with a glow.
 const SUMMARY_TONE = {
-  success: { card: "border-success/20 bg-success/10", icon: "bg-success/15 text-success", value: "text-success" },
-  info: { card: "border-info/20 bg-info/10", icon: "bg-info/15 text-info", value: "text-info" },
-  warning: { card: "border-warning/20 bg-warning/10", icon: "bg-warning/15 text-warning", value: "text-warning" },
+  success: {
+    card: "border-success/20 bg-linear-to-br from-success/10 via-success/5 to-surface",
+    icon: "bg-success text-surface shadow-md shadow-success/25",
+    value: "text-success",
+  },
+  info: {
+    card: "border-info/20 bg-linear-to-br from-info/10 via-info/5 to-surface",
+    icon: "bg-info text-surface shadow-md shadow-info/25",
+    value: "text-info",
+  },
+  warning: {
+    card: "border-warning/25 bg-linear-to-br from-warning/10 via-warning/5 to-surface",
+    icon: "bg-warning text-surface shadow-md shadow-warning/25",
+    value: "text-warning",
+  },
 };
 
 /** The payment date as a small calendar tile: the month on a brand band, the day large, the year beneath (from `formatDateParts`; the date is read as written, no timezone). Screen readers get the full date. */
@@ -88,7 +102,7 @@ export default function PaymentsPanel({ membership, payments, today, student, me
   const money = (paise) => formatCurrency(fromPaise(paise), currency);
 
   return (
-    <Panel className="sm:p-4">
+    <Panel id={PAYMENTS_SECTION_ID} tabIndex={-1} className="scroll-mt-6 outline-none sm:p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-3">
           <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
@@ -210,7 +224,7 @@ export default function PaymentsPanel({ membership, payments, today, student, me
                         )}
                         {payment.cancelledDocument ? (
                           <Button
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             render={<Link href={`/memberships/${membership.id}/documents/${payment.cancelledDocument.id}`} />}
                             nativeButton={false}

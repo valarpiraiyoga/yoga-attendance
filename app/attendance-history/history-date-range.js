@@ -120,7 +120,7 @@ export default function HistoryDateRange({ from, to, compact = false, className 
             </p>
           ) : null}
           <div className="flex gap-3">
-            <Button type="button" variant="outline" className="flex-1" onClick={reset}>
+            <Button type="button" variant="secondary" className="flex-1" onClick={reset}>
               Reset
             </Button>
             <Button type="submit" className="flex-1">

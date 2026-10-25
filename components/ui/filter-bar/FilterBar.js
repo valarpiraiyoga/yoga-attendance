@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * The "Filters" trigger button (06-ui-implementation-rules.md §16.3):
- * opens a `FilterSheet`, and carries a brand count pill once any filter is
+ * opens a `FilterSheet`, and carries a red count pill once any filter is
  * applied. Search stays a separate `SearchInput` beside it — search is
  * independent of the filter drawer, matching every existing filter bar.
  */
@@ -17,7 +17,7 @@ export default function FilterBar({ activeCount = 0, onClick, label = "Filters",
       <SlidersHorizontal className="size-4" aria-hidden="true" />
       {label}
       {activeCount > 0 ? (
-        <span className="flex size-5 items-center justify-center rounded-full bg-brand text-small font-semibold text-surface">
+        <span className="flex size-5 items-center justify-center rounded-full bg-danger text-small font-semibold text-surface">
           {activeCount}
         </span>
       ) : null}

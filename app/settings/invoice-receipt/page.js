@@ -1,6 +1,7 @@
 import { Receipt } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import TabContentHeading from "@/components/layout/TabContentHeading";
+import FlashToast from "@/components/ui/flash-toast";
 import { getInvoiceSettings, getSignaturePreviewUrl, hasAnyInvoice, hasAnyPaymentReceipt } from "@/lib/invoice-settings/data";
 import { updateInvoiceSettings } from "@/lib/invoice-settings/actions";
 import { getBankAccounts } from "@/lib/bank-accounts/data";
@@ -54,14 +55,8 @@ export default async function InvoiceReceiptSettingsPage({ searchParams }) {
         />
       </div>
 
-      {message ? (
-        <div
-          role="status"
-          className="mb-6 rounded-input border border-success/30 bg-success/5 px-3 py-2 text-body text-success"
-        >
-          {message}
-        </div>
-      ) : null}
+      {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
+      <FlashToast message={message} />
 
       {settings ? (
         <div className="flex flex-col gap-6">

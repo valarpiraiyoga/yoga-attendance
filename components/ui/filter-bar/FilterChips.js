@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * The one applied-filters chip row (06-ui-implementation-rules.md §16.3):
- * brand-tinted removable chips followed by "Clear all". `chips`:
+ * brand-tinted removable chips followed by a red "Clear all". `chips`:
  * `{ key, label }[]`. Renders nothing when there are no active filters.
  */
 export default function FilterChips({ chips, onRemove, onClearAll, className }) {
@@ -31,7 +31,7 @@ export default function FilterChips({ chips, onRemove, onClearAll, className }) 
           </button>
         </span>
       ))}
-      <button type="button" className="text-small font-medium text-brand hover:underline" onClick={onClearAll}>
+      <button type="button" className="rounded-sm text-small font-medium text-danger hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none" onClick={onClearAll}>
         Clear all
       </button>
     </div>

@@ -8,6 +8,7 @@ import MembershipForm from "@/app/memberships/membership-form";
 import { getCenterCurrency } from "@/lib/center-profile/settings";
 import GuidedSteps from "@/app/students/guided-steps";
 import PageHeader from "@/components/layout/PageHeader";
+import FlashToast from "@/components/ui/flash-toast";
 
 /**
  * Add Membership from a known student. Serves two entry points with one
@@ -51,9 +52,11 @@ export default async function NewStudentMembershipPage({ params, searchParams })
       />
       <div className={isGuided ? "mx-auto w-full max-w-4xl" : "mx-auto w-full max-w-3xl"}>
         {isGuided ? <GuidedSteps current={2} className="mt-0" /> : null}
+        {/* The Add Student step just saved the student. */}
+        <FlashToast message={rawParams?.success === "student_created" ? "Student created successfully." : null} />
 
         <div
-          className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8" : ""}`}
+          className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8 sm:[--card-pad:2rem]" : ""}`}
         >
           <MembershipForm
             action={createMembershipForStudent}

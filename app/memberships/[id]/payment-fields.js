@@ -246,7 +246,7 @@ export default function PaymentFields({
         })}
 
         <div>
-          <Button type="button" variant="outline" size="sm" onClick={draft.addRow} disabled={disabled}>
+          <Button type="button" variant="secondary" size="sm" onClick={draft.addRow} disabled={disabled}>
             <Plus className="size-4" aria-hidden="true" />
             Add method
           </Button>
@@ -275,14 +275,12 @@ export default function PaymentFields({
 
       <dl className="text-small flex flex-col gap-1 rounded-input bg-background px-3 py-2">
         <div className="flex justify-between gap-3">
-          <dt className="text-text-secondary">This payment</dt>
-          <dd className="font-medium text-text-primary tabular-nums">{money(totalPaise)}</dd>
+          <dt className="text-small text-text-secondary">This payment</dt>
+          <dd className="text-small font-medium text-text-primary tabular-nums">{money(totalPaise)}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-text-secondary">Balance after this payment</dt>
-          <dd className={remainingPaise < 0 ? "font-medium text-danger tabular-nums" : "font-medium text-text-primary tabular-nums"}>
-            {money(remainingPaise)}
-          </dd>
+          <dt className="text-small text-text-secondary">Balance after this payment</dt>
+          <dd className="text-small font-medium text-danger tabular-nums">{money(remainingPaise)}</dd>
         </div>
       </dl>
 
@@ -498,14 +496,12 @@ function CompactPaymentFields({
         )}
         <dl className="text-small flex min-w-64 flex-col gap-1 rounded-input bg-background px-3 py-2">
           <div className="flex justify-between gap-4">
-            <dt className="text-text-secondary">Total Payment</dt>
-            <dd className="font-semibold text-text-primary tabular-nums">{money(totalPaise)}</dd>
+            <dt className="text-small text-text-secondary">Total Payment</dt>
+            <dd className="text-small font-semibold text-text-primary tabular-nums">{money(totalPaise)}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-text-secondary">Balance after this payment</dt>
-            <dd className={remainingPaise < 0 ? "font-semibold text-danger tabular-nums" : "font-semibold text-text-primary tabular-nums"}>
-              {money(remainingPaise)}
-            </dd>
+            <dt className="text-small text-text-secondary">Balance after this payment</dt>
+            <dd className="text-small font-semibold text-danger tabular-nums">{money(remainingPaise)}</dd>
           </div>
         </dl>
       </div>

@@ -243,6 +243,8 @@ export default function PackageMembershipForm({
   return (
     <>
       <form ref={formRef} action={formAction} className="flex flex-col gap-5" noValidate>
+        <StudentIdentityHeader student={student} action={headerAction} />
+
         {state?.error && !Object.values(fieldErrors).includes(state.error) ? (
           <p role="alert" className="text-body rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-danger">
             {state.error}
@@ -253,8 +255,6 @@ export default function PackageMembershipForm({
             {message}
           </p>
         ))}
-
-        <StudentIdentityHeader student={student} action={headerAction} />
 
         <input name="pricing_mode" value={pricingMode} readOnly hidden />
 

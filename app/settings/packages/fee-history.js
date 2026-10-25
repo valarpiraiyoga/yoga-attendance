@@ -16,8 +16,16 @@ import { feeEntryStatus } from "@/lib/packages/service-core";
 import PackageContext from "@/app/settings/packages/package-context";
 import { AmountField, DiscountFields, ReasonField, discountsInput, initialDiscountState } from "@/app/settings/packages/fee-fields";
 import { usePackageAction } from "@/app/settings/packages/use-package-action";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 const TODAY_HELP = "A fee dated today or earlier takes effect immediately.";
+
+// The success toast of each fee form.
+const FEE_SAVED = {
+  schedule: "Fee scheduled successfully.",
+  edit: "Fee updated successfully.",
+  correct: "Fee corrected successfully.",
+};
 
 /**
  * One fee dialog for the three fee forms: Schedule (new entry), Edit (a scheduled entry, before it takes effect) and Correct
@@ -30,7 +38,10 @@ function FeeDialog({ mode, pkg, entry, open, onOpenChange }) {
   const [amount, setAmount] = useState(entry ? String(feeAmount(entry)) : "");
   const [discounts, setDiscounts] = useState(() => initialDiscountState(entry?.package_fee_entry_discounts));
   const [reason, setReason] = useState("");
-  const { error, fieldErrors, isPending, run } = usePackageAction(() => onOpenChange(false));
+  const { error, fieldErrors, isPending, run } = usePackageAction(() => {
+    onOpenChange(false);
+    showSuccessToast(FEE_SAVED[mode]);
+  });
 
   const input = {
     effectiveFrom,
@@ -111,7 +122,10 @@ function FeeDialog({ mode, pkg, entry, open, onOpenChange }) {
 /** Cancel a fee entry. A scheduled one needs no reason; one in effect does. */
 function CancelDialog({ pkg, entry, inEffect, open, onOpenChange }) {
   const [reason, setReason] = useState("");
-  const { error, fieldErrors, isPending, run } = usePackageAction(() => onOpenChange(false));
+  const { error, fieldErrors, isPending, run } = usePackageAction(() => {
+    onOpenChange(false);
+    showSuccessToast("Fee cancelled successfully.");
+  });
 
   return (
     <ConfirmDialog

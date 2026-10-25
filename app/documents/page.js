@@ -89,7 +89,7 @@ export default async function DocumentsPage({ searchParams }) {
             description={isFiltered ? "No documents match your search or filters." : "Invoices and receipts appear here once they are issued."}
             action={
               isFiltered ? (
-                <Button variant="secondary" render={<Link href="/documents" />} nativeButton={false}>
+                <Button variant="destructive" render={<Link href="/documents" />} nativeButton={false}>
                   Clear Filters
                 </Button>
               ) : null

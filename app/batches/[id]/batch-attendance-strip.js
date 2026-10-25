@@ -86,7 +86,7 @@ export default function BatchAttendanceStrip({ batchId, month, today, sessions, 
               </MonthLink>
             </div>
             <Legend />
-            <Button variant="outline" size="sm" className="text-brand" render={<Link href={`/batches/${batchId}/attendance`} />} nativeButton={false}>
+            <Button variant="secondary" size="sm" render={<Link href={`/batches/${batchId}/attendance`} />} nativeButton={false}>
               <BarChart3 className="size-4" aria-hidden="true" />
               View Details
             </Button>

@@ -259,6 +259,12 @@ function LegacyMembershipForm({
         className="flex flex-col gap-5"
         noValidate
       >
+        <StudentIdentityHeader
+          student={student}
+          membership={membership ? { code: membership.membership_code, plan: planLabel(membership.plan) } : undefined}
+          action={headerAction}
+        />
+
         {/* A message already shown against its own field (e.g. the invoice rule on Payment Status) is not repeated here. */}
         {state?.error && !Object.values(fieldErrors).includes(state.error) ? (
           <p
@@ -268,12 +274,6 @@ function LegacyMembershipForm({
             {state.error}
           </p>
         ) : null}
-
-        <StudentIdentityHeader
-          student={student}
-          membership={membership ? { code: membership.membership_code, plan: planLabel(membership.plan) } : undefined}
-          action={headerAction}
-        />
 
         {/* The kind travels with the form; only a new membership can choose it (Edit and Renew keep the stored one). */}
         <input name="kind" value={kind} readOnly hidden />

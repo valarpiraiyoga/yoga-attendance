@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import StudentContext from "@/components/ui/student-context";
 import { completeStudentFollowUp } from "@/lib/communications/actions";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 /**
  * Mark as Completed - for a PENDING follow-up. A confirmation, then the follow-up is Completed: its date and note stay exactly as
@@ -40,6 +41,7 @@ export default function CompleteFollowUp({ studentId, student, communicationId, 
         }
         inFlight.current = false;
         handleOpenChange(false);
+        showSuccessToast("Follow-up completed successfully.");
         router.refresh();
       } catch {
         setError("Could not reach the server. Try again.");
@@ -51,7 +53,7 @@ export default function CompleteFollowUp({ studentId, student, communicationId, 
 
   return (
     <>
-      <Button type="button" variant="outline" onClick={() => setOpen(true)} aria-label={`Mark the follow-up for ${subject} as completed`}>
+      <Button type="button" variant="secondary" onClick={() => setOpen(true)} aria-label={`Mark the follow-up for ${subject} as completed`}>
         <CircleCheck className="size-4" aria-hidden="true" />
         Mark as Completed
       </Button>

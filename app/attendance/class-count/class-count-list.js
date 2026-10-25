@@ -1,15 +1,23 @@
 import Link from "next/link";
+import { CalendarDays, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import Progress from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { NO_EXPIRY_LABEL } from "@/lib/memberships/period";
 import { remainingText } from "@/lib/class-count-attendance/record-core";
 import RecordClassButton from "@/app/attendance/class-count/record-class-button";
 
-const HEAD = "h-10 px-3 text-small tracking-normal";
+// The same table look as the Students and Memberships lists: each membership is its own rounded row card on the page background
+// (`border-separate` with a gap between rows), under a pale, rounded header strip; the row's surface and border live on its cells.
+// Columns respond to the table's own width (container queries), not the viewport: Student, Classes and Action always; Membership
+// (its code with the expiry beneath it) from 36rem.
+const MID_ONLY = "hidden @[36rem]:table-cell";
+const HEAD = "h-10 border-y border-border/60 bg-brand/5 px-3 text-small tracking-normal first:rounded-l-lg first:border-l last:rounded-r-lg last:border-r";
+const CELL = "border-y border-border bg-surface px-3 py-3 first:rounded-l-card first:border-l last:rounded-r-card last:border-r";
 
 /**
  * One list of the Class Count Attendance tab. `mode="record"`: class-count memberships a class can be recorded for -
@@ -21,50 +29,66 @@ const HEAD = "h-10 px-3 text-small tracking-normal";
  * remaining }` (lib/class-count-attendance/rows.js); `endDate` is null for a membership with no expiry.
  */
 export default function ClassCountList({ rows, mode, ariaLabel, today }) {
+  const renew = mode === "renew";
+
   return (
-    <div className="overflow-hidden rounded-card border border-border bg-surface shadow-xs">
-      <Table aria-label={ariaLabel}>
+    <div className="@container">
+      <Table aria-label={ariaLabel} className="border-separate border-spacing-y-2">
         <TableHeader>
-          <TableRow className="hover:bg-transparent">
+          <TableRow className="border-0 hover:bg-transparent">
             <TableHead className={HEAD}>Student</TableHead>
-            <TableHead className={`${HEAD} hidden sm:table-cell`}>Membership</TableHead>
+            <TableHead className={cn(HEAD, MID_ONLY)}>Membership</TableHead>
             <TableHead className={HEAD}>Classes</TableHead>
-            <TableHead className={`${HEAD} hidden md:table-cell`}>Expiry</TableHead>
-            <TableHead className={`${HEAD} text-right`}>Action</TableHead>
+            <TableHead className={cn(HEAD, "w-px text-right whitespace-nowrap")}>Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow key={row.membershipId}>
-              <TableCell className="px-3 py-3">
-                <div className="flex items-center gap-3">
-                  <Avatar name={row.fullName} src={row.photoUrl} size="md" />
+            <TableRow key={row.membershipId} className="border-0 hover:bg-transparent">
+              <TableCell className={CELL}>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar name={row.fullName} src={row.photoUrl} size="lg" />
                   <div className="min-w-0">
-                    <p className="truncate text-body font-medium text-text-primary">{row.fullName}</p>
+                    <p className="truncate text-body font-semibold text-text-primary">{row.fullName}</p>
                     <p className="truncate text-small text-text-secondary">{row.studentCode}</p>
                   </div>
                 </div>
               </TableCell>
-              <TableCell className="hidden px-3 py-3 whitespace-nowrap text-text-secondary sm:table-cell">{row.membershipCode}</TableCell>
-              <TableCell className="px-3 py-3">
-                <div className="flex min-w-32 flex-col gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={mode === "renew" ? "warning" : "neutral"}>{remainingText(row.remaining)}</Badge>
+              <TableCell className={cn(CELL, MID_ONLY)}>
+                <div className="flex items-center gap-3">
+                  <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
+                    <FileText className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-body font-semibold whitespace-nowrap text-text-primary">{row.membershipCode}</p>
+                    <p className="text-small flex items-center gap-1.5 whitespace-nowrap text-text-secondary">
+                      <CalendarDays className="size-3.5 shrink-0" aria-hidden="true" />
+                      {row.endDate ? `Expires ${formatDate(row.endDate)}` : NO_EXPIRY_LABEL}
+                    </p>
                   </div>
-                  <p className="text-small text-text-secondary tabular-nums">
-                    {row.used} of {row.total} used
-                  </p>
-                  <Progress value={row.total > 0 ? (row.used / row.total) * 100 : 0} tone="brand" label="Classes used" className="h-1.5" />
                 </div>
               </TableCell>
-              <TableCell className="hidden px-3 py-3 whitespace-nowrap text-text-secondary md:table-cell">
-                {row.endDate ? `Expires ${formatDate(row.endDate)}` : NO_EXPIRY_LABEL}
+              <TableCell className={CELL}>
+                <div className="flex max-w-60 min-w-36 flex-col gap-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Badge variant={renew ? "warning" : "default"}>{remainingText(row.remaining)}</Badge>
+                    <span className="text-small whitespace-nowrap text-text-secondary tabular-nums">
+                      {row.used} of {row.total} used
+                    </span>
+                  </div>
+                  <Progress
+                    value={row.total > 0 ? (row.used / row.total) * 100 : 0}
+                    tone={renew ? "warning" : "success"}
+                    label="Classes used"
+                    className="h-1.5"
+                  />
+                </div>
               </TableCell>
-              <TableCell className="px-3 py-3">
+              <TableCell className={cn(CELL, "w-px whitespace-nowrap")}>
                 <div className="flex justify-end">
                   {mode === "renew" ? (
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       render={<Link href={`/memberships/${row.membershipId}/renew`} />}
                       nativeButton={false}

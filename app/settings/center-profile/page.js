@@ -1,6 +1,7 @@
 import { Building2 } from "lucide-react";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import TabContentHeading from "@/components/layout/TabContentHeading";
+import FlashToast from "@/components/ui/flash-toast";
 import { getCenterProfile } from "@/lib/center-profile/data";
 import { updateCenterProfile } from "@/lib/center-profile/actions";
 import CenterProfileForm from "@/app/settings/center-profile/center-profile-form";
@@ -41,14 +42,8 @@ export default async function CenterProfilePage({ searchParams }) {
         />
       </div>
 
-      {message ? (
-        <div
-          role="status"
-          className="mb-6 rounded-input border border-success/30 bg-success/5 px-3 py-2 text-body text-success"
-        >
-          {message}
-        </div>
-      ) : null}
+      {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
+      <FlashToast message={message} />
 
       {profile ? (
         <CenterProfileForm action={updateCenterProfile} profile={profile} />

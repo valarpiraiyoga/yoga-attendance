@@ -1,11 +1,8 @@
 import { notFound } from "next/navigation";
-import { CalendarDays, Clock, Users, UserRound } from "lucide-react";
-import Avatar from "@/components/ui/avatar";
 import FlashToast from "@/components/ui/flash-toast";
-import { StatTile, StatTileGroup } from "@/components/ui/stat-tile";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { getBatch } from "@/lib/batches/data";
-import { batchToday, currentSchedulesOf, summarizeCurrentSchedules } from "@/lib/batches/summary";
+import { batchToday, currentSchedulesOf } from "@/lib/batches/summary";
 import { countActiveEnrollments } from "@/lib/batches/active-students";
 import { listSchedulesForBatch } from "@/lib/schedules/data";
 import { isScheduleAssignmentActive, listEnrollmentsForBatch, listScheduleAssignmentsForEnrollments } from "@/lib/enrollments/data";
@@ -78,13 +75,8 @@ export default async function BatchDetailsPage({ params, searchParams }) {
   const upcomingScheduleCount = schedules.filter(
     (schedule) => schedule.status === "active" && schedule.effective_from > today
   ).length;
-  // One count for the summary card and the Students heading (01-product.md §6 "Active Students").
+  // The Students heading's count (01-product.md §6 "Active Students").
   const activeStudentCount = countActiveEnrollments(enrollments);
-  const summary = summarizeCurrentSchedules(currentSchedules);
-  // Display-only: how many distinct weekdays `summary.days` lists, for the Weekly Classes caption.
-  const instructors = new Map(currentSchedules.filter((schedule) => schedule.instructors).map((schedule) => [schedule.instructors.id, schedule.instructors]));
-  const soleInstructor = instructors.size === 1 ? [...instructors.values()][0] : null;
-  const dayCount = summary.hasSchedule ? summary.days.split(", ").filter(Boolean).length : 0;
 
   const message = SUCCESS_MESSAGES[rawParams?.success] ?? null;
 
@@ -93,44 +85,6 @@ export default async function BatchDetailsPage({ params, searchParams }) {
       <div className="flex flex-col gap-6">
         {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
         <FlashToast message={message} />
-
-        {/* Short values only, so no card wraps and stretches its icon box; the day-by-day detail is the
-            Weekly Schedule below. */}
-        <StatTileGroup ariaLabel="Batch summary" columns={2} className="grid-cols-1 xl:grid-cols-4">
-          <StatTile
-            compact
-            icon={Users}
-            label="Active Students"
-            value={activeStudentCount}
-            caption="Active enrollments"
-            tone="warning"
-          />
-          <StatTile
-            compact
-            icon={CalendarDays}
-            label="Weekly Classes"
-            value={currentSchedules.length}
-            caption={dayCount > 0 ? `Across ${dayCount} ${dayCount === 1 ? "day" : "days"}` : "No current schedule"}
-            tone="brand"
-          />
-          <StatTile compact icon={Clock} label="Time" value={summary.time} tone="info" />
-          <StatTile
-            compact
-            icon={UserRound}
-            label="Instructor"
-            value={
-              soleInstructor ? (
-                <span className="flex items-center gap-2">
-                  <Avatar name={soleInstructor.full_name} src={soleInstructor.photo_url} size="sm" />
-                  <span>{soleInstructor.full_name}</span>
-                </span>
-              ) : (
-                summary.instructor
-              )
-            }
-            tone="success"
-          />
-        </StatTileGroup>
 
         <WeeklyScheduleOverview batchId={batch.id} schedules={currentSchedules} upcomingScheduleCount={upcomingScheduleCount} today={today} />
 

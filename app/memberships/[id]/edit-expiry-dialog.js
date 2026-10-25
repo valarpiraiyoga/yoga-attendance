@@ -13,6 +13,7 @@ import { editClassCountExpiry } from "@/lib/class-count-attendance/actions";
 import { validateExpiryEdit } from "@/lib/class-count-attendance/expiry-core";
 import { REASON_MAX, trimReason } from "@/lib/class-count-attendance/record-core";
 import { NO_EXPIRY_LABEL } from "@/lib/memberships/period";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 /**
  * Edit expiry of a class-count membership (02-ux.md "Membership Details"): a new expiry date or No expiry, and a required
@@ -61,7 +62,10 @@ export default function EditExpiryDialog({ membershipId, currentExpiry, startDat
       try {
         const saved = await editClassCountExpiry(membershipId, result.data.newExpiry, result.data.reason);
         if (saved?.error) setSubmitError(saved.error);
-        else setOpen(false);
+        else {
+          setOpen(false);
+          showSuccessToast("Expiry updated successfully.");
+        }
       } catch {
         setSubmitError("Could not reach the server. Try again.");
       }
@@ -70,7 +74,7 @@ export default function EditExpiryDialog({ membershipId, currentExpiry, startDat
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={openDialog}>
+      <Button type="button" variant="secondary" size="sm" onClick={openDialog}>
         <CalendarClock className="size-4" aria-hidden="true" />
         Edit expiry
       </Button>

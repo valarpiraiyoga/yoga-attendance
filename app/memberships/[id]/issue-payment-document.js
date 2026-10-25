@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import StudentContext from "@/components/ui/student-context";
 import { issuePaymentDocument } from "@/lib/invoices/actions";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 /**
  * Issue Document (V1 Tax Adjustment, Step 4) - the one document of a recorded payment: a tax invoice
@@ -35,14 +36,15 @@ export default function IssuePaymentDocument({ membershipId, paymentId, issueTax
         return;
       }
       handleOpenChange(false);
+      showSuccessToast(issueTaxInvoice ? "Tax invoice issued successfully." : "Payment receipt issued successfully.");
     });
   }
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)} aria-label={`Issue document for ${paymentLabel}`}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(true)} aria-label={`Issue document for ${paymentLabel}`} title="Issue document">
         <FileText className="size-4" aria-hidden="true" />
-        Issue Document
+        Issue
       </Button>
 
       <ConfirmDialog

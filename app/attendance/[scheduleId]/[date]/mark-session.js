@@ -99,7 +99,7 @@ export default function MarkSession({ scheduleId, date, sessionContext, defaultO
   return (
     <div className={hideTrigger ? "contents" : "flex flex-col items-end gap-2"}>
       {hideTrigger ? null : (
-        <Button type="button" variant="outline" onClick={openCompose} disabled={isPending}>
+        <Button type="button" variant="secondary" onClick={openCompose} disabled={isPending}>
           Mark Cancelled / Holiday
         </Button>
       )}

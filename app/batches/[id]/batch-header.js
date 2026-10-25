@@ -3,7 +3,6 @@ import { CalendarDays, Hash, Pencil, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import BatchAvatar from "@/components/ui/batch-avatar";
-import Tabs from "@/components/ui/tabs";
 import Container from "@/components/layout/Container";
 import { EntityDetailHeader } from "@/components/layout/EntityDetailHeader";
 import PageHeader from "@/components/layout/PageHeader";
@@ -12,31 +11,27 @@ import { formatDate } from "@/lib/format";
 import { ENTITY_STATUS } from "@/lib/status";
 
 /**
- * Batch Details' shared header + tab nav (wireframe p17-19; 02-ux.md: Overview
- * / Students / Schedules / Attendance — four real routes). The page starts with the
- * compact page strip (title + back button), then the finalized detail header (the same
- * one Student and Membership Details use, with the same teal wash): batch
- * avatar, name, status, code / category / created date and the description.
- * The tabs are the canonical underline `Tabs`, route-based.
+ * Batch Details' shared header. The page starts with the compact page strip
+ * (title + back button), then the finalized detail header (the same one Student and
+ * Membership Details use, with the same teal wash): batch avatar, name, status,
+ * code / category / created date and the description. There is no tab bar: Batch
+ * Details is the Overview alone. The Students, Schedules and Attendance pages still
+ * exist (the Overview links to them) and use this header with `active` set; their
+ * back button returns to Batch Details instead of the Batches list.
  *
  * The Overview and Attendance pages lay out their own panels / list; the
- * Students and Schedules tabs' content is wrapped in one panel here, as it
- * always sat inside a single card.
+ * Students and Schedules content is wrapped in one panel here, as it always sat
+ * inside a single card.
  */
 export default function BatchHeader({ batch, active, children }) {
   const status = ENTITY_STATUS[batch.status] ?? ENTITY_STATUS.inactive;
-  const tabs = [
-    { key: "overview", label: "Overview", href: `/batches/${batch.id}` },
-    { key: "students", label: "Students", href: `/batches/${batch.id}/students` },
-    { key: "schedules", label: "Schedules", href: `/batches/${batch.id}/schedules` },
-    { key: "attendance", label: "Attendance", href: `/batches/${batch.id}/attendance` },
-  ];
+  const isOverview = active === "overview";
 
   return (
     <>
       <PageHeader
         compact
-        back={{ href: "/batches", label: "Back to Batches" }}
+        back={{ href: isOverview ? "/batches" : `/batches/${batch.id}`, label: isOverview ? "Back to Batches" : "Back to Batch Details" }}
         title="Batch Details"
         description={`Schedules, students and attendance for ${batch.name}.`}
       />
@@ -78,8 +73,6 @@ export default function BatchHeader({ batch, active, children }) {
           </Button>
         }
       />
-
-      <Tabs as="link" items={tabs} active={active} ariaLabel="Batch sections" />
 
       {active === "overview" || active === "attendance" ? children : <Panel>{children}</Panel>}
       </Container>

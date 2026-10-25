@@ -12,7 +12,6 @@ import { summarizeCurrentSchedules } from "@/lib/batches/summary";
 import { cn } from "@/lib/utils";
 import BatchCardMenu from "@/app/batches/batch-card-menu";
 import BatchInstructorSummary from "@/app/batches/batch-instructor-summary";
-import BatchQuickView from "@/app/batches/batch-quick-view";
 
 /**
  * Batch list card (finalized reference): identity (larger initials tile, the
@@ -50,7 +49,9 @@ export default function BatchCardItem({ batch }) {
       className={cn("h-auto", menuOpen && "border-brand/40 bg-brand/5")}
       iconClassName="text-brand"
       avatar={<BatchAvatar batch={batch} size="lg" />}
-      title={<BatchQuickView batch={batch} />}
+      title={
+        <Link href={`/batches/${batch.id}`} className="rounded-sm text-brand hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">{batch.name}</Link>
+      }
       subtitle={batch.code}
       status={<Badge variant={status.variant}>{status.label}</Badge>}
       statusPlacement="actions"
@@ -67,7 +68,7 @@ export default function BatchCardItem({ batch }) {
           >
             <Eye className="size-4" aria-hidden="true" />
           </Button>
-          <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} />
+          <BatchCardMenu batchId={batch.id} batchName={batch.name} onOpenChange={setMenuOpen} listActions />
         </div>
       }
     >

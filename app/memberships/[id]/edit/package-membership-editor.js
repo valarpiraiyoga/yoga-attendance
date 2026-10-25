@@ -302,13 +302,13 @@ export default function PackageMembershipEditor({ membershipId, kind, currency, 
 
   return (
     <form onSubmit={saveChanges} className="flex flex-col gap-5" noValidate>
+      <StudentIdentityHeader student={student} membership={{ code: membership.membership_code, plan: membership.package_name }} />
+
       {submitError ? (
         <p role="alert" className="text-body rounded-input border border-danger/30 bg-danger/5 px-3 py-2 text-danger">
           {submitError}
         </p>
       ) : null}
-
-      <StudentIdentityHeader student={student} membership={{ code: membership.membership_code, plan: membership.package_name }} />
 
       {locked ? (
         <p className="text-small rounded-card border border-border bg-background/60 p-3 text-text-secondary">

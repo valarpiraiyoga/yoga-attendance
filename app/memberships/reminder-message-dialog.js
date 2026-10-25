@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { BellRing, ChevronDown, CreditCard, Copy, ExternalLink, FileText, History, Info, Mail, MessageCircle, Send } from "lucide-react";
+import { BellRing, ChevronDown, CreditCard, Copy, Eye, FileText, Hash, History, Info, Mail, MessageCircle, Send } from "lucide-react";
 import Avatar from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -31,6 +31,41 @@ import {
 import { cn } from "@/lib/utils";
 
 const MESSAGE_MAX = 1000;
+
+// The popup's four send-side actions as compact card buttons: a tinted round icon above a short label, one tone per action. A link card
+// (`href`) or a button card (`onClick`); a disabled one is a disabled button that keeps its reason (`describedBy`). Literal class strings.
+const ACTION_CARD =
+  "flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-card border border-border bg-surface px-2 py-3 text-center text-small font-medium text-text-primary transition-colors outline-none hover:border-brand/30 hover:bg-brand/5 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50";
+const ACTION_TONE = {
+  brand: "bg-brand/10 text-brand",
+  success: "bg-success/10 text-success",
+  info: "bg-info/10 text-info",
+  accent: "bg-brand-accent/10 text-brand-accent",
+};
+
+function ActionCard({ icon: Icon, tone, label, href, newTab = false, onClick, disabled = false, describedBy, ariaLabel }) {
+  const content = (
+    <>
+      <span aria-hidden="true" className={cn("flex size-9 items-center justify-center rounded-full", ACTION_TONE[tone])}>
+        <Icon className="size-4" />
+      </span>
+      <span className="leading-tight">{label}</span>
+      {newTab ? <span className="sr-only"> (opens in a new tab)</span> : null}
+    </>
+  );
+  if (href && !disabled) {
+    return (
+      <a href={href} className={ACTION_CARD} aria-label={ariaLabel} {...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+        {content}
+      </a>
+    );
+  }
+  return (
+    <button type="button" className={ACTION_CARD} onClick={onClick} disabled={disabled} aria-describedby={describedBy} aria-label={ariaLabel}>
+      {content}
+    </button>
+  );
+}
 
 const COPY_STATUS = {
   copied: "Message copied.",
@@ -137,23 +172,35 @@ export default function ReminderMessageDialog({ open, onOpenChange, reminders, s
 
         <DialogBody className="flex flex-col gap-4">
           {/* Who and which membership. */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-info/20 bg-info/5 p-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <Avatar name={student?.full_name} src={student?.photo_url} size="lg" className="shrink-0" />
-              <div className="min-w-0">
-                <p className="text-body font-semibold break-words text-text-primary">{student?.full_name ?? "—"}</p>
-                {student?.student_code ? <p className="text-small text-text-secondary">Student ID: {student.student_code}</p> : null}
-                <p className="text-small flex items-center gap-1.5 text-text-secondary">
+          <div className="flex items-center gap-3 rounded-card border border-border bg-background/60 px-3 py-2.5">
+            <Avatar name={student?.full_name} src={student?.photo_url} size="md" className="shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-body truncate font-semibold text-text-primary">{student?.full_name ?? "—"}</p>
+              <p className="text-small flex flex-wrap items-center gap-x-3 gap-y-0.5 text-text-secondary">
+                {student?.student_code ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Hash className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span className="sr-only">Student ID: {student.student_code}</span>
+                    <span aria-hidden="true">{student.student_code}</span>
+                  </span>
+                ) : null}
+                <span className="inline-flex min-w-0 items-center gap-1">
                   <CreditCard className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span className="break-words">{[membership?.code, membership?.planLabel, membership?.period].filter(Boolean).join(" · ")}</span>
-                </p>
-              </div>
+                  <span className="truncate">{[membership?.code, membership?.planLabel, membership?.period].filter(Boolean).join(" · ")}</span>
+                </span>
+              </p>
             </div>
             {student?.id ? (
-              <Button variant="outline" size="sm" className="text-info" render={<a href={`/students/${student.id}`} target="_blank" rel="noopener noreferrer" />} nativeButton={false}>
-                <ExternalLink className="size-4" aria-hidden="true" />
-                View Details
-                <span className="sr-only"> (opens in a new tab)</span>
+              <Button
+                variant="secondary"
+                size="icon-sm"
+                className="shrink-0"
+                aria-label={`View Details of ${student.full_name ?? "the student"} (opens in a new tab)`}
+                title="View student details"
+                render={<a href={`/students/${student.id}`} target="_blank" rel="noopener noreferrer" />}
+                nativeButton={false}
+              >
+                <Eye className="size-4" aria-hidden="true" />
               </Button>
             ) : null}
           </div>
@@ -249,44 +296,44 @@ export default function ReminderMessageDialog({ open, onOpenChange, reminders, s
               {hasMessage ? null : unavailableNote(emptyNoteId, "Write a message to copy or send it.")}
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Button type="button" variant="secondary" onClick={copyMessage} disabled={!hasMessage} aria-describedby={hasMessage ? undefined : emptyNoteId}>
-                <Copy className="size-4" aria-hidden="true" />
-                Copy Message
-              </Button>
-              {whatsAppUrl ? (
-                <Button variant="outline" className="border-success/30 bg-success/10 text-success hover:bg-success/15 hover:text-success" render={<a href={whatsAppUrl} target="_blank" rel="noopener noreferrer" />} nativeButton={false}>
-                  <MessageCircle className="size-4" aria-hidden="true" />
-                  Open WhatsApp
-                  <span className="sr-only"> (opens in a new tab)</span>
-                </Button>
-              ) : (
-                <Button type="button" variant="outline" disabled aria-describedby={noWhatsApp ? whatsAppNoteId : emptyNoteId}>
-                  <MessageCircle className="size-4" aria-hidden="true" />
-                  Open WhatsApp
-                </Button>
-              )}
-              {mailtoUrl ? (
-                <Button variant="outline" render={<a href={mailtoUrl} />} nativeButton={false}>
-                  <Mail className="size-4" aria-hidden="true" />
-                  Open Email
-                </Button>
-              ) : (
-                <Button type="button" variant="outline" disabled aria-describedby={noEmail ? emailNoteId : emptyNoteId}>
-                  <Mail className="size-4" aria-hidden="true" />
-                  Open Email
-                </Button>
-              )}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <ActionCard
+                icon={Copy}
+                tone="brand"
+                label="Copy"
+                ariaLabel="Copy Message"
+                onClick={copyMessage}
+                disabled={!hasMessage}
+                describedBy={hasMessage ? undefined : emptyNoteId}
+              />
+              <ActionCard
+                icon={MessageCircle}
+                tone="success"
+                label="WhatsApp"
+                ariaLabel={whatsAppUrl ? "Open WhatsApp (opens in a new tab)" : "Open WhatsApp"}
+                href={whatsAppUrl}
+                newTab
+                disabled={!whatsAppUrl}
+                describedBy={whatsAppUrl ? undefined : noWhatsApp ? whatsAppNoteId : emptyNoteId}
+              />
+              <ActionCard
+                icon={Mail}
+                tone="info"
+                label="Email"
+                ariaLabel="Open Email"
+                href={mailtoUrl}
+                disabled={!mailtoUrl}
+                describedBy={mailtoUrl ? undefined : noEmail ? emailNoteId : emptyNoteId}
+              />
               {student?.id ? (
-                <Button
-                  variant="outline"
-                  render={<a href={communicationHistoryHref(student.id)} target="_blank" rel="noopener noreferrer" />}
-                  nativeButton={false}
-                >
-                  <History className="size-4" aria-hidden="true" />
-                  View Communication History
-                  <span className="sr-only"> (opens in a new tab)</span>
-                </Button>
+                <ActionCard
+                  icon={History}
+                  tone="accent"
+                  label="History"
+                  ariaLabel="View Communication History (opens in a new tab)"
+                  href={communicationHistoryHref(student.id)}
+                  newTab
+                />
               ) : null}
             </div>
 

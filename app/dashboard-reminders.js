@@ -100,7 +100,7 @@ export default function DashboardReminders({ result, centreName }) {
             <p className="text-small mt-1 text-text-secondary">Memberships that are expiring or have money still owed.</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" className="self-start border-brand/40 text-brand hover:bg-brand/5 hover:text-brand" render={<Link href="/memberships" />} nativeButton={false}>
+        <Button variant="secondary" size="sm" className="self-start" render={<Link href="/memberships" />} nativeButton={false}>
           View All
           <ArrowRight className="size-4" aria-hidden="true" />
         </Button>

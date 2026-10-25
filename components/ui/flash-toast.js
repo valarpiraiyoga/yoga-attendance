@@ -18,8 +18,9 @@ import Toast from "@/components/ui/toast";
  *
  * @param {object} props
  * @param {string|null|undefined} props.message
+ * @param {string} [props.param] - the query parameter that marked the redirect and is cleared once shown (`success` by default).
  */
-export default function FlashToast({ message }) {
+export default function FlashToast({ message, param = "success" }) {
   const [text, setText] = useState(message ?? null);
   const [prevMessage, setPrevMessage] = useState(message ?? null);
 
@@ -32,10 +33,10 @@ export default function FlashToast({ message }) {
   useEffect(() => {
     if (!message) return;
     const url = new URL(window.location.href);
-    if (!url.searchParams.has("success")) return;
-    url.searchParams.delete("success");
+    if (!url.searchParams.has(param)) return;
+    url.searchParams.delete(param);
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
-  }, [message]);
+  }, [message, param]);
 
   const dismiss = useCallback(() => setText(null), []);
 

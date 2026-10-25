@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import Container from "@/components/layout/Container";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/empty-state";
+import FlashToast from "@/components/ui/flash-toast";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import {
   DEFAULT_SCHEDULE_SORT,
@@ -144,14 +145,11 @@ export default async function SchedulePage({ searchParams }) {
       <Container>
       <ScheduleTabs active="list" />
 
-      {createdCount > 0 ? (
-        <div
-          role="status"
-          className="mb-4 rounded-input border border-success/30 bg-success/5 px-3 py-2 text-body text-success"
-        >
-          {createdCount === 1 ? "Schedule created successfully." : `${createdCount} schedules created successfully.`}
-        </div>
-      ) : null}
+      {/* After Add Schedule created several weekday schedules: a toast, which then clears `created` from the address. */}
+      <FlashToast
+        message={createdCount > 0 ? (createdCount === 1 ? "Schedule created successfully." : `${createdCount} schedules created successfully.`) : null}
+        param="created"
+      />
 
       <ScheduleFilters
         key={`${batchId}:${instructorId}:${status}`}
@@ -175,7 +173,7 @@ export default async function SchedulePage({ searchParams }) {
           }
           action={
             isFiltered ? (
-              <Button variant="secondary" render={<Link href="/schedule?view=list" />} nativeButton={false}>
+              <Button variant="destructive" render={<Link href="/schedule?view=list" />} nativeButton={false}>
                 Clear Filters
               </Button>
             ) : (

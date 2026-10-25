@@ -13,6 +13,7 @@ import StudentIdentityHeader from "@/components/ui/student-identity-header";
 import StudentFacts from "@/app/students/[id]/enrollments/student-facts";
 import GuidedSteps from "@/app/students/guided-steps";
 import PageHeader from "@/components/layout/PageHeader";
+import FlashToast from "@/components/ui/flash-toast";
 import { formatEndDate } from "@/lib/memberships/period";
 
 const PLAN_LABELS = { monthly: "Monthly", quarterly: "Quarterly", half_yearly: "Half Yearly", annual: "Annual", custom: "Custom duration", class_count: "Class Count" };
@@ -83,9 +84,11 @@ export default async function NewEnrollmentPage({ params, searchParams }) {
       />
       <div className={"mx-auto w-full max-w-5xl"}>
         {isGuided ? <GuidedSteps current={3} className="mt-0" /> : null}
+        {/* The guided Membership step just saved the membership. */}
+        <FlashToast message={rawParams?.success === "membership_added" ? "Membership added successfully." : null} />
 
         <div
-          className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8" : ""}`}
+          className={`rounded-card border border-border bg-surface p-6 shadow-xs ${isGuided ? "sm:p-8 sm:[--card-pad:2rem]" : ""}`}
         >
           {/* The identity header as a pale brand panel, the student's facts on the right. */}
           <StudentIdentityHeader student={student} className="mb-6" action={<StudentFacts student={student} />} />

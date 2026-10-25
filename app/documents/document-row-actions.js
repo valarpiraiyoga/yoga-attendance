@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, MoreVertical } from "lucide-react";
+import { CreditCard, FileText, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -40,10 +40,12 @@ export default function DocumentRowActions({ document }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-44">
           <DropdownMenuItem render={<Link href={document.href} />} nativeButton={false}>
+            <FileText aria-hidden="true" />
             View Document
           </DropdownMenuItem>
           {document.membershipCode ? (
             <DropdownMenuItem render={<Link href={document.membershipHref} />} nativeButton={false}>
+              <CreditCard aria-hidden="true" />
               View Membership
             </DropdownMenuItem>
           ) : null}

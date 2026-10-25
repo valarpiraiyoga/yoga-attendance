@@ -52,13 +52,7 @@ function DocumentRow({ document }) {
           <Avatar name={document.customerName} size="lg" />
           <div className="min-w-0">
             <p className="text-body font-semibold text-text-primary">
-              {document.studentHref ? (
-                <Link href={document.studentHref} className="rounded-sm text-brand hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
-                  {document.customerName}
-                </Link>
-              ) : (
-                document.customerName
-              )}
+              {document.customerName}
             </p>
             <p className="text-small text-text-secondary">{document.customerCode}</p>
           </div>

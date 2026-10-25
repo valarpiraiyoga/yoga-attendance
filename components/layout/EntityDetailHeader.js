@@ -47,6 +47,7 @@ export function EntityDetailHeader({
 }) {
   return (
     <div
+      data-sticky-header
       className={cn(
         "relative isolate mb-6 flex flex-col gap-4 overflow-hidden rounded-card border border-border bg-surface p-4 shadow-xs sm:sticky sm:-top-6 sm:z-20 sm:p-5 print:static",
         wash && "bg-linear-to-r from-brand/10 via-surface to-surface",

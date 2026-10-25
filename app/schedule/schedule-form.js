@@ -413,6 +413,9 @@ export default function ScheduleForm({
         className="flex flex-col gap-5"
         noValidate
       >
+        {/* The batch is fixed context, so it is the card's header (its own mark, name and code), as on Edit Batch. */}
+        {batch ? <BatchIdentityHeader batch={batch} /> : null}
+
         {state?.error ? (
           <p
             role="alert"
@@ -424,8 +427,6 @@ export default function ScheduleForm({
 
         {batch ? (
           <>
-            {/* The batch is fixed context, so it is the card's header (its own mark, name and code), as on Edit Batch. */}
-            <BatchIdentityHeader batch={batch} />
             <input type="hidden" name="batch_id" value={batch.id} />
           </>
         ) : (

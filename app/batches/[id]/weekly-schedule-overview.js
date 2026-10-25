@@ -70,7 +70,7 @@ export default function WeeklyScheduleOverview({ batchId, schedules, upcomingSch
               <Plus className="size-4" aria-hidden="true" />
               Add Schedule
             </Button>
-            <Button size="sm" variant="outline" className="text-brand" render={<Link href={`/batches/${batchId}/schedules`} />} nativeButton={false}>
+            <Button size="sm" variant="secondary" render={<Link href={`/batches/${batchId}/schedules`} />} nativeButton={false}>
               <ChevronRight className="size-4" aria-hidden="true" />
               View Full Schedule
             </Button>

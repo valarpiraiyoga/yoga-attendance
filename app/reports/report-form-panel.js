@@ -43,7 +43,7 @@ export default function ReportFormPanel({
         </div>
 
         <div className="flex items-center gap-3 lg:shrink-0">
-          <Button type="button" variant="outline" onClick={onClear} disabled={isPending}>
+          <Button type="button" variant="destructive" onClick={onClear} disabled={isPending}>
             Clear
           </Button>
           <Button type="submit" disabled={isPending}>

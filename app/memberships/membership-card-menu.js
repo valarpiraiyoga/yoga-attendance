@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { MoreVertical } from "lucide-react";
+import { BellRing, Eye, FilePlus, FileText, MoreVertical, Pencil, Receipt, RefreshCw, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { recordPaymentHref } from "@/lib/memberships/payment-focus";
 import { membershipDocumentAction } from "@/lib/memberships/document-action";
 import {
   DropdownMenu,
@@ -37,9 +38,15 @@ import {
  * Reminder Message (with `onOpenReminderMessage`) opens the row's reminder message popup - the same popup as the row's red bell button; the host
  * owns it. Both reminder texts are red (`text-danger`), as on the popup.
  *
+ * `listActions` (the Memberships list, table and cards): every item carries an icon (icon and label only), View Student is left out and a
+ * "View Payments" document item is left out (both are one step away on Membership Details, which View Membership opens). The detail page,
+ * its history rows and the Dashboard keep their menus exactly as before.
+ *
  * `hideDocumentAction` (the Dashboard's reminder rows): the document item needs the invoice and payment facts only the Memberships list reads,
  * so the Dashboard leaves it out; View Membership is one step from the same documents.
  */
+const DOCUMENT_ICON = { "due-notice": FileText, receipt: Receipt, "issue-receipt": FilePlus, payments: Wallet };
+
 export default function MembershipCardMenu({
   membershipId,
   studentId,
@@ -57,8 +64,13 @@ export default function MembershipCardMenu({
   reminders = null,
   onOpenReminderMessage,
   hideDocumentAction = false,
+  listActions = false,
 }) {
   const documentAction = membershipDocumentAction(membershipId, paymentStatus, invoiceExists, hasPayments);
+  const DocumentIcon = DOCUMENT_ICON[documentAction.kind];
+  // `icon` is an item's leading icon on the list's menu only.
+  const icon = (Icon) => (listActions ? <Icon aria-hidden="true" /> : null);
+  const showDocumentAction = !hideDocumentAction && !(listActions && documentAction.kind === "payments");
 
   return (
     <DropdownMenu onOpenChange={onOpenChange}>
@@ -85,9 +97,13 @@ export default function MembershipCardMenu({
               {reminders.expiry ? <p className="text-small px-1.5 pb-1 font-medium text-danger">{reminders.expiry.text}</p> : null}
               {reminders.payment ? <p className="text-small px-1.5 pb-1 font-medium text-danger">{reminders.payment.text}</p> : null}
             </DropdownMenuGroup>
-            {onOpenReminderMessage ? <DropdownMenuItem onClick={onOpenReminderMessage}>Reminder Message</DropdownMenuItem> : null}
+            {onOpenReminderMessage ? <DropdownMenuItem onClick={onOpenReminderMessage}>
+                {icon(BellRing)}
+                Reminder Message
+              </DropdownMenuItem> : null}
             {reminders.payment ? (
-              <DropdownMenuItem render={<Link href={`/memberships/${membershipId}`} />} nativeButton={false}>
+              <DropdownMenuItem render={<Link href={recordPaymentHref(membershipId)} />} nativeButton={false}>
+                {icon(Wallet)}
                 Record Payment
               </DropdownMenuItem>
             ) : null}
@@ -95,23 +111,30 @@ export default function MembershipCardMenu({
           </>
         ) : null}
         <DropdownMenuItem render={<Link href={`/memberships/${membershipId}`} />} nativeButton={false}>
+          {icon(Eye)}
           View Membership
         </DropdownMenuItem>
         <DropdownMenuItem render={<Link href={`/memberships/${membershipId}/edit`} />} nativeButton={false}>
+          {icon(Pencil)}
           Edit Membership
         </DropdownMenuItem>
         <DropdownMenuItem render={<Link href={`/memberships/${membershipId}/renew`} />} nativeButton={false}>
+          {icon(RefreshCw)}
           Renew Membership
         </DropdownMenuItem>
-        {hideDocumentAction ? null : documentAction.href ? (
+        {!showDocumentAction ? null : documentAction.href ? (
           <DropdownMenuItem render={<Link href={documentAction.href} />} nativeButton={false}>
+            {icon(DocumentIcon)}
             {documentAction.label}
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem onClick={onIssueInvoice}>{documentAction.label}</DropdownMenuItem>
+          <DropdownMenuItem onClick={onIssueInvoice}>
+            {icon(DocumentIcon)}
+            {documentAction.label}
+          </DropdownMenuItem>
         )}
 
-        {studentId ? (
+        {studentId && !listActions ? (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem render={<Link href={`/students/${studentId}`} />} nativeButton={false}>

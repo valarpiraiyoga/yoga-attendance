@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MoreVertical } from "lucide-react";
+import { CreditCard, Eye, MoreVertical, Pencil, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,6 +16,10 @@ import {
  * Enrollment routes already used on Student Details. "View Membership" and
  * "Edit Batch" disable when no current membership / active enrollment exists.
  *
+ * `listActions` (the Students list) is the short menu: View Student, Edit Student, then Add Membership and Renew Membership - icon and label
+ * only. Renew Membership goes to the existing renew route of the student's current membership and is disabled when there is none.
+ * The Student Details header leaves it off and keeps the full list.
+ *
  * Also the Student Details header's more (⋮) menu: the same action list, with
  * the trigger's look and label passed in (`triggerVariant`, `triggerSize`,
  * `triggerClassName`, `triggerLabel`); the defaults are the list card's.
@@ -25,6 +29,7 @@ export default function StudentCardMenu({
   membershipId,
   enrollmentId,
   onOpenChange,
+  listActions = false,
   triggerVariant = "ghost",
   triggerSize = "icon-sm",
   triggerClassName = "shrink-0 text-brand hover:bg-brand/10 hover:text-brand",
@@ -46,6 +51,40 @@ export default function StudentCardMenu({
         <MoreVertical className="size-4" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
+        {listActions ? (
+          <>
+            <DropdownMenuItem render={<Link href={`/students/${studentId}`} />} nativeButton={false}>
+              <Eye aria-hidden="true" />
+              View Student
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link href={`/students/${studentId}/edit`} />} nativeButton={false}>
+              <Pencil aria-hidden="true" />
+              Edit Student
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem
+              render={<Link href={`/students/${studentId}/memberships/new`} />}
+              nativeButton={false}
+            >
+              <CreditCard aria-hidden="true" />
+              Add Membership
+            </DropdownMenuItem>
+            {membershipId ? (
+              <DropdownMenuItem render={<Link href={`/memberships/${membershipId}/renew`} />} nativeButton={false}>
+                <RefreshCw aria-hidden="true" />
+                Renew Membership
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem disabled>
+                <RefreshCw aria-hidden="true" />
+                Renew Membership
+              </DropdownMenuItem>
+            )}
+          </>
+        ) : (
+          <>
         <DropdownMenuItem render={<Link href={`/students/${studentId}`} />} nativeButton={false}>
           View Student
         </DropdownMenuItem>
@@ -86,6 +125,8 @@ export default function StudentCardMenu({
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem disabled>Edit Batch</DropdownMenuItem>
+        )}
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

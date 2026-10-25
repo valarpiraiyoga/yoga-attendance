@@ -116,6 +116,7 @@ export default function MembershipCardItem({ membership, today, reminders, centr
             onOpenReminderMessage={() => setReminderOpen(true)}
             onIssueInvoice={() => setIssueOpen(true)}
             onOpenChange={setMenuOpen}
+            listActions
           />
           {documentAction.kind === "issue-receipt" ? (
             <MembershipIssueInvoiceDialog membership={membership} student={student} open={issueOpen} onOpenChange={setIssueOpen} />
@@ -144,7 +145,7 @@ export default function MembershipCardItem({ membership, today, reminders, centr
       ]}
     >
       {/* The membership's reminders, the same indicators as the table row (02-ux.md "Membership & payment reminders"). */}
-      <ReminderIndicators reminders={reminders} className="mb-1" />
+      <ReminderIndicators reminders={reminders} only="expiry" className="mb-1" />
       {/* Validity footer: the label (and, while it runs, "N / total days") over
           the progress bar; an Expired membership gets a red-tinted block. */}
       <div className={cn("mt-auto flex flex-col gap-1.5", isExpired && "rounded-lg bg-danger/10 px-3 py-2")}>

@@ -351,6 +351,11 @@ export default function EnrollmentForm({
               <Label htmlFor="effective_start_date">
                 Enrollment Start Date<span className="text-danger" aria-hidden="true"> *</span>
               </Label>
+              {joinDate ? (
+                <HelpTip label="About the start date">
+                  Cannot be before the student&rsquo;s join date ({joinDateLabel(joinDate)}).
+                </HelpTip>
+              ) : null}
             </div>
             <Input
               id="effective_start_date"
@@ -366,9 +371,6 @@ export default function EnrollmentForm({
                 fieldErrors.effective_start_date ? "effective_start_date-error" : undefined
               }
             />
-            {joinDate ? (
-              <p className="text-small text-text-secondary">Cannot be before the student&rsquo;s join date ({joinDateLabel(joinDate)}).</p>
-            ) : null}
             {fieldErrors.effective_start_date ? (
               <p id="effective_start_date-error" role="alert" className="text-small text-danger">
                 {fieldErrors.effective_start_date}
@@ -379,6 +381,7 @@ export default function EnrollmentForm({
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-1.5">
               <Label htmlFor="effective_end_date">Enrollment End Date</Label>
+              <HelpTip label="About the end date">Optional — leave blank if there is no planned end date.</HelpTip>
             </div>
             <Input
               id="effective_end_date"
@@ -390,7 +393,6 @@ export default function EnrollmentForm({
               aria-invalid={Boolean(fieldErrors.effective_end_date)}
               aria-describedby={fieldErrors.effective_end_date ? "effective_end_date-error" : undefined}
             />
-            <p className="text-small text-text-secondary">Optional — leave blank if there is no planned end date.</p>
             {fieldErrors.effective_end_date ? (
               <p id="effective_end_date-error" role="alert" className="text-small text-danger">
                 {fieldErrors.effective_end_date}

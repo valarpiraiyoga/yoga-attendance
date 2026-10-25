@@ -104,7 +104,7 @@ export default async function InstructorsPage({ searchParams }) {
           }
           action={
             isFiltered ? (
-              <Button variant="secondary" render={<Link href="/settings/instructors" />} nativeButton={false}>
+              <Button variant="destructive" render={<Link href="/settings/instructors" />} nativeButton={false}>
                 Clear Filters
               </Button>
             ) : (

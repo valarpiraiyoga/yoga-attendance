@@ -10,6 +10,15 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
+// The drawer's body: a faint tint behind the fields; every select trigger and input in it a white control with a soft shadow and the
+// standard 40px height; every label the form label. Descendant selectors, so each filter page's fields get it without per-page classes.
+const FIELDS_BODY = [
+  "flex flex-1 flex-col gap-5 overflow-y-auto bg-background/60 p-5",
+  "[&_[data-slot=select-trigger]]:bg-surface [&_[data-slot=select-trigger]]:shadow-xs",
+  "[&_[data-slot=input]]:h-10 [&_[data-slot=input]]:bg-surface [&_[data-slot=input]]:shadow-xs",
+  "[&_[data-slot=label]]:text-small [&_[data-slot=label]]:font-semibold",
+].join(" ");
+
 /**
  * The one filter drawer (06-ui-implementation-rules.md §16.3), replacing
  * six near-identical `Sheet` implementations (~2,000 lines): a bottom sheet
@@ -43,10 +52,10 @@ export default function FilterSheet({
         </SheetHeader>
 
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">{children}</div>
+          <div className={FIELDS_BODY}>{children}</div>
 
           <div className="mt-auto flex gap-3 border-t border-border p-4">
-            <Button type="button" variant="outline" className="flex-1" onClick={onClearAll}>
+            <Button type="button" variant="destructive" className="flex-1" onClick={onClearAll}>
               {clearLabel}
             </Button>
             <Button type="submit" className="flex-1">
@@ -62,8 +71,8 @@ export default function FilterSheet({
 /** One labelled filter field inside a `FilterSheet` — the repeated `<Select>` wrapper. */
 export function FilterSection({ id, label, className, children }) {
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
-      <span id={`${id}-label`} className="text-small font-medium tracking-wide text-text-secondary uppercase">
+    <div className={cn("flex flex-col gap-2", className)}>
+      <span id={`${id}-label`} className="text-small font-semibold text-text-primary">
         {label}
       </span>
       {children}

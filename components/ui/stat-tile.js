@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
  * The one stat/metric tile (06-ui-implementation-rules.md §4.1, §22.3),
  * replacing the audit's 15 duplicated implementations (`MetricTile` ×6,
  * `SummaryTile` ×3, `ReportMetricCard` ×3, `StatTile`, `AttendanceStatTile`,
- * `SummaryChip`). Light tinted icon tile with dark text values — not the
- * Dashboard's former saturated gradient treatment, which this tile is also
- * the replacement for (that page adopts it when the Dashboard is next
- * implemented, per §21 rule 2).
+ * `SummaryChip`). Modern and colourful: the tile is washed in its tone (a
+ * soft diagonal tint into the surface, tinted border, a lift on hover) and the
+ * icon sits in a solid tone badge with a white icon and a matching soft glow;
+ * the values stay dark text, so the figures read first.
  *
  * Typography is OWNED by this component (03-visual-tokens.md "Component
  * Typography Ownership"): every text element below sets its own size,
@@ -45,13 +45,25 @@ import { cn } from "@/lib/utils";
  * `lg` to `xl` (four tiles ~170px each) and `xl` to `2xl` (where the larger icon
  * box takes the room). It shows from `sm` to `lg` and again from `2xl`.
  */
+// The modern, colourful look: each tile is washed in its own tone (a soft diagonal tint from the tone into the surface, with a tinted
+// border), and its icon sits in a SOLID tone badge with white icon and a soft glow in the same colour. The figures stay dark text for
+// readability. Every class is a literal from the existing semantic colour tokens - no raw colours.
 const TONE_STYLES = {
-  brand: "bg-brand/10 text-brand",
-  success: "bg-success/10 text-success",
-  warning: "bg-warning/10 text-warning",
-  danger: "bg-danger/10 text-danger",
-  info: "bg-info/10 text-info",
-  neutral: "bg-neutral/15 text-text-secondary",
+  brand: "bg-brand text-surface shadow-md shadow-brand/25",
+  success: "bg-success text-surface shadow-md shadow-success/25",
+  warning: "bg-warning text-surface shadow-md shadow-warning/25",
+  danger: "bg-danger text-surface shadow-md shadow-danger/25",
+  info: "bg-info text-surface shadow-md shadow-info/25",
+  neutral: "bg-neutral text-surface shadow-md shadow-neutral/25",
+};
+
+const TONE_CARD = {
+  brand: "border-brand/20 bg-linear-to-br from-brand/10 via-brand/5 to-surface",
+  success: "border-success/20 bg-linear-to-br from-success/10 via-success/5 to-surface",
+  warning: "border-warning/25 bg-linear-to-br from-warning/10 via-warning/5 to-surface",
+  danger: "border-danger/20 bg-linear-to-br from-danger/10 via-danger/5 to-surface",
+  info: "border-info/20 bg-linear-to-br from-info/10 via-info/5 to-surface",
+  neutral: "border-border bg-linear-to-br from-neutral/10 via-neutral/5 to-surface",
 };
 
 const TONE_TEXT = {
@@ -81,7 +93,8 @@ export function StatTile({
     <div
       data-slot="stat-tile"
       className={cn(
-        "flex min-w-0 items-center gap-3 rounded-card border border-border bg-surface p-4 shadow-xs",
+        "flex min-w-0 items-center gap-3 rounded-card border p-4 shadow-xs transition-shadow hover:shadow-md",
+        TONE_CARD[tone] ?? TONE_CARD.brand,
         compact && "items-start p-3",
         className
       )}

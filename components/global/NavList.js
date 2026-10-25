@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { getNavItemsForRole } from "@/app/data/navigation";
+import { isNavItemActive } from "@/lib/documents/source";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
  */
 export default function NavList({ role, onNavigate, className }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const items = getNavItemsForRole(role);
   const lastIsAlone = items.length % 2 === 1;
 
@@ -29,7 +31,8 @@ export default function NavList({ role, onNavigate, className }) {
         // `pathname.startsWith(href)` would also match "/attendance-history"
         // against the "/attendance" item, since it is a literal string
         // prefix of it — not a path segment of it.
-        const isActive = pathname === href || pathname.startsWith(`${href}/`);
+        // A document page opened from the Documents list sits under /memberships/... but highlights Documents (`isNavItemActive`).
+        const isActive = isNavItemActive(pathname, href, searchParams);
         const wide = lastIsAlone && index === items.length - 1;
 
         return (

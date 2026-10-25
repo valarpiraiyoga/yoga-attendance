@@ -84,7 +84,7 @@ export default function InstructorLoginAccess({ instructor }) {
         <div className="flex flex-col items-start gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={busy || Boolean(blocker)}
             aria-describedby={blocker ? "login-access-blocker" : undefined}
             onClick={() => setConfirmReset(true)}
@@ -111,7 +111,7 @@ export default function InstructorLoginAccess({ instructor }) {
           <div className="flex flex-col items-start gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               disabled={busy || Boolean(blocker)}
               aria-describedby={blocker ? "login-access-blocker" : undefined}
               onClick={() => run(provideTemporaryLoginAccess, "created")}

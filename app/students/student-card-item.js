@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { ENTITY_STATUS, MEMBERSHIP_SUMMARY } from "@/lib/status";
 import { formatPhone } from "@/lib/phone";
 import StudentCardMenu from "@/app/students/student-card-menu";
+import StudentViewButton from "@/app/students/student-view-button";
 
 /**
  * Student list card (finalized reference): the photo (initials when there is
@@ -40,12 +41,16 @@ export default function StudentCardItem({ student }) {
       status={<Badge variant={entityStatus.variant}>{entityStatus.label}</Badge>}
       statusPlacement="actions"
       actions={
-        <StudentCardMenu
-          studentId={student.id}
-          membershipId={student.currentMembershipId}
-          enrollmentId={student.primaryEnrollmentId}
-          onOpenChange={setMenuOpen}
-        />
+        <div className="flex items-center">
+          <StudentViewButton student={student} />
+          <StudentCardMenu
+            studentId={student.id}
+            membershipId={student.currentMembershipId}
+            enrollmentId={student.primaryEnrollmentId}
+            onOpenChange={setMenuOpen}
+            listActions
+          />
+        </div>
       }
     >
       {/* Hand-rolled rather than EntityCard's `meta` prop: `meta` has no

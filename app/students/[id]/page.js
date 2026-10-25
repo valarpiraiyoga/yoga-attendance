@@ -27,7 +27,7 @@ import {
 import { DAY_LABELS, DAYS_OF_WEEK } from "@/lib/schedules/validation";
 import { listMembershipsForStudent, pickCurrentMembership } from "@/lib/memberships/data";
 import { formatDate, formatTimeRange } from "@/lib/format";
-import { groupSchedulesByTimeSlot, instructorCountLabel } from "@/lib/students/enrollment-schedule-groups";
+import { groupSchedulesByTimeSlot, instructorCountLabel, SLOT_TONES } from "@/lib/students/enrollment-schedule-groups";
 import { ENTITY_STATUS } from "@/lib/status";
 import StudentHeader from "@/app/students/[id]/student-header";
 import GuidedComplete from "@/app/students/guided-complete";
@@ -187,11 +187,7 @@ export default async function StudentDetailsPage({ params, searchParams }) {
         description={`Profile, enrollments and membership for ${student.full_name}.`}
       />
       <Container className="flex flex-col gap-6">
-        <StudentHeader
-          student={student}
-          membershipId={currentMembership?.id ?? null}
-          enrollmentId={enrollments.find((enrollment) => enrollment.status === "active")?.id ?? null}
-        />
+        <StudentHeader student={student} showMenu={false} />
 
         {/* The save confirmation is a toast overlay, not a banner, so it takes no layout space. */}
         <FlashToast message={message} />
@@ -302,8 +298,6 @@ export default async function StudentDetailsPage({ params, searchParams }) {
  * they teach that slot as chips. Slot colours cycle through a restrained set, one per slot. An enrollment with no current schedule is flagged, as
  * before. The table scrolls sideways inside the card on a narrow screen rather than overflowing it.
  */
-const SLOT_TONES = ["bg-info/10 text-info", "bg-success/10 text-success", "bg-warning/10 text-warning", "bg-brand-accent/10 text-brand-accent"];
-
 function EnrollmentCard({ studentId, enrollment, schedules }) {
   const batchName = enrollment.batches?.name ?? "Unknown batch";
   const batchCode = enrollment.batches?.code ?? "—";

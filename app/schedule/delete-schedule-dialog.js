@@ -13,6 +13,7 @@ import {
   describeUnrecordedPastOccurrences,
 } from "@/lib/schedules/usage";
 import { formatDate, formatTimeRange } from "@/lib/format";
+import { showSuccessToast } from "@/components/ui/success-toast";
 
 /**
  * Delete Schedule (01-product.md §7 "Deleting and correcting an unused
@@ -69,6 +70,7 @@ export default function DeleteScheduleDialog({ scheduleId, scheduleContext, open
       const result = await deleteSchedule(scheduleId);
       if (result?.success) {
         onOpenChange(false);
+        showSuccessToast("Schedule deleted successfully.");
       } else if (result?.blocked) {
         setBlockedReason(result.blockReason);
       } else if (result?.error) {

@@ -4,6 +4,7 @@ import { Download, FilePen, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/layout/PageHeader";
+import { documentBack, keepDocumentsSource } from "@/lib/documents/source";
 import { Panel, PanelHeader } from "@/components/layout/Panel";
 import { requireRole, ROLES } from "@/lib/auth/dal";
 import { formatDate } from "@/lib/format";
@@ -30,10 +31,11 @@ const labelOf = (row) => `${DOCUMENT_TITLE_LABEL[row.document_title] ?? row.docu
  * reason, linked to its replacement when it has one - and can be neither edited, corrected nor cancelled again: both actions are
  * hidden.
  */
-export default async function PaymentDocumentPage({ params }) {
+export default async function PaymentDocumentPage({ params, searchParams }) {
   await requireRole(ROLES.ADMIN);
 
   const { id, documentId } = await params;
+  const rawParams = await searchParams;
   const document = await getPaymentDocument(id, documentId);
 
   if (!document) {
@@ -67,7 +69,7 @@ export default async function PaymentDocumentPage({ params }) {
             </Button>
             {isCancelled ? null : (
               <>
-                <Button variant="secondary" render={<Link href={`/memberships/${id}/documents/${document.id}/correct`} />} nativeButton={false}>
+                <Button variant="secondary" render={<Link href={keepDocumentsSource(rawParams, `/memberships/${id}/documents/${document.id}/correct`)} />} nativeButton={false}>
                   <FilePen className="size-4" aria-hidden="true" />
                   Correct Document
                 </Button>
@@ -76,7 +78,7 @@ export default async function PaymentDocumentPage({ params }) {
             )}
           </>
         }
-        back={{ href: `/memberships/${id}`, label: "Back to Membership" }}
+        back={documentBack(rawParams, { href: `/memberships/${id}`, label: "Back to Membership" })}
         title={`${invoiceDocument.title} ${invoiceDocument.number}`}
         description={
           isCancelled

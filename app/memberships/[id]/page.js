@@ -33,6 +33,8 @@ import CoveredEnrollmentRow from "@/app/memberships/[id]/covered-enrollment-row"
 import MembershipListPanel from "@/app/memberships/[id]/membership-list-panel";
 import MembershipCarousel from "@/app/memberships/[id]/membership-carousel";
 import InvoicePanel from "@/app/memberships/[id]/invoice-panel";
+import ScrollToSection from "@/app/memberships/[id]/scroll-to-section";
+import { PAYMENTS_FOCUS, PAYMENTS_SECTION_ID } from "@/lib/memberships/payment-focus";
 import PaymentsPanel from "@/app/memberships/[id]/payments-panel";
 import PricingPanel from "@/app/memberships/[id]/pricing-panel";
 import { pricingSnapshotOf } from "@/lib/packages/membership-pricing";
@@ -104,16 +106,11 @@ export default async function MembershipDetailsPage({ params, searchParams }) {
         description={`Plan, payment and validity for ${student?.full_name ?? "this student"}.`}
       />
       <Container className="flex flex-col gap-4">
-        {/* The student's own header card - the same one Student Details shows. Its overflow menu's shortcuts are this membership
-            and the student's active enrollment that overlaps it. */}
-        {student ? (
-          <StudentHeader
-            student={student}
-            membershipId={membership.id}
-            enrollmentId={coveredEnrollments.find((enrollment) => enrollment.status === "active")?.id ?? null}
-            showEdit={false}
-          />
-        ) : null}
+        {/* The student's own header card - the same one Student Details shows, without Edit Student or the More menu. */}
+        {student ? <StudentHeader student={student} showEdit={false} showMenu={false} /> : null}
+
+        {/* Opened from the list's Record Payment: scroll to Payments once (see ScrollToSection). */}
+        {rawParams?.focus === PAYMENTS_FOCUS ? <ScrollToSection targetId={PAYMENTS_SECTION_ID} /> : null}
 
         <div className="grid items-start gap-4 xl:grid-cols-[19rem_minmax(0,1fr)]">
         <div className="order-last min-w-0 xl:sticky xl:top-24 xl:order-first xl:flex xl:max-h-[calc(100dvh-8rem)] xl:flex-col">
