@@ -114,6 +114,7 @@ export default function PaymentsPanel({ membership, payments, today, student, me
           <RecordPayment
             membershipId={membership.id}
             balancePaise={balancePaise}
+            paymentCount={payments.length}
             currency={currency}
             today={today}
             student={student}
