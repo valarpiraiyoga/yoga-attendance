@@ -319,7 +319,7 @@ begin
   perform pg_temp.rec('P0 migration 0040 is applied (edit_payment(uuid, date, jsonb) and the audit columns previous_payment_date / new_payment_date)',
     v_ready, case when v_ready then '' else 'apply 0040 first; every scenario below is skipped' end);
   if v_ready then
-    v_ready := to_regprocedure('public.record_membership_payment(uuid, date, jsonb, boolean)') is not null
+    v_ready := to_regprocedure('public.record_membership_payment(uuid, date, jsonb, boolean, uuid)') is not null
            and to_regprocedure('public.issue_payment_document(uuid, date)') is not null
            and to_regprocedure('public.correct_payment_document(uuid, text)') is not null
            and to_regclass('public.membership_payment_edits') is not null;

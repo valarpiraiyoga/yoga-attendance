@@ -134,11 +134,11 @@ checks as (
     and exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'invoices_replaces_id_unique')
     and exists (select 1 from pg_constraint where conrelid = 'public.invoices'::regclass and conname = 'invoices_correction_payment_only'), ''
   union all
-  select 18, 'correct_payment_document, issue_payment_document, edit_payment_amount and record_membership_payment still exist',
+  select 18, 'correct_payment_document, issue_payment_document, edit_payment_amount and record_membership_payment (in its 0065 form) still exist',
     to_regprocedure('public.correct_payment_document(uuid, text)') is not null
     and to_regprocedure('public.issue_payment_document(uuid, date)') is not null
     and to_regprocedure('public.edit_payment_amount(uuid, jsonb)') is not null
-    and to_regprocedure('public.record_membership_payment(uuid, date, jsonb, boolean)') is not null, ''
+    and to_regprocedure('public.record_membership_payment(uuid, date, jsonb, boolean, uuid)') is not null, ''
   union all
   select 19, 'every document still satisfies the cancellation and tax constraints (cancelled has a reason; issued has none)',
     not exists (select 1 from public.invoices i where i.status = 'cancelled' and (i.cancellation_reason is null or i.cancelled_at is null))

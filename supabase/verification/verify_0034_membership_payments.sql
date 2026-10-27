@@ -3,7 +3,7 @@
 -- Verifies supabase/migrations/0034_membership_payments.sql
 -- ===========================================================================
 --
--- Run in the Supabase SQL editor of the project the application uses, after 0034-0038 are applied (later
+-- Run in the Supabase SQL editor of the project the application uses, after 0034-0038 and 0065 are applied (later
 -- migrations re-create some of 0034's objects; where they do, the CURRENT form is checked and said so).
 -- Read-only catalog queries only: nothing is written, and the whole script is rolled back.
 -- Behaviour: verify_0034_membership_payments_behavior.sql.
@@ -108,19 +108,20 @@ begin
     v_guard like '%yoga.payment_status_sync%' and v_guard like '%Partially Paid is set by recording payments.%'
     and v_guard like '%The payment status follows the recorded payments.%', '');
 
-  -- F. Recording (re-created by 0035 with a fourth argument) ----------------------------------------------------------
-  perform pg_temp.rec('F1 record_membership_payment exists in its current (0035) form only',
-    to_regprocedure('public.record_membership_payment(uuid, date, jsonb, boolean)') is not null
+  -- F. Recording (re-created by 0035 with a fourth argument, and by 0065 with a fifth) --------------------------------
+  perform pg_temp.rec('F1 record_membership_payment exists in its current (0065) form only',
+    to_regprocedure('public.record_membership_payment(uuid, date, jsonb, boolean, uuid)') is not null
+    and to_regprocedure('public.record_membership_payment(uuid, date, jsonb, boolean)') is null
     and to_regprocedure('public.record_membership_payment(uuid, date, jsonb)') is null, '');
-  v_record := pg_get_functiondef('public.record_membership_payment(uuid, date, jsonb, boolean)'::regprocedure);
+  v_record := pg_get_functiondef('public.record_membership_payment(uuid, date, jsonb, boolean, uuid)'::regprocedure);
   perform pg_temp.rec('F2 it is security definer, Admin-checked, locks the membership and refuses an over-payment',
-    exists (select 1 from pg_proc p where p.oid = 'public.record_membership_payment(uuid, date, jsonb, boolean)'::regprocedure and p.prosecdef
+    exists (select 1 from pg_proc p where p.oid = 'public.record_membership_payment(uuid, date, jsonb, boolean, uuid)'::regprocedure and p.prosecdef
               and exists (select 1 from unnest(p.proconfig) c where c = 'search_path=""'))
     and v_record like '%if not public.is_admin() then%' and v_record like '%for update%'
     and v_record like '%v_total > v_mem.amount - v_paid%', '');
   perform pg_temp.rec('F3 authenticated may execute it; anon and PUBLIC may not',
-    has_function_privilege('authenticated', 'public.record_membership_payment(uuid, date, jsonb, boolean)', 'execute')
-    and not has_function_privilege('anon', 'public.record_membership_payment(uuid, date, jsonb, boolean)', 'execute'), '');
+    has_function_privilege('authenticated', 'public.record_membership_payment(uuid, date, jsonb, boolean, uuid)', 'execute')
+    and not has_function_privilege('anon', 'public.record_membership_payment(uuid, date, jsonb, boolean, uuid)', 'execute'), '');
 
   perform pg_temp.info('DATA', format('%s payment(s), %s method row(s), %s membership(s) Partially Paid',
     (select count(*) from public.membership_payments), (select count(*) from public.membership_payment_methods),

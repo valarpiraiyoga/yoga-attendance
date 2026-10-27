@@ -282,7 +282,7 @@ begin
   perform pg_temp.rec('P0 migration 0041 is applied (invoice_settings.gstin, invoices.business_gstin and their two CHECK constraints)',
     v_ready, case when v_ready then '' else 'apply 0041 first; every check below is skipped' end);
   if v_ready then
-    v_ready := to_regprocedure('public.record_membership_payment(uuid, date, jsonb, boolean)') is not null
+    v_ready := to_regprocedure('public.record_membership_payment(uuid, date, jsonb, boolean, uuid)') is not null
            and to_regprocedure('public.issue_payment_document(uuid, date)') is not null
            and to_regprocedure('public.correct_payment_document(uuid, text)') is not null
            and to_regprocedure('public.issue_invoice_core(uuid, date)') is not null
