@@ -40,6 +40,10 @@ function countryFor(dialCode) {
  * country; the list is a labelled `listbox` of `option`s with `aria-selected`,
  * a search field to filter it, Arrow Up / Down to move, Enter to choose (Enter
  * in the search picks the first match), and Escape closes it.
+ *
+ * `onCountryChange(dialCode)` is called when a country is chosen, so the form can
+ * recheck the number against the new country (the number is valid for one country
+ * and not another). It does not validate anything itself.
  */
 export default function PhoneInput({
   id,
@@ -51,6 +55,7 @@ export default function PhoneInput({
   required = false,
   disabled = false,
   onChange,
+  onCountryChange,
   className,
   "aria-invalid": ariaInvalid,
   "aria-describedby": ariaDescribedBy,
@@ -91,6 +96,8 @@ export default function PhoneInput({
 
   function choose(next) {
     setCountry(next);
+    // The hidden calling-code input still holds the old code until this re-renders, so the new one is handed over.
+    onCountryChange?.(next.dialCode);
     setOpen(false);
     setQuery("");
     // Straight on to typing the number.

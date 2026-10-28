@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,8 @@ import ProfilePhotoCard from "@/components/ui/profile-photo-card";
 import { Switch } from "@/components/ui/switch";
 import FormField from "@/components/ui/form-field";
 import PhoneInput from "@/components/forms/PhoneInput";
-import { validateInstructorInput } from "@/lib/instructors/validation";
+import { PHONE_ERROR_KEYS, phoneErrorsOf } from "@/lib/phone";
+import { firstInvalidInstructorField, INSTRUCTOR_FIELD_ORDER, validateInstructorInput } from "@/lib/instructors/validation";
 
 // The three text fields a blur can revalidate. Status is a binary switch,
 // not a free-text field a user retypes and re-checks, so it is out of scope
@@ -43,6 +44,7 @@ const BLUR_VALIDATED_FIELDS = new Set(["full_name", "email", "phone"]);
  */
 export default function InstructorForm({ action, instructor, submitLabel, pendingLabel }) {
   const [state, formAction, isPending] = useActionState(action, {});
+  const formRef = useRef(null);
   const [fieldErrors, setFieldErrors] = useState(state?.fieldErrors ?? {});
   const [isActive, setIsActive] = useState(instructor?.status === "active");
   const [fullName, setFullName] = useState(instructor?.full_name ?? "");
@@ -70,25 +72,75 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
   // Lightweight UX-only recheck: reuses the same validator the server runs
   // (lib/instructors/validation.js) to clear one field's stale error once
   // its current value is actually valid — it introduces no second set of
-  // validation rules, and never invents an error the server didn't already
-  // report. The server still re-validates authoritatively on submit.
+  // validation rules. Every field but the phone only ever clears an error the
+  // server reported; the phone is also judged here (see `recheckPhone`), by the
+  // same validator. The server still re-validates authoritatively on submit.
+  function instructorInputOf(formData) {
+    return {
+      full_name: formData.get("full_name"),
+      email: formData.get("email"),
+      phone: formData.get("phone"),
+      phone_country_code: formData.get("phone_country_code"),
+    };
+  }
+
+  // Replaces the phone field's errors (the number's and its country code's) with `phoneErrors`.
+  function showPhoneErrors(phoneErrors) {
+    setFieldErrors((current) => {
+      const next = { ...current };
+      for (const key of PHONE_ERROR_KEYS) delete next[key];
+      return { ...next, ...phoneErrors };
+    });
+  }
+
+  // The phone number is judged against its selected country (lib/phone.js), by the same validator the server runs. The
+  // phone is optional: an empty one is never an error, and a number that has been typed is judged on blur and when the
+  // country changes.
+  function recheckPhone(formData) {
+    const result = validateInstructorInput(instructorInputOf(formData));
+    showPhoneErrors(phoneErrorsOf(result.errors));
+  }
+
+  function handleCountryChange(dialCode) {
+    const formData = new FormData(formRef.current);
+    // The hidden code input still holds the old country until the picker re-renders.
+    formData.set("phone_country_code", dialCode);
+    recheckPhone(formData);
+  }
+
+  // Any error the validator finds - a missing Full Name, a phone that is given but is not a real number for its country,
+  // a bad email - stops the submission here, and ALL of them are shown at once with the first invalid field focused. (The
+  // phone itself is optional: empty is never an error.) Calling preventDefault in onSubmit makes React skip the form action
+  // (react-dom, FormActionEventPlugin: it runs the action only when the submit was not prevented), so nothing is sent, the
+  // form is NOT reset and the typed values stay. It is the validator the server runs; the server still checks again, and
+  // alone reports the photo.
+  function handleSubmit(event) {
+    const result = validateInstructorInput(instructorInputOf(new FormData(event.currentTarget)));
+    if (result.success) return;
+
+    event.preventDefault();
+    setFieldErrors((current) => {
+      const next = { ...current };
+      for (const key of [...INSTRUCTOR_FIELD_ORDER, "phone_country_code"]) delete next[key];
+      return { ...next, ...result.errors };
+    });
+    event.currentTarget.querySelector(`#${firstInvalidInstructorField(result.errors)}`)?.focus();
+  }
+
   function handleBlur(event) {
     const { name } = event.target;
     if (!BLUR_VALIDATED_FIELDS.has(name)) return;
 
     const formData = new FormData(event.currentTarget);
-    const result = validateInstructorInput({
-      full_name: formData.get("full_name"),
-      email: formData.get("email"),
-      phone: formData.get("phone"),
-      phone_country_code: formData.get("phone_country_code"),
-    });
+    if (name === "phone") {
+      recheckPhone(formData);
+      return;
+    }
+    const result = validateInstructorInput(instructorInputOf(formData));
 
-    // The phone number and its country code are one field to the user: a valid
-    // recheck clears whichever of the two errors is no longer true.
-    const names = name === "phone" ? ["phone", "phone_country_code"] : [name];
+    // A valid recheck clears the field's stale error.
     setFieldErrors((current) => {
-      const stale = names.filter((key) => key in current && (result.success || !result.errors[key]));
+      const stale = [name].filter((key) => key in current && (result.success || !result.errors[key]));
       if (stale.length === 0) return current;
       const next = { ...current };
       for (const key of stale) delete next[key];
@@ -97,7 +149,7 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
   }
 
   return (
-    <form action={submitForm} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
+    <form ref={formRef} action={submitForm} onSubmit={handleSubmit} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
       {state?.error ? (
         <p
           role="alert"
@@ -148,6 +200,7 @@ export default function InstructorForm({ action, instructor, submitLabel, pendin
             disabled={isPending}
             defaultValue={state?.values?.phone ?? instructor?.phone ?? ""}
             defaultCountryCode={state?.values?.phone_country_code ?? instructor?.phone_country_code ?? undefined}
+            onCountryChange={handleCountryChange}
             placeholder="Enter phone number (optional)"
           />
         )}

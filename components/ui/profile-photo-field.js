@@ -123,7 +123,7 @@ export default function ProfilePhotoField({
           <div className={stacked ? "flex flex-col gap-2" : "flex flex-wrap gap-2"}>
             <Button
               type="button"
-              variant="outline"
+              variant={stacked ? "outline" : "secondary"}
               size="sm"
               disabled={disabled}
               className={

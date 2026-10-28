@@ -50,7 +50,7 @@ export default function BatchIdentityField({
             onValueChange={onColorChange}
             disabled={disabled}
           >
-            <SelectTrigger {...field}>
+            <SelectTrigger {...field} className="bg-surface">
               <SelectValue>
                 {(value) => (
                   <span className="flex min-w-0 items-center gap-2">

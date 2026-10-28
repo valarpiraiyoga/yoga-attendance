@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { validateStudentInput } from "@/lib/students/validation";
+import { PHONE_ERROR_KEYS, phoneErrorsOf } from "@/lib/phone";
+import { firstInvalidStudentField, STUDENT_FIELD_ORDER, validateStudentInput } from "@/lib/students/validation";
 
 const GENDER_OPTIONS = [
   { value: "male", label: "Male" },
@@ -56,6 +57,7 @@ const BLUR_VALIDATED_FIELDS = new Set([
  */
 export default function StudentForm({ action, student, submitLabel, pendingLabel }) {
   const [state, formAction, isPending] = useActionState(action, {});
+  const formRef = useRef(null);
   const [fieldErrors, setFieldErrors] = useState(state?.fieldErrors ?? {});
   const [gender, setGender] = useState(student?.gender ?? "");
   const [fullName, setFullName] = useState(student?.full_name ?? "");
@@ -78,12 +80,8 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
     formAction(formData);
   }
 
-  function handleBlur(event) {
-    const { name } = event.target;
-    if (!BLUR_VALIDATED_FIELDS.has(name)) return;
-
-    const formData = new FormData(event.currentTarget);
-    const result = validateStudentInput({
+  function studentInputOf(formData) {
+    return {
       full_name: formData.get("full_name"),
       phone: formData.get("phone"),
       phone_country_code: formData.get("phone_country_code"),
@@ -92,13 +90,66 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
       gender: formData.get("gender"),
       join_date: formData.get("join_date"),
       notes: formData.get("notes"),
-    });
+    };
+  }
 
-    // The phone number and its country code are one field to the user: a valid
-    // recheck clears whichever of the two errors is no longer true.
-    const names = name === "phone" ? ["phone", "phone_country_code"] : [name];
+  // Replaces the phone field's errors (the number's and its country code's) with `phoneErrors`.
+  function showPhoneErrors(phoneErrors) {
     setFieldErrors((current) => {
-      const stale = names.filter((key) => key in current && (result.success || !result.errors[key]));
+      const next = { ...current };
+      for (const key of PHONE_ERROR_KEYS) delete next[key];
+      return { ...next, ...phoneErrors };
+    });
+  }
+
+  // The phone number is judged against its selected country (lib/phone.js), by the same validator the server runs. A
+  // number that has been typed is judged now, on blur and when the country changes; an empty one is left for submit
+  // (it is required) and keeps whatever the server last said.
+  function recheckPhone(formData) {
+    if (!String(formData.get("phone") ?? "").trim()) return;
+    const result = validateStudentInput(studentInputOf(formData));
+    showPhoneErrors(phoneErrorsOf(result.errors));
+  }
+
+  function handleCountryChange(dialCode) {
+    const formData = new FormData(formRef.current);
+    // The hidden code input still holds the old country until the picker re-renders.
+    formData.set("phone_country_code", dialCode);
+    recheckPhone(formData);
+  }
+
+  // Any error the validator finds - a missing Full Name, Phone or Join Date, a phone that is not a real number for its
+  // country, a bad email - stops the submission here, and ALL of them are shown at once with the first invalid field
+  // focused. Calling preventDefault in onSubmit makes React skip the form action (react-dom, FormActionEventPlugin: it
+  // runs the action only when the submit was not prevented), so nothing is sent, the form is NOT reset and the typed
+  // values stay. It is the validator the server runs; the server still checks again, and alone reports the photo.
+  function handleSubmit(event) {
+    const result = validateStudentInput(studentInputOf(new FormData(event.currentTarget)));
+    if (result.success) return;
+
+    event.preventDefault();
+    setFieldErrors((current) => {
+      const next = { ...current };
+      for (const key of [...STUDENT_FIELD_ORDER, "phone_country_code"]) delete next[key];
+      return { ...next, ...result.errors };
+    });
+    event.currentTarget.querySelector(`#${firstInvalidStudentField(result.errors)}`)?.focus();
+  }
+
+  function handleBlur(event) {
+    const { name } = event.target;
+    if (!BLUR_VALIDATED_FIELDS.has(name)) return;
+
+    const formData = new FormData(event.currentTarget);
+    if (name === "phone") {
+      recheckPhone(formData);
+      return;
+    }
+    const result = validateStudentInput(studentInputOf(formData));
+
+    // A valid recheck clears the field's stale error.
+    setFieldErrors((current) => {
+      const stale = [name].filter((key) => key in current && (result.success || !result.errors[key]));
       if (stale.length === 0) return current;
       const next = { ...current };
       for (const key of stale) delete next[key];
@@ -109,7 +160,7 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
   const cancelHref = student ? `/students/${student.id}` : "/students";
 
   return (
-    <form action={submitForm} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
+    <form ref={formRef} action={submitForm} onSubmit={handleSubmit} onBlur={handleBlur} className="flex flex-col gap-5" noValidate>
       {/* Edit only: says which student this is (the SAVED name and ID, not what is typed below). */}
       {student ? <StudentIdentityHeader student={student} /> : null}
 
@@ -184,6 +235,7 @@ export default function StudentForm({ action, student, submitLabel, pendingLabel
               disabled={isPending}
               defaultValue={state?.values?.phone ?? student?.phone ?? ""}
               defaultCountryCode={state?.values?.phone_country_code ?? student?.phone_country_code ?? undefined}
+              onCountryChange={handleCountryChange}
               placeholder="Enter phone number"
             />
           )}
