@@ -127,7 +127,7 @@ export default function TimeSelect({ id, name, label, value, onChange, disabled 
   return (
     <div role="group" aria-label={label} className="grid grid-cols-3 gap-2">
       <Select items={HOUR_OPTIONS} value={parts.hour} onValueChange={(next) => update("hour", next)} disabled={disabled}>
-        <SelectTrigger id={id} className="w-full min-w-0" aria-label={`${label} hour`} aria-invalid={invalid}>
+        <SelectTrigger id={id} className="w-full min-w-0 bg-surface" aria-label={`${label} hour`} aria-invalid={invalid}>
           <SelectValue placeholder="Hr" />
         </SelectTrigger>
         <SelectContent>
@@ -152,7 +152,7 @@ export default function TimeSelect({ id, name, label, value, onChange, disabled 
             disabled={disabled}
             aria-label={`${label} minutes`}
             aria-invalid={invalid}
-            className="w-full min-w-0 pr-8 text-center"
+            className="w-full min-w-0 bg-surface pr-8 text-center"
           />
           <button
             type="button"
@@ -167,7 +167,7 @@ export default function TimeSelect({ id, name, label, value, onChange, disabled 
         </div>
       ) : (
         <Select items={MINUTE_OPTIONS} value={parts.minute} onValueChange={selectMinute} disabled={disabled}>
-          <SelectTrigger className="w-full min-w-0" aria-label={`${label} minutes`} aria-invalid={invalid}>
+          <SelectTrigger className="w-full min-w-0 bg-surface" aria-label={`${label} minutes`} aria-invalid={invalid}>
             <SelectValue placeholder="Min" />
           </SelectTrigger>
           <SelectContent>
@@ -181,7 +181,7 @@ export default function TimeSelect({ id, name, label, value, onChange, disabled 
       )}
 
       <Select items={PERIOD_OPTIONS} value={parts.period} onValueChange={(next) => update("period", next)} disabled={disabled}>
-        <SelectTrigger className="w-full min-w-0" aria-label={`${label} AM or PM`} aria-invalid={invalid}>
+        <SelectTrigger className="w-full min-w-0 bg-surface" aria-label={`${label} AM or PM`} aria-invalid={invalid}>
           <SelectValue placeholder="AM/PM" />
         </SelectTrigger>
         <SelectContent>
