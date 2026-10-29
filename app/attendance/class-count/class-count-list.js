@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CalendarDays, FileText } from "lucide-react";
+import AnimatedBorder from "@/components/ui/animated-border";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
@@ -18,6 +19,9 @@ import RecordClassButton from "@/app/attendance/class-count/record-class-button"
 const MID_ONLY = "hidden @[36rem]:table-cell";
 const HEAD = "h-10 border-y border-border/60 bg-brand/5 px-3 text-small tracking-normal first:rounded-l-lg first:border-l last:rounded-r-lg last:border-r";
 const CELL = "border-y border-border bg-surface px-3 py-3 first:rounded-l-card first:border-l last:rounded-r-card last:border-r";
+// The body rows' hover border is the shared animated one (`.card-border-animated-row`, drawn by `AnimatedBorder` in the first cell), as in the
+// Students, Memberships and Batches tables. The header row and the empty states do not have it.
+const ROW = "card-border-animated-row border-0 [--card-border-inset:0px] [--card-border-radius:var(--radius-card)] hover:bg-transparent";
 
 /**
  * One list of the Class Count Attendance tab. `mode="record"`: class-count memberships a class can be recorded for -
@@ -44,8 +48,10 @@ export default function ClassCountList({ rows, mode, ariaLabel, today }) {
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow key={row.membershipId} className="border-0 hover:bg-transparent">
+            <TableRow key={row.membershipId} className={ROW}>
               <TableCell className={CELL}>
+                {/* The row's hover border: drawn from the first cell, sized to the whole row (see `.card-border-animated-row`). */}
+                <AnimatedBorder />
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar name={row.fullName} src={row.photoUrl} size="lg" />
                   <div className="min-w-0">

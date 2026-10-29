@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import AnimatedBorder from "@/components/ui/animated-border";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Progress from "@/components/ui/progress";
@@ -22,7 +23,7 @@ const ATTENDANCE_ONLY = "hidden @[46rem]:table-cell";
 
 // Each session is its own rounded row card on the page background (the table is `border-separate`, with a gap between rows) - the same look as
 // the Students, Memberships and Batches tables: a pale rounded header strip, and every row's cells carry the surface and the pale border,
-// rounded at the row's two ends.
+// rounded at the row's two ends. The hover border is the shared animated one (`.card-border-animated-row`, drawn by `AnimatedBorder` in the first cell).
 const HEAD_CLASS = "h-10 border-y border-border/60 bg-brand/5 px-2 text-small tracking-normal first:rounded-l-lg first:border-l last:rounded-r-lg last:border-r";
 const CELL = "border-y border-border px-2 py-3 first:rounded-l-card first:border-l last:rounded-r-card last:border-r";
 const SURFACE = "[&>td]:bg-surface";
@@ -52,8 +53,15 @@ function SessionRow({ session, today, timeZone, isAdmin }) {
   const takes = summary.actionLabel === "Take Attendance";
 
   return (
-    <TableRow className={cn("border-0 hover:bg-transparent", menuOpen ? SURFACE_OPEN : SURFACE)}>
+    <TableRow
+      className={cn(
+        "card-border-animated-row border-0 [--card-border-inset:0px] [--card-border-radius:var(--radius-card)] hover:bg-transparent",
+        menuOpen ? SURFACE_OPEN : SURFACE
+      )}
+    >
       <TableCell className={cn(CELL, "py-3 pr-1 pl-2 @xl:pr-2 @xl:pl-3")}>
+        {/* The row's hover border: drawn from the first cell, sized to the whole row (see `.card-border-animated-row`). */}
+        <AnimatedBorder />
         <SessionCell
           startTime={summary.startTime}
           endTime={summary.endTime}

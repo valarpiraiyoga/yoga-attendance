@@ -29,6 +29,7 @@ export default function SessionCardItem({ session, today, timeZone, isAdmin = fa
 
   return (
     <EntityCard
+      animatedBorder
       className={cn(menuOpen && "border-brand/40 bg-brand/5")}
       avatar={<StartTimeTile startTime={summary.startTime} label={summary.timeLabel} />}
       title={summary.batchName}
